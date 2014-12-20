@@ -3,13 +3,13 @@ package edu.indiana.soic.spidal.damds;
 import com.google.common.base.Optional;
 import edu.indiana.soic.spidal.common.BinaryReader;
 import edu.indiana.soic.spidal.common.DoubleStatistics;
+import edu.indiana.soic.spidal.common.Range;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import mpi.MPIException;
 import org.apache.commons.cli.*;
 
 import java.nio.ByteOrder;
-import java.util.DoubleSummaryStatistics;
 import java.util.stream.IntStream;
 
 public class Program {
@@ -64,6 +64,7 @@ public class Program {
             distances = BinaryReader
                     .readRowRange(config.distanceMatrixFile, ParallelOps.localRowRange, ParallelOps.globalColCount,
                                   byteOrder, config.isMemoryMapped, true);
+
             DoubleStatistics distanceSummary;
             if (!config.isSammon) {
                 weights = BinaryReader
@@ -72,22 +73,26 @@ public class Program {
                 // Non Sammon mode - use only distances that have non zero corresponding weights
                 distanceSummary =
                         IntStream.range(0, ParallelOps.localRowCount * ParallelOps.globalColCount).parallel()
-                                 .filter(i -> weights
-                                         .getValue(i / ParallelOps.globalColCount, i % ParallelOps.globalColCount) != 0)
-                                 .mapToDouble(i -> distances.getValue(i / ParallelOps.globalColCount,
-                                                                      i % ParallelOps.globalColCount))
-                                 .collect(DoubleStatistics::new, DoubleStatistics::accept, DoubleStatistics::combine);
+                                .filter(i -> weights
+                                        .getValue((i + ParallelOps.localPointStartOffset) / ParallelOps.globalColCount,
+                                                (i + ParallelOps.localPointStartOffset) % ParallelOps.globalColCount) != 0)
+                                .mapToDouble(i -> distances.getValue(
+                                        (i + ParallelOps.localPointStartOffset) / ParallelOps.globalColCount,
+                                        (i + ParallelOps.localPointStartOffset) % ParallelOps.globalColCount))
+                                .collect(DoubleStatistics::new, DoubleStatistics::accept, DoubleStatistics::combine);
             } else {
                 // Sammon mode - use all distances
                 distanceSummary =
                         IntStream.range(0, ParallelOps.localRowCount * ParallelOps.globalColCount).parallel()
-                                 .mapToDouble(i -> distances
-                                         .getValue(i / ParallelOps.globalColCount, i % ParallelOps.globalColCount))
-                                 .collect(DoubleStatistics::new, DoubleStatistics::accept, DoubleStatistics::combine);
+                                .mapToDouble(i -> distances
+                                        .getValue((i + ParallelOps.localPointStartOffset) / ParallelOps.globalColCount,
+                                                (i + ParallelOps.localPointStartOffset) % ParallelOps.globalColCount))
+                                .collect(DoubleStatistics::new, DoubleStatistics::accept, DoubleStatistics::combine);
             }
             distanceSummary = ParallelOps.allReduce(distanceSummary);
             Utils.printMessage(distanceSummary.toString());
 
+            ParallelOps.tearDownParallelism();
 
         } catch (MPIException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
@@ -95,6 +100,28 @@ public class Program {
 
 
 
+    }
+
+    /*TODO - Remove after testing*/
+
+    private static void printParams(){
+        System.out.println("IsSammon=" + config.isSammon);
+        System.out.println("IsBigEndian=" + config.isBigEndian);
+        System.out.println("IsMemoryMapped=" + config.isMemoryMapped);
+    }
+
+    /*TODO - Remove after testing*/
+    private static void print(BinaryReader reader, Range localRowRange, int localRowStartOffset, int globalColCount){
+        StringBuilder sb = new StringBuilder();
+        int rows = localRowRange.getLength();
+        for (int r = 0; r < rows; ++r){
+            for (int c = 0; c < globalColCount; ++c){
+                int globalRow = r+localRowStartOffset;
+                sb.append(reader.getValue(globalRow, c)).append("\t");
+            }
+            sb.append('\n');
+        }
+        System.out.println(sb.toString());
     }
 
     private static void ReadControlFile(CommandLine cmd) {

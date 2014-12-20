@@ -24,8 +24,9 @@ public class ParallelOps {
     public static int localRowStartOffset;
     public static int localRowCount;
     public static Range localRowRange;
-    public static int globalColCount;
+    public static int localPointStartOffset;
 
+    public static int globalColCount;
     // Buffers for MPI operations
     private static ByteBuffer statBuffer;
 
@@ -71,6 +72,7 @@ public class ParallelOps {
         localRowStartOffset = rowRange.getStartIndex();
         localRowCount = rowRange.getLength();
         globalColCount = globalRowCount;
+        localPointStartOffset = localRowStartOffset*globalColCount;
     }
 
     public static DoubleStatistics allReduce(DoubleStatistics stat) throws MPIException {
