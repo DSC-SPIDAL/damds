@@ -1,13 +1,16 @@
 package edu.indiana.soic.spidal.damds;
 
 import com.google.common.base.Optional;
-import edu.indiana.soic.spidal.common.DistanceReader;
+import edu.indiana.soic.spidal.common.BinaryReader;
+import edu.indiana.soic.spidal.common.DoubleStatistics;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import mpi.MPIException;
 import org.apache.commons.cli.*;
 
 import java.nio.ByteOrder;
+import java.util.DoubleSummaryStatistics;
+import java.util.stream.IntStream;
 
 public class Program {
     private static Options programOptions = new Options();
@@ -23,7 +26,8 @@ public class Program {
     //Config Settings
     public static DAMDSSection config;
     public static ByteOrder byteOrder;
-    public static DistanceReader distances;
+    public static BinaryReader distances;
+    public static BinaryReader weights;
 
 
     /**
@@ -55,9 +59,35 @@ public class Program {
 
         try {
             //  Set up MPI and threads parallelism
-            ParallelOptions.setupParallelism(args);
-            ParallelOptions.setParallelDecomposition(config.numberDataPoints);
-            distances = DistanceReader.readRowRange(config.distanceMatrixFile,ParallelOptions.localRowRange, config.numberDataPoints, Short.BYTES, byteOrder, config.isMemoryMapped);
+            ParallelOps.setupParallelism(args);
+            ParallelOps.setParallelDecomposition(config.numberDataPoints);
+            distances = BinaryReader
+                    .readRowRange(config.distanceMatrixFile, ParallelOps.localRowRange, ParallelOps.globalColCount,
+                                  byteOrder, config.isMemoryMapped, true);
+            DoubleStatistics distanceSummary;
+            if (!config.isSammon) {
+                weights = BinaryReader
+                        .readRowRange(config.weightMatrixFile, ParallelOps.localRowRange, ParallelOps.globalColCount,
+                                      byteOrder, config.isMemoryMapped, false);
+                // Non Sammon mode - use only distances that have non zero corresponding weights
+                distanceSummary =
+                        IntStream.range(0, ParallelOps.localRowCount * ParallelOps.globalColCount).parallel()
+                                 .filter(i -> weights
+                                         .getValue(i / ParallelOps.globalColCount, i % ParallelOps.globalColCount) != 0)
+                                 .mapToDouble(i -> distances.getValue(i / ParallelOps.globalColCount,
+                                                                      i % ParallelOps.globalColCount))
+                                 .collect(DoubleStatistics::new, DoubleStatistics::accept, DoubleStatistics::combine);
+            } else {
+                // Sammon mode - use all distances
+                distanceSummary =
+                        IntStream.range(0, ParallelOps.localRowCount * ParallelOps.globalColCount).parallel()
+                                 .mapToDouble(i -> distances
+                                         .getValue(i / ParallelOps.globalColCount, i % ParallelOps.globalColCount))
+                                 .collect(DoubleStatistics::new, DoubleStatistics::accept, DoubleStatistics::combine);
+            }
+            distanceSummary = ParallelOps.allReduce(distanceSummary);
+            Utils.printMessage(distanceSummary.toString());
+
 
         } catch (MPIException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
@@ -69,8 +99,8 @@ public class Program {
 
     private static void ReadControlFile(CommandLine cmd) {
         config = ConfigurationMgr.LoadConfiguration(cmd.getOptionValue(Constants.CMD_OPTION_LONG_C)).damdsSection;
-        ParallelOptions.nodeCount = Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_N));
-        ParallelOptions.threadCount = Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_T));
+        ParallelOps.nodeCount = Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_N));
+        ParallelOps.threadCount = Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_T));
         byteOrder = config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
     }
 

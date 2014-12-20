@@ -12,7 +12,7 @@ public class Utils {
     }
 
     public static void printMessage(String msg) {
-        if (ParallelOptions.mpiRank != 0) {
+        if (ParallelOps.mpiRank != 0) {
             return;
         }
         System.out.println(msg);

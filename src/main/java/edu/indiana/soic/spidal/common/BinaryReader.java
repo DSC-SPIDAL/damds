@@ -13,11 +13,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-public interface DistanceReader {
-    public double getDistance(int globalRow, int globalCol);
+public interface BinaryReader {
+    public double getValue(int globalRow, int globalCol);
 
-    public static DistanceReader readRowRange(String fname, Range rows, int globalColCount, ByteOrder
-            endianness, boolean mmap){
+    public static BinaryReader readRowRange(String fname, Range rows, int globalColCount, ByteOrder
+            endianness, boolean mmap, boolean divideByDataTypeMax){
         if (mmap) {
             try (FileChannel fc = (FileChannel) Files.newByteChannel(Paths.get(fname), StandardOpenOption.READ)) {
                 int dataTypeSize = Short.BYTES;
@@ -25,9 +25,12 @@ public interface DistanceReader {
                 MappedByteBuffer mappedBytes = fc.map(FileChannel.MapMode.READ_ONLY, pos,
                         rows.getLength() * globalColCount * dataTypeSize);
                 mappedBytes.order(endianness);
-                return (globalRow, globalCol) -> {
+                return divideByDataTypeMax ? (globalRow, globalCol) -> {
                     int position = (globalRow - rows.getStartIndex()) * globalColCount + globalCol; // element position - not the byte position
                     return mappedBytes.getShort(position * dataTypeSize) / (Short.MAX_VALUE * 1.0); // pos*2 is the byte position
+                } : (globalRow, globalCol) -> {
+                    int position = (globalRow - rows.getStartIndex()) * globalColCount + globalCol; // element position - not the byte position
+                    return mappedBytes.getShort(position * dataTypeSize); // pos*2 is the byte position
                 };
             } catch (IOException e) {
                 e.printStackTrace();
@@ -51,9 +54,12 @@ public interface DistanceReader {
                         buffer[i][j] = di.readShort();
                     }
                 }
-                return (globalRow, globalCol) -> {
+                return divideByDataTypeMax ? (globalRow, globalCol) -> {
                     int localRow = globalRow - rows.getStartIndex();
                     return buffer[localRow][globalCol] / (1.0*Short.MAX_VALUE);
+                } : (globalRow, globalCol) -> {
+                    int localRow = globalRow - rows.getStartIndex();
+                    return buffer[localRow][globalCol];
                 };
             } catch (IOException e){
                 e.printStackTrace();
