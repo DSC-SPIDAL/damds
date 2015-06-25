@@ -760,49 +760,26 @@ public class Program {
         return dist;
     }
 
-    static double[][] generateInitMapping(int numDataPoints,
-                                          int targetDim) {
-        /* TODO remove after testing */
-        String file = "/N/u/sekanaya/sali/projects/salsabio/phy/updated_4.20.15/mds/initprex.txt";
-        try (BufferedReader br = Files.newBufferedReader(Paths.get(file),
-                                                         Charset.defaultCharset())){
-            double x[][] = new double[numDataPoints][targetDim];
-            String line;
-            Pattern pattern = Pattern.compile("[\t ]");
-            int row = 0;
-            while ((line = br.readLine()) != null) {
-                if (Strings.isNullOrEmpty(line))
-                    continue; // continue on empty lines - "while" will break on null anyway;
+    static double[][] generateInitMapping(int numPoints,
+                                          int targetDim) throws MPIException {
 
-                String[] splits = pattern.split(line.trim());
-
-                for (int i = 0; i < splits.length; ++i){
-                    if (i == 0){
-                        splits[i] = splits[i].substring(1);
-                    }
-                    splits[i] = splits[i].substring(0,splits[i].length() -1);
-                    x[row][i] = Double.parseDouble(splits[i]);
+        DoubleBuffer buffer = ParallelOps.pointBuffer;
+        if (ParallelOps.procRank == 0) {
+            buffer.position(0);
+            // Use Random class for generating random initial mapping solution.
+            Random rand = new Random(System.currentTimeMillis());
+            for (int i = 0; i < numPoints; i++) {
+                for (int j = 0; j < targetDim; j++) {
+                    buffer.put(rand.nextBoolean() ? rand.nextDouble() : -rand.nextDouble());
                 }
-                ++row;
-            }
-            return x;
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }/*
-        double matX[][] = new double[numDataPoints][targetDim];
-        // Use Random class for generating random initial mapping solution.
-        Random rand = new Random(System.currentTimeMillis());
-        for (int i = 0; i < numDataPoints; i++) {
-            for (int j = 0; j < targetDim; j++) {
-                if(rand.nextBoolean())
-                    matX[i][j] = rand.nextDouble();
-                else
-                    matX[i][j] = -rand.nextDouble();
             }
         }
-        return matX;*/
+
+        if (ParallelOps.procCount > 1){
+            // Broadcast initial mapping to others
+            ParallelOps.broadcast(buffer, numPoints * targetDim, 0);
+        }
+        return extractPoints(buffer, numPoints, targetDim);
     }
 
     private static DoubleStatistics calculateStatistics(

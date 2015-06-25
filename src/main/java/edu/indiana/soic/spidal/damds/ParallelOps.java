@@ -140,4 +140,9 @@ public class ParallelOps {
         procComm.allGatherv(partialPointBuffer, length, MPI.DOUBLE, pointBuffer, lengths, displas, MPI.DOUBLE);
         return  pointBuffer;
     }
+
+    public static void broadcast(DoubleBuffer buffer, int extent, int root)
+        throws MPIException {
+        procComm.bcast(buffer, extent, MPI.DOUBLE, root);
+    }
 }
