@@ -1,7 +1,7 @@
 package edu.indiana.soic.spidal.common;
 
 public final class RangePartitioner {
-    public static Range[] Partition(int length, int numPartitions) {
+    public static Range[] partition(int length, int numPartitions) {
         return Partition(0, length, numPartitions);
     }
 

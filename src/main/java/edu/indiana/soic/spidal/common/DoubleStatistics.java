@@ -192,8 +192,7 @@ public class DoubleStatistics implements DoubleConsumer {
     @Override
     public String toString() {
         return String.format(
-                "%s{count=%d, max=%f, sum=%f, sumOfSq=%f, average=%f, stddev=%f}",
-                this.getClass().getSimpleName(),
+                "  Count=%d\n  Max=%f\n  Sum=%f\n  Sum of square=%f\n  Average=%f\n  Standard deviation=%f",
                 getCount(),
                 getMax(),
                 getSum(),
