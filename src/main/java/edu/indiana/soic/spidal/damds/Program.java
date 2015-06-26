@@ -121,8 +121,8 @@ public class Program {
 
             double [][] vArray = generateVArray();
 
-            double[][] preX = generateInitMapping(
-                config.numberDataPoints, config.targetDimension);
+            double[][] preX = Strings.isNullOrEmpty(config.initialPointsFile) ? generateInitMapping(
+                config.numberDataPoints, config.targetDimension): readInitMapping(config.initialPointsFile, config.numberDataPoints, config.targetDimension);
             double tCur = 0.0;
             double preStress = calculateStress(
                 preX, tCur, config.targetDimension, config.isSammon,
@@ -279,6 +279,32 @@ public class Program {
         }
         catch (MPIException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
+        }
+    }
+
+    private static double[][] readInitMapping(
+        String initialPointsFile, int numPoints, int targetDimension) {
+        try (BufferedReader br = Files.newBufferedReader(Paths.get(initialPointsFile),
+                                                         Charset.defaultCharset())){
+            double x[][] = new double[numPoints][targetDimension];
+            String line;
+            Pattern pattern = Pattern.compile("[\t]");
+            int row = 0;
+            while ((line = br.readLine()) != null) {
+                if (Strings.isNullOrEmpty(line))
+                    continue; // continue on empty lines - "while" will break on null anyway;
+
+                String[] splits = pattern.split(line.trim());
+
+                for (int i = 0; i < splits.length; ++i){
+                    x[row][i] = Double.parseDouble(splits[i].trim());
+                }
+                ++row;
+            }
+            return x;
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

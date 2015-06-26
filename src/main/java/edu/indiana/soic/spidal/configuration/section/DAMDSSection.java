@@ -7,6 +7,8 @@ import java.util.Properties;
 import java.util.stream.IntStream;
 
 public class DAMDSSection {
+
+
     public DAMDSSection(String configurationFilePath) {
         Properties p = new Properties();
         try {
@@ -14,6 +16,7 @@ public class DAMDSSection {
             distanceMatrixFile = p.getProperty("DistanceMatrixFile", "distance.bin");
             weightMatrixFile = p.getProperty("WeightMatrixFile", "weights.bin");
             labelFile = p.getProperty("LabelFile", "labels.txt");
+            initialPointsFile = p.getProperty("InitialPointsFile", "init.txt");
             pointsFile = p.getProperty("PointsFile", "points.txt");
             timingFile = p.getProperty("TimingFile", "timings.txt");
             summaryFile = p.getProperty("SummaryFile","summary.txt");
@@ -37,6 +40,7 @@ public class DAMDSSection {
     public String distanceMatrixFile;
     public String weightMatrixFile;
     public String labelFile;
+    public String initialPointsFile;
     public String pointsFile;
     public String timingFile;
     public String summaryFile;
@@ -63,6 +67,7 @@ public class DAMDSSection {
         String[] params = new String[]{"DistanceMatrixFile",
                                        "WeightMatrixFile",
                                        "Label Data File",
+                                       "Initial Points File",
                                        "PointsFile",
                                        "TimingFile",
                                        "SummaryFile",
@@ -80,6 +85,7 @@ public class DAMDSSection {
             new Object[]{distanceMatrixFile,
                          weightMatrixFile,
                          labelFile,
+                         initialPointsFile,
                          pointsFile,
                          timingFile,
                          summaryFile,
