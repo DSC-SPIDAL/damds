@@ -13,25 +13,26 @@ public class DAMDSSection {
         Properties p = new Properties();
         try {
             p.load(new FileInputStream(configurationFilePath));
-            distanceMatrixFile = getProperty(p,"DistanceMatrixFile", "distance.bin");
-            weightMatrixFile = getProperty(p,"WeightMatrixFile", "weights.bin");
-            labelFile = getProperty(p,"LabelFile", "labels.txt");
-            initialPointsFile = getProperty(p,"InitialPointsFile", "init.txt");
-            pointsFile = getProperty(p,"PointsFile", "points.txt");
-            timingFile = getProperty(p,"TimingFile", "timings.txt");
-            summaryFile = getProperty(p,"SummaryFile","summary.txt");
+            distanceMatrixFile = getProperty(p, "DistanceMatrixFile", "distance.bin");
+            weightMatrixFile = getProperty(p, "WeightMatrixFile", "weights.bin");
+            labelFile = getProperty(p, "LabelFile", "labels.txt");
+            initialPointsFile = getProperty(p, "InitialPointsFile", "init.txt");
+            pointsFile = getProperty(p, "PointsFile", "points.txt");
+            timingFile = getProperty(p, "TimingFile", "timings.txt");
+            summaryFile = getProperty(p, "SummaryFile", "summary.txt");
 
-            numberDataPoints = Integer.parseInt(getProperty(p,"NumberDataPoints","-1"));
-            targetDimension = Integer.parseInt(getProperty(p,"TargetDimension","3"));
-            distanceTransform = Double.parseDouble(getProperty(p,"DistanceTransform","1.0"));
-            threshold = Double.parseDouble(getProperty(p,"Threshold", "0.000001"));
-            alpha = Double.parseDouble(getProperty(p,"Alpha", "0.95"));
-            cgIter = Integer.parseInt(getProperty(p,"CGIterations", "20"));
-            cgErrorThreshold = Double.parseDouble(getProperty(p,"CGErrorThreshold", "1"));
-            isSammon = Boolean.parseBoolean(getProperty(p,"IsSammon", "false"));
+            System.out.println("***************************************************" + getProperty(p, "NumberDataPoints", "-1"));
+            numberDataPoints = Integer.parseInt(getProperty(p, "NumberDataPoints", "-1"));
+            targetDimension = Integer.parseInt(getProperty(p, "TargetDimension", "3"));
+            distanceTransform = Double.parseDouble(getProperty(p, "DistanceTransform", "1.0"));
+            threshold = Double.parseDouble(getProperty(p, "Threshold", "0.000001"));
+            alpha = Double.parseDouble(getProperty(p, "Alpha", "0.95"));
+            cgIter = Integer.parseInt(getProperty(p, "CGIterations", "20"));
+            cgErrorThreshold = Double.parseDouble(getProperty(p, "CGErrorThreshold", "1"));
+            isSammon = Boolean.parseBoolean(getProperty(p, "IsSammon", "false"));
 
-            isBigEndian = Boolean.parseBoolean(getProperty(p,"IsBigEndian", "false"));
-            isMemoryMapped = Boolean.parseBoolean(getProperty(p,"IsMemoryMapped", "true"));
+            isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
+            isMemoryMapped = Boolean.parseBoolean(getProperty(p, "IsMemoryMapped", "true"));
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
