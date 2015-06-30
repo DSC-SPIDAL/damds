@@ -9,6 +9,7 @@ import edu.indiana.soic.spidal.common.MatrixUtils;
 import edu.indiana.soic.spidal.common.RefObj;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
+import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPIException;
 import org.apache.commons.cli.*;
 
@@ -103,6 +104,7 @@ public class Program {
             ParallelOps.setupParallelism(args);
             ParallelOps.setParallelDecomposition(
                 config.numberDataPoints, config.targetDimension);
+            initializeTimers();
 
             Utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
             Utils.printMessage(config.toString(false));
@@ -148,10 +150,15 @@ public class Program {
             double diffStress;
             double stress = -1.0;
             while (true) {
+                TemperatureLoopTimings.startTiming(
+                    TemperatureLoopTimings.TimingTask.PRE_STRESS);
                 preStress = calculateStress(
                     preX, tCur, config.targetDimension, config.isSammon,
                     distanceSummary.getAverage(),
                     distanceSummary.getSumOfSquare());
+                TemperatureLoopTimings.endTiming(
+                    TemperatureLoopTimings.TimingTask.PRE_STRESS);
+
                 diffStress = config.threshold + 1.0;
 
                 Utils.printMessage(
@@ -161,22 +168,40 @@ public class Program {
 
                 int itrNum = 0;
                 RefObj<Integer> cgCount = new RefObj<>(0);
+                TemperatureLoopTimings.startTiming(
+                    TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
+
+                    StressLoopTimings.startTiming(
+                        StressLoopTimings.TimingTask.BC);
                     BC = calculateBC(
                         preX, config.targetDimension,
                         tCur, config.isSammon, distanceSummary.getAverage(),
                         BlockSize);
+                    StressLoopTimings.endTiming(
+                        StressLoopTimings.TimingTask.BC);
 
+
+                    StressLoopTimings.startTiming(
+                        StressLoopTimings.TimingTask.CG);
                     X = calculateConjugateGradient(
                         preX, config.targetDimension, config.numberDataPoints,
                         BC, config.cgIter, config.cgErrorThreshold, cgCount,
                         config.isSammon, distanceSummary.getAverage(),
                         BlockSize, vArray);
+                    StressLoopTimings.endTiming(
+                        StressLoopTimings.TimingTask.CG);
 
+
+                    StressLoopTimings.startTiming(
+                        StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
                         X, tCur, config.targetDimension, config.isSammon,
                         distanceSummary.getAverage(),
                         distanceSummary.getSumOfSquare());
+                    StressLoopTimings.endTiming(
+                        StressLoopTimings.TimingTask.STRESS);
+
 
                     diffStress = preStress - stress;
                     preStress = stress;
@@ -194,6 +219,9 @@ public class Program {
                     ++itrNum;
                     ++SMACOF_REAL_ITER;
                 }
+                TemperatureLoopTimings.endTiming(
+                    TemperatureLoopTimings.TimingTask.STRESS_LOOP);
+
                 --itrNum;
                 if (itrNum >=0 && !(itrNum % 10 == 0) && !(itrNum >=
                                                            MAX_ITER)) {
@@ -273,6 +301,48 @@ public class Program {
                     "  Total CG Iterations: %d Avg. CG Iterations: %.5g",
                     CG_REAL_ITER, (CG_REAL_ITER * 1.0) / SMACOF_REAL_ITER));
             Utils.printMessage("  Final Stress:\t" + finalStress);
+
+            Utils.printMessage(
+                "  Total\tTempLoop\tPreStress\tStressLoop\tBC\tCG\tStress" +
+                "\tBCInternal\tBComm\tBCInternalBofZ\tBCInternalMM\tCGMM" +
+                "\tCGInnerProd\tCGLoop\tCGLoopMM\tCGLoopInnerProdPAP" +
+                "\tCGLoopInnerProdR\tMMInternal\tMMComm");
+            Utils.printMessage(
+                "  " + totalTime + "\t" + loopTime + "\t" +
+                TemperatureLoopTimings.getAverageTime(
+                    TemperatureLoopTimings.TimingTask.PRE_STRESS) + "\t" +
+                TemperatureLoopTimings.getAverageTime(
+                    TemperatureLoopTimings.TimingTask.STRESS_LOOP) + "\t" +
+                StressLoopTimings.getAverageTime(
+                    StressLoopTimings.TimingTask.BC) + "\t" +
+                StressLoopTimings.getAverageTime(
+                    StressLoopTimings.TimingTask.CG) + "\t" +
+                StressLoopTimings.getAverageTime(
+                    StressLoopTimings.TimingTask.STRESS) + "\t" +
+                BCTimings.getAverageTime(
+                    BCTimings.TimingTask.BC_INTERNAL) + "\t" +
+                BCTimings.getAverageTime(
+                    BCTimings.TimingTask.COMM) + "\t" +
+                BCInternalTimings.getAverageTime(
+                    BCInternalTimings.TimingTask.BOFZ) + "\t" +
+                BCInternalTimings.getAverageTime(
+                    BCInternalTimings.TimingTask.MM) + "\t" +
+                CGTimings.getAverageTime(
+                    CGTimings.TimingTask.MM) + "\t" + CGTimings.getAverageTime(
+                    CGTimings.TimingTask.INNER_PROD) + "\t" +
+                CGTimings.getAverageTime(
+                    CGTimings.TimingTask.CG_LOOP) + "\t" +
+                CGLoopTimings.getAverageTime(
+                    CGLoopTimings.TimingTask.MM) + "\t" +
+                CGLoopTimings.getAverageTime(
+                    CGLoopTimings.TimingTask.INNER_PROD_PAP) + "\t" +
+                CGLoopTimings.getAverageTime(
+                    CGLoopTimings.TimingTask.INNER_PROD_R) + "\t" +
+                MMTimings.getAverageTime(
+                    MMTimings.TimingTask.MM_INTERNAL) + "\t" +
+                MMTimings.getAverageTime(
+                    MMTimings.TimingTask.COMM));
+
             Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
             ParallelOps.tearDownParallelism();
@@ -280,6 +350,12 @@ public class Program {
         catch (MPIException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
+    }
+
+    private static void initializeTimers() {
+        BCInternalTimings.init(ParallelOps.threadCount);
+        BCTimings.init(ParallelOps.threadCount);
+        MMTimings.init(ParallelOps.threadCount);
     }
 
     private static double[][] readInitMapping(
@@ -439,8 +515,10 @@ public class Program {
         double[][] p = new double[numPoints][targetDimension];
 
         X = preX;
+        CGTimings.startTiming(CGTimings.TimingTask.MM);
         r = calculateMM(X, targetDimension, numPoints, isSammon, avgDist, blockSize,
                         vArray);
+        CGTimings.endTiming(CGTimings.TimingTask.MM);
 
         for(int i = 0; i < numPoints; ++i)
             for(int j = 0; j < targetDimension; ++j){
@@ -449,20 +527,27 @@ public class Program {
             }
 
         int cgCount = 0;
+        CGTimings.startTiming(CGTimings.TimingTask.INNER_PROD);
         double rTr = innerProductCalculation(r);
+        CGTimings.endTiming(CGTimings.TimingTask.INNER_PROD);
         // Adding relative value test for termination as suggested by Dr. Fox.
         double testEnd = rTr * cgThreshold;
 
         //System.out.println("1");
+        CGTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
         while(cgCount < cgIter){
             cgCount++;
             ++CG_REAL_ITER;
             //System.out.println("2");
             //calculate alpha
+            CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             double[][] Ap = calculateMM(p, targetDimension, numPoints, isSammon, avgDist, blockSize, vArray);
+            CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
 
+            CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr
                            /innerProductCalculation(p, Ap);
+            CGLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
 
             //update Xi to Xi+1
             for(int i = 0; i < numPoints; ++i)
@@ -479,7 +564,9 @@ public class Program {
                     r[i][j] = r[i][j] - alpha * Ap[i][j];
 
             //calculate beta
+            CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double rTr1 = innerProductCalculation(r);
+            CGLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double beta = rTr1/rTr;
             rTr = rTr1;
 
@@ -490,6 +577,7 @@ public class Program {
 
 
         }
+        CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
         //		System.out.println("CGCount: " + cgCount + " TestEnd: " + testEnd + " rTr: " + rTr);
         return X;
@@ -506,21 +594,31 @@ public class Program {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> partialMMs[threadIdx] =
+                    (threadIdx) -> {
+                        MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadIdx);
+                        partialMMs[threadIdx] =
                         calculateMMInternal(
-                            threadIdx, x, targetDimension, numPoints, isSammon, avgDist, blockSize, vArray)));
+                            threadIdx, x, targetDimension, numPoints, isSammon, avgDist, blockSize, vArray);
+                        MMTimings.endTiming(
+                            MMTimings.TimingTask.MM_INTERNAL, threadIdx);
+                    }));
         }
         else {
+            MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
             partialMMs[0] = calculateMMInternal(
                 0, x, targetDimension, numPoints, isSammon, avgDist, blockSize,
                 vArray);
+            MMTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
         }
 
         if (ParallelOps.procCount > 1) {
             mergePartials(partialMMs, targetDimension, ParallelOps.partialPointBuffer);
-            return extractPoints(
-                ParallelOps.allGather(
-                    ParallelOps.partialPointBuffer, targetDimension),
+
+            MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
+            DoubleBuffer result = ParallelOps.allGather(
+                ParallelOps.partialPointBuffer, targetDimension);
+            MMTimings.endTiming(MMTimings.TimingTask.COMM, 0);
+            return extractPoints(result,
                 ParallelOps.globalColCount, targetDimension);
         } else {
             double [][] mm = new double[ParallelOps.globalColCount][targetDimension];
@@ -582,20 +680,31 @@ public class Program {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> partialBCs[threadIdx] =
+                    (threadIdx) -> {
+                        BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
+                        partialBCs[threadIdx] =
                         calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, isSammon, avgDist, blockSize)));
+                            threadIdx, preX, targetDimension, tCur, isSammon, avgDist, blockSize);
+                        BCTimings.endTiming(
+                            BCTimings.TimingTask.BC_INTERNAL, threadIdx);
+                    }));
         }
         else {
+            BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
             partialBCs[0] = calculateBCInternal(
                 0, preX, targetDimension, tCur, isSammon, avgDist, blockSize);
+            BCTimings.endTiming(
+                BCTimings.TimingTask.BC_INTERNAL, 0);
         }
 
         if (ParallelOps.procCount > 1) {
             mergePartials(partialBCs, targetDimension, ParallelOps.partialPointBuffer);
-            return extractPoints(
-                ParallelOps.allGather(
-                    ParallelOps.partialPointBuffer, targetDimension),
+
+            BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
+            DoubleBuffer result = ParallelOps.allGather(
+                ParallelOps.partialPointBuffer, targetDimension);
+            BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+            return extractPoints(result,
                 ParallelOps.globalColCount, targetDimension);
         } else {
             double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
@@ -608,11 +717,16 @@ public class Program {
         Integer threadIdx, double[][] preX, int targetDimension, double tCur,
         boolean isSammon, double avgDist, int blockSize) {
 
+        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         float [][] BofZ = calculateBofZ(threadIdx, preX, targetDimension, tCur, isSammon, avgDist);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
 
         // Next we can calculate the BofZ * preX.
-        return MatrixUtils.matrixMultiply(BofZ, preX, ParallelOps.threadRowCounts[threadIdx],
+        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        double [][] result = MatrixUtils.matrixMultiply(BofZ, preX, ParallelOps.threadRowCounts[threadIdx],
                                                   targetDimension, ParallelOps.globalColCount, blockSize);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        return result;
     }
 
     private static float[][] calculateBofZ(int threadIdx, double[][] preX, int targetDimension, double tCur, boolean isSammon, double avgDist) {
