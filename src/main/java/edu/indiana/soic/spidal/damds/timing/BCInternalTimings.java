@@ -4,6 +4,7 @@ import com.google.common.base.Stopwatch;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 public class BCInternalTimings {
     public static enum TimingTask{
@@ -12,10 +13,12 @@ public class BCInternalTimings {
 
     public static void init(int numThreads){
         timerBofZ = new Stopwatch[numThreads];
+        IntStream.range(0, numThreads).forEach(i -> timerBofZ[i] = Stopwatch.createUnstarted());
         tBofZ = new long[numThreads];
         countBofZ = new long[numThreads];
 
         timerMM = new Stopwatch[numThreads];
+        IntStream.range(0,numThreads).forEach(i -> timerMM[i] = Stopwatch.createUnstarted());
         tMM = new long[numThreads];
         countMM = new long[numThreads];
     }

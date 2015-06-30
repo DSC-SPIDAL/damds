@@ -1,10 +1,12 @@
 package edu.indiana.soic.spidal.damds.timing;
 
 import com.google.common.base.Stopwatch;
+import sun.awt.image.IntegerComponentRaster;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongBinaryOperator;
+import java.util.stream.IntStream;
 
 public class BCTimings {
     public static enum TimingTask{
@@ -13,6 +15,7 @@ public class BCTimings {
 
     public static void init(int numThreads){
         timerBCInternal = new Stopwatch[numThreads];
+        IntStream.range(0,numThreads).forEach(i -> timerBCInternal[i] = Stopwatch.createUnstarted());
         tBCInternal = new long[numThreads];
         countBCInternal = new long[numThreads];
     }
