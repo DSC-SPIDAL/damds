@@ -21,7 +21,6 @@ public class DAMDSSection {
             timingFile = getProperty(p, "TimingFile", "timings.txt");
             summaryFile = getProperty(p, "SummaryFile", "summary.txt");
 
-            System.out.println("***************************************************" + getProperty(p, "NumberDataPoints", "-1"));
             numberDataPoints = Integer.parseInt(getProperty(p, "NumberDataPoints", "-1"));
             targetDimension = Integer.parseInt(getProperty(p, "TargetDimension", "3"));
             distanceTransform = Double.parseDouble(getProperty(p, "DistanceTransform", "1.0"));
