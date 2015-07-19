@@ -22,13 +22,16 @@ public class DAMDSSection {
             summaryFile = getProperty(p, "SummaryFile", "summary.txt");
 
             numberDataPoints = Integer.parseInt(getProperty(p, "NumberDataPoints", "-1"));
-            targetDimension = Integer.parseInt(getProperty(p, "TargetDimension", "3"));
+            targetDimension = Integer.parseInt(
+                getProperty(p, "TargetDimension", "3"));
             distanceTransform = Double.parseDouble(getProperty(p, "DistanceTransform", "1.0"));
             threshold = Double.parseDouble(getProperty(p, "Threshold", "0.000001"));
             alpha = Double.parseDouble(getProperty(p, "Alpha", "0.95"));
             cgIter = Integer.parseInt(getProperty(p, "CGIterations", "20"));
-            cgErrorThreshold = Double.parseDouble(getProperty(p, "CGErrorThreshold", "1"));
+            cgErrorThreshold = Double.parseDouble(
+                getProperty(p, "CGErrorThreshold", "1"));
             isSammon = Boolean.parseBoolean(getProperty(p, "IsSammon", "false"));
+            divideWeightsByShortMax = Boolean.parseBoolean(getProperty(p, "DivideWeightsByShortMax", "false"));
 
             isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
             isMemoryMapped = Boolean.parseBoolean(getProperty(p, "IsMemoryMapped", "true"));
@@ -65,6 +68,7 @@ public class DAMDSSection {
     public int cgIter;
     public double cgErrorThreshold;
     public boolean isSammon;
+    public boolean divideWeightsByShortMax;
 
     public boolean isBigEndian;
     public boolean isMemoryMapped;
@@ -91,6 +95,7 @@ public class DAMDSSection {
                                        "CG Iterations",
                                        "CG Threshold",
                                        "Sammon mapping (boolean) ",
+                                       "Divide Weights By Short Max",
                                        "BigEndian (boolean)",
                                        "Memory mapped (boolean)"};
         Object[] args =
@@ -108,6 +113,7 @@ public class DAMDSSection {
                          cgIter,
                          cgErrorThreshold,
                          isSammon,
+                         divideWeightsByShortMax,
                          isBigEndian,
                          isMemoryMapped};
 

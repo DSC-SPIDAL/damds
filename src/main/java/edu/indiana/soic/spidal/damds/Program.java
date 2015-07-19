@@ -971,7 +971,7 @@ public class Program {
             .readConstant(1.0) : BinaryReader.readRowRange(
             config.weightMatrixFile, ParallelOps.procRowRange,
             ParallelOps.globalColCount, byteOrder, config.isMemoryMapped,
-            false);
+            config.divideWeightsByShortMax);
 
         /* TODO See if arrays would improve performance, especially within CG matrix multiply routine as it gets called many times*/
         distanceArray = new double[ParallelOps.procRowCount][ParallelOps.globalColCount];
