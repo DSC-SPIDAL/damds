@@ -126,17 +126,18 @@ public class Program {
             double[][] preX = Strings.isNullOrEmpty(config.initialPointsFile) ? generateInitMapping(
                 config.numberDataPoints, config.targetDimension): readInitMapping(config.initialPointsFile, config.numberDataPoints, config.targetDimension);
             double tCur = 0.0;
+            double tMax =
+                calculateMaxT(distanceSummary.getMax(), config.targetDimension);
+            double tMin = config.tMinFactor * tMax;
             double preStress = calculateStress(
                 preX, tCur, config.targetDimension, config.isSammon,
-                distanceSummary.getAverage(), distanceSummary.getSumOfSquare());
+                distanceSummary.getAverage(), distanceSummary.getSumOfSquare(),
+                tMin);
             Utils.printMessage("\nInitial stress=" + preStress);
 
             double X[][] = null;
             double BC[][] = null;
 
-            double tMax =
-                calculateMaxT(distanceSummary.getMax(), config.targetDimension);
-            double tMin = config.tMinFactor * tMax;
             tCur = config.alpha * tMax;
 
             mainTimer.stop();
@@ -155,7 +156,7 @@ public class Program {
                 preStress = calculateStress(
                     preX, tCur, config.targetDimension, config.isSammon,
                     distanceSummary.getAverage(),
-                    distanceSummary.getSumOfSquare());
+                    distanceSummary.getSumOfSquare(), tMin);
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
@@ -198,7 +199,7 @@ public class Program {
                     stress = calculateStress(
                         X, tCur, config.targetDimension, config.isSammon,
                         distanceSummary.getAverage(),
-                        distanceSummary.getSumOfSquare());
+                        distanceSummary.getSumOfSquare(), tMin);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.STRESS);
 
@@ -281,7 +282,8 @@ public class Program {
 
             Double finalStress = calculateStress(X,tCur, config.targetDimension, config.isSammon,
                                                  distanceSummary.getAverage(),
-                                                 distanceSummary.getSumOfSquare());
+                                                 distanceSummary.getSumOfSquare(),
+                                                 tMin);
 
             mainTimer.stop();
 
@@ -821,7 +823,9 @@ public class Program {
         return maxOrigDistance / divider;
     }
 
-    private static double calculateStress(double[][] preX, double tCur, int targetDimension, boolean isSammon, double avgDist, double sumOfSquareDist)
+    private static double calculateStress(
+        double[][] preX, double tCur, int targetDimension, boolean isSammon,
+        double avgDist, double sumOfSquareDist, double tMin)
         throws MPIException {
 
         final double [] sigmaValues = new double [ParallelOps.threadCount];
@@ -832,7 +836,7 @@ public class Program {
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> sigmaValues[threadIdx] =
-                        calculateStressInternal(threadIdx, preX, targetDimension, tCur, isSammon, avgDist)));
+                        calculateStressInternal(threadIdx, preX, targetDimension, tCur, isSammon, avgDist, tMin)));
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
                 i -> {
@@ -840,7 +844,7 @@ public class Program {
                 });
         }
         else {
-            sigmaValues[0] = calculateStressInternal(0, preX, targetDimension, tCur, isSammon, avgDist);
+            sigmaValues[0] = calculateStressInternal(0, preX, targetDimension, tCur, isSammon, avgDist, tMin);
         }
 
         if (ParallelOps.procCount > 1) {
@@ -851,7 +855,7 @@ public class Program {
 
     private static double calculateStressInternal(
         int threadIdx, double[][] preX, int targetDim, double tCur,
-        boolean isSammon, double avgDist) {
+        boolean isSammon, double avgDist, double tMin) {
 
         double sigma = 0.0;
         double diff = 0.0;
@@ -866,6 +870,8 @@ public class Program {
             int procLocalPnum =
                 i + ParallelOps.threadPointStartOffsets[threadIdx];
             double origD = distances.getValue(procLocalPnum);
+            // suggestion from Dr. Fox
+            origD = Math.max(origD, 10*tMin);
             double weight = weights.getValue(procLocalPnum);
 
             if (origD < 0 || weight == 0) {
