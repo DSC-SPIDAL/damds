@@ -24,9 +24,11 @@ public class DAMDSSection {
             numberDataPoints = Integer.parseInt(getProperty(p, "NumberDataPoints", "-1"));
             targetDimension = Integer.parseInt(
                 getProperty(p, "TargetDimension", "3"));
-            distanceTransform = Double.parseDouble(getProperty(p, "DistanceTransform", "1.0"));
+            distanceTransform = Double.parseDouble(
+                getProperty(p, "DistanceTransform", "1.0"));
             threshold = Double.parseDouble(getProperty(p, "Threshold", "0.000001"));
             alpha = Double.parseDouble(getProperty(p, "Alpha", "0.95"));
+            tMinFactor = Double.parseDouble(getProperty(p, "TminFactor", "0.0001"));
             cgIter = Integer.parseInt(getProperty(p, "CGIterations", "20"));
             cgErrorThreshold = Double.parseDouble(
                 getProperty(p, "CGErrorThreshold", "1"));
@@ -65,6 +67,7 @@ public class DAMDSSection {
     public double distanceTransform;
     public double threshold;
     public double alpha;
+    public double tMinFactor;
     public int cgIter;
     public double cgErrorThreshold;
     public boolean isSammon;
@@ -92,6 +95,7 @@ public class DAMDSSection {
                                        "Distance Transform (double)",
                                        "Threshold value",
                                        "Cooling parameter (alpha)",
+                                       "TminFactor",
                                        "CG Iterations",
                                        "CG Threshold",
                                        "Sammon mapping (boolean) ",
@@ -110,6 +114,7 @@ public class DAMDSSection {
                          targetDimension,
                          distanceTransform,
                          threshold, alpha,
+                         tMinFactor,
                          cgIter,
                          cgErrorThreshold,
                          isSammon,

@@ -136,7 +136,7 @@ public class Program {
 
             double tMax =
                 calculateMaxT(distanceSummary.getMax(), config.targetDimension);
-            double tMin = (0.01 * tMax < 0.01) ? 0.01 * tMax : 0.01;
+            double tMin = config.tMinFactor * tMax;
             tCur = config.alpha * tMax;
 
             mainTimer.stop();
