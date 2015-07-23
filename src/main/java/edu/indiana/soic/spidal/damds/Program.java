@@ -641,7 +641,7 @@ public class Program {
                 double distance = distances.getValue(procLocalPnum);
                 double weight = weights.getValue(procLocalPnum);
                 return (distance < 0 || weight == 0) ? 0.0 :
-                       (isSammon ? (1.0 /Math.max(distance,0.001 *avgDist)) : weight);
+                       (isSammon ? (weight /Math.max(distance,0.001 *avgDist)) : weight);
             }, vArray[threadIdx], x, ParallelOps.threadRowCounts[threadIdx],
             targetDimension, numPoints, blockSize,
             ParallelOps.threadRowStartOffsets[threadIdx] +
@@ -769,7 +769,7 @@ public class Program {
                     continue;
                 }
 
-                weight = isSammon ? 1.0 / Math.max(origD, 0.001 * avgDist) : weight;
+                weight = isSammon ? weight / Math.max(origD, 0.001 * avgDist) : weight;
 
                 double dist = calculateEuclideanDist(
                     preX, targetDimension, globalRow, globalCol);
@@ -878,7 +878,7 @@ public class Program {
                 continue;
             }
 
-            weight = isSammon ? 1.0 / Math.max(origD, 0.001 * avgDist) : weight;
+            weight = isSammon ? weight / Math.max(origD, 0.001 * avgDist) : weight;
             int globalPointStart =
                 procLocalPnum + ParallelOps.procPointStartOffset;
             int globalRow = globalPointStart / ParallelOps.globalColCount;
