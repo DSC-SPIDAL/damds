@@ -40,6 +40,9 @@ public class DAMDSSection {
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
+
+        //NOTE Change parameters here
+
     }
 
     private static String getProperty(Properties p, String name, String def) {
