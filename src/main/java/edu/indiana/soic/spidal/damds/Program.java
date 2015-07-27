@@ -76,6 +76,7 @@ public class Program {
      *             --configFile, --threadCount, and --nodeCount respectively
      */
     public static void main(String[] args) {
+//        THIS IS A COMMENT
         Stopwatch mainTimer = Stopwatch.createStarted();
         Optional<CommandLine> parserResult =
             parseCommandLineArguments(args, programOptions);
