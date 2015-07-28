@@ -102,6 +102,16 @@ public class ParallelOps {
         // Allocate vector buffers
         partialPointBuffer = MPI.newDoubleBuffer(procRowCount * targetDimension);
         pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
+
+        // TODO remove after testing
+        if (ParallelOps.procRank == 119) {
+            System.out.println("Rank: " + ParallelOps.procRank
+                               + "\nthreadIdx: " + 0 + " tRowCount: " + ParallelOps.threadRowCounts[0]
+                               + " tPointStartOffset: " + ParallelOps.threadPointStartOffsets[0]
+                               + "\ni: " + 0
+                               + "\nprocRowStartOffset: " + ParallelOps.procRowStartOffset + " procPointStartOffset: " + ParallelOps.procPointStartOffset + " procLocalPnum: ");
+        }
+        System.exit(0);
     }
 
     public static DoubleStatistics allReduce(DoubleStatistics stat) throws
