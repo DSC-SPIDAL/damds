@@ -907,7 +907,7 @@ public class Program {
     private static double calculateEuclideanDist(
         double[][] vectors, int targetDim, int i, int j) {
         if (i < 0 || j < 0){
-            System.out.println("CAME HERE i=" + i + " j="  +j);
+            System.out.println("CAME HERE i=" + i + " j="  +j + " targetDim=" + targetDim);
         }
         double dist = 0.0;
         for (int k = 0; k < targetDim; k++) {
