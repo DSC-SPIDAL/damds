@@ -109,7 +109,7 @@ public class ParallelOps {
                                + "\nthreadIdx: " + 0 + " tRowCount: " + ParallelOps.threadRowCounts[0]
                                + " tPointStartOffset: " + ParallelOps.threadPointStartOffsets[0]
                                + "\ni: " + 0
-                               + "\nprocRowStartOffset: " + ParallelOps.procRowStartOffset + " procPointStartOffset: " + ParallelOps.procPointStartOffset + " procLocalPnum: ");
+                               + "\nprocRowStartOffset: " + ParallelOps.procRowStartOffset + " procRowStartOffset(long): " + (((long)procRowStartOffset)*globalColCount) + " procPointStartOffset: " + ParallelOps.procPointStartOffset + " procLocalPnum: ");
         }
         System.exit(0);
     }
