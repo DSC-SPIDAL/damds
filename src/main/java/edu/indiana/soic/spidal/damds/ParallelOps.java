@@ -104,7 +104,7 @@ public class ParallelOps {
         pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
 
         // TODO remove after testing
-        if (ParallelOps.procRank == 119) {
+        if (ParallelOps.procRank == ParallelOps.procCount - 1) {
             System.out.println("Rank: " + ParallelOps.procRank
                                + "\nthreadIdx: " + 0 + " tRowCount: " + ParallelOps.threadRowCounts[0]
                                + " tPointStartOffset: " + ParallelOps.threadPointStartOffsets[0]
