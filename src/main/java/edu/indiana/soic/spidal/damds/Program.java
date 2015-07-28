@@ -909,7 +909,7 @@ public class Program {
         double dist = 0.0;
         for (int k = 0; k < targetDim; k++) {
             if (i < 0 || j < 0) {
-                System.out.println("ERRROR and trying to do " + (vectors[i][k] - vectors[j][k]));
+                System.out.println("ERRROR i=" + i + " j=" + j);
             }
             double diff = vectors[i][k] - vectors[j][k];
             dist += diff * diff;
