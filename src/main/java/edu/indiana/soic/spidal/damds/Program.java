@@ -884,6 +884,16 @@ public class Program {
             int globalRow = globalPointStart / ParallelOps.globalColCount;
             int globalCol = globalPointStart % ParallelOps.globalColCount;
 
+            // TODO - remove after testing
+            if (globalCol < 0 || globalRow < 0){
+                System.out.println("Rank: " + ParallelOps.procRank
+                                   + "\nthreadIdx: " + threadIdx + " tRowCount: " + ParallelOps.threadRowCounts[threadIdx] + " tPointCount: " + pointCount
+                                   + " tPointStartOffset: " + ParallelOps.threadPointStartOffsets[threadIdx]
+                                   + "\ni: " + i
+                                   + "\nprocPointStartOffset: " + ParallelOps.procPointStartOffset + " procLocalPnum: " + procLocalPnum
+                                   + "\nglobalPointStart: " + globalPointStart + " globalRow: " + globalRow + " globalCol: " + globalCol);
+            }
+
             double euclideanD = globalRow != globalCol ? calculateEuclideanDist(
                 preX, targetDim, globalRow, globalCol) : 0.0;
 
