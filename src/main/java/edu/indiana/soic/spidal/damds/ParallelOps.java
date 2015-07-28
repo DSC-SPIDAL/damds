@@ -112,7 +112,6 @@ public class ParallelOps {
                                + "\nprocRowStartOffset: " + ParallelOps.procRowStartOffset + " procPointStartOffset(long): " + (((long)procRowStartOffset)*globalColCount) + " procPointStartOffset: " + ParallelOps.procPointStartOffset
                                + "\nglobalColCount: " + globalColCount);
         }
-        System.exit(0);
     }
 
     public static DoubleStatistics allReduce(DoubleStatistics stat) throws
