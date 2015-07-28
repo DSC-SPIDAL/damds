@@ -908,6 +908,9 @@ public class Program {
         double[][] vectors, int targetDim, int i, int j) {
         double dist = 0.0;
         for (int k = 0; k < targetDim; k++) {
+            if (i < 0 || j < 0) {
+                System.out.println("ERRROR");
+            }
             double diff = vectors[i][k] - vectors[j][k];
             dist += diff * diff;
         }
