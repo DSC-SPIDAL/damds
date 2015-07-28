@@ -890,7 +890,7 @@ public class Program {
                                    + "\nthreadIdx: " + threadIdx + " tRowCount: " + ParallelOps.threadRowCounts[threadIdx] + " tPointCount: " + pointCount
                                    + " tPointStartOffset: " + ParallelOps.threadPointStartOffsets[threadIdx]
                                    + "\ni: " + i
-                                   + "\nprocPointStartOffset: " + ParallelOps.procPointStartOffset + " procLocalPnum: " + procLocalPnum
+                                   + "\nprocRowStartOffset: " + ParallelOps.procRowStartOffset + " procPointStartOffset: " + ParallelOps.procPointStartOffset + " procLocalPnum: " + procLocalPnum
                                    + "\nglobalPointStart: " + globalPointStart + " globalRow: " + globalRow + " globalCol: " + globalCol);
             }
 
