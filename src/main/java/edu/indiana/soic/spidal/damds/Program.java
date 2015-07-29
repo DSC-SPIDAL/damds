@@ -879,20 +879,10 @@ public class Program {
             }
 
             weight = isSammon ? weight / Math.max(origD, 0.001 * avgDist) : weight;
-            int globalPointStart =
+            long globalPointStart =
                 procLocalPnum + ParallelOps.procPointStartOffset;
-            int globalRow = globalPointStart / ParallelOps.globalColCount;
-            int globalCol = globalPointStart % ParallelOps.globalColCount;
-
-            // TODO - remove after testing
-            if (globalCol < 0 || globalRow < 0){
-                System.out.println("Rank: " + ParallelOps.procRank
-                                   + "\nthreadIdx: " + threadIdx + " tRowCount: " + ParallelOps.threadRowCounts[threadIdx] + " tPointCount: " + pointCount
-                                   + " tPointStartOffset: " + ParallelOps.threadPointStartOffsets[threadIdx]
-                                   + "\ni: " + i
-                                   + "\nprocRowStartOffset: " + ParallelOps.procRowStartOffset + " procPointStartOffset: " + ParallelOps.procPointStartOffset + " procLocalPnum: " + procLocalPnum
-                                   + "\nglobalPointStart: " + globalPointStart + " globalRow: " + globalRow + " globalCol: " + globalCol);
-            }
+            int globalRow = (int)(globalPointStart / ParallelOps.globalColCount);
+            int globalCol = (int)(globalPointStart % ParallelOps.globalColCount);
 
             double euclideanD = globalRow != globalCol ? calculateEuclideanDist(
                 preX, targetDim, globalRow, globalCol) : 0.0;
@@ -906,16 +896,18 @@ public class Program {
 
     private static double calculateEuclideanDist(
         double[][] vectors, int targetDim, int i, int j) {
-        if (i < 0 || j < 0){
-            System.out.println("CAME HERE i=" + i + " j="  +j + " targetDim=" + targetDim);
-        }
         double dist = 0.0;
         for (int k = 0; k < targetDim; k++) {
-            if (i < 0 || j < 0) {
-                System.out.println("ERRROR i=" + i + " j=" + j + " and " +(vectors[i][k] - vectors[j][k]));
+            try {
+                double diff = vectors[i][k] - vectors[j][k];
+                dist += diff * diff;
+            } catch (IndexOutOfBoundsException e){
+                // Usually this should not happen, also this is not
+                // necessary to catch, but it seems some (unknown) parent block
+                // hides this error if/when it happens, so explicitly
+                // printing it here.
+                e.printStackTrace();
             }
-            double diff = vectors[i][k] - vectors[j][k];
-            dist += diff * diff;
         }
 
         dist = Math.sqrt(dist);

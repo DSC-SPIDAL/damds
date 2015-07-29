@@ -25,7 +25,7 @@ public class ParallelOps {
     public static Range procRowRange;
     public static int procRowStartOffset;
     public static int procRowCount;
-    public static int procPointStartOffset;
+    public static long procPointStartOffset;
 
     public static Range[] threadRowRanges;
     public static int[] threadRowStartOffsets;
@@ -82,7 +82,7 @@ public class ParallelOps {
         procRowStartOffset = rowRange.getStartIndex();
         procRowCount = rowRange.getLength();
         globalColCount = globalRowCount;
-        procPointStartOffset = procRowStartOffset * globalColCount;
+        procPointStartOffset = ((long)procRowStartOffset) * globalColCount;
 
         // Next partition points per process among threads
         threadRowRanges = RangePartitioner.partition(procRowCount, threadCount);
@@ -102,16 +102,6 @@ public class ParallelOps {
         // Allocate vector buffers
         partialPointBuffer = MPI.newDoubleBuffer(procRowCount * targetDimension);
         pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
-
-        // TODO remove after testing
-        if (ParallelOps.procRank == ParallelOps.procCount - 1) {
-            System.out.println("Rank: " + ParallelOps.procRank
-                               + "\nthreadIdx: " + 0 + " tRowCount: " + ParallelOps.threadRowCounts[0]
-                               + " tPointStartOffset: " + ParallelOps.threadPointStartOffsets[0]
-                               + "\ni: " + 0
-                               + "\nprocRowStartOffset: " + ParallelOps.procRowStartOffset + " procPointStartOffset(long): " + (((long)procRowStartOffset)*globalColCount) + " procPointStartOffset: " + ParallelOps.procPointStartOffset
-                               + "\nglobalColCount: " + globalColCount);
-        }
     }
 
     public static DoubleStatistics allReduce(DoubleStatistics stat) throws
