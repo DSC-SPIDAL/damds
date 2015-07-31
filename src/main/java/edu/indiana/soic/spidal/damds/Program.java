@@ -536,6 +536,7 @@ public class Program {
         CGTimings.endTiming(CGTimings.TimingTask.INNER_PROD);
         // Adding relative value test for termination as suggested by Dr. Fox.
         double testEnd = rTr * cgThreshold;
+        double  rTrStart = rTr; // GCF
 
         //System.out.println("1");
         CGTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
@@ -579,7 +580,9 @@ public class Program {
                 for(int j = 0; j < targetDimension; ++j)
                     p[i][j] = r[i][j] + beta * p[i][j];
 
-
+            if (cgCount < 4){  // GCF
+                System.out.println(" CG# " + cgCount + " Start " + rTrStart + " Now " +rTr);
+            }
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
