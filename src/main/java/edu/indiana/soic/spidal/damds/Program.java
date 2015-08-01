@@ -187,7 +187,7 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
-                    X = calculateConjugateGradient(
+                    X = calculateConjugateGradient(tCur, itrNum, SMACOF_REAL_ITER,
                         preX, config.targetDimension, config.numberDataPoints,
                         BC, config.cgIter, config.cgErrorThreshold, cgCount,
                         config.isSammon, distanceSummary.getAverage(),
@@ -509,6 +509,7 @@ public class Program {
     }
 
     private static double[][] calculateConjugateGradient(
+        double CurrentTemp, int LocalIteration, int GlobalIteration,
         double[][] preX, int targetDimension, int numPoints, double[][] BC, int cgIter, double cgThreshold,
         RefObj<Integer> outCgCount, boolean isSammon, double avgDist, int blockSize, double [][] vArray)
 
@@ -581,7 +582,7 @@ public class Program {
                     p[i][j] = r[i][j] + beta * p[i][j];
 
             if (cgCount < 4){  // GCF
-                System.out.println(" CG# " + cgCount + " Start " + rTrStart + " Now " +rTr);
+                System.out.println("T " + CurrentTemp + " Global " + GlobalIteration + " Local " + LocalIteration + " CG# " + cgCount + " Start " + rTrStart + " Now " +rTr);
             }
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
