@@ -33,6 +33,7 @@ public class DAMDSSection {
             cgErrorThreshold = Double.parseDouble(
                 getProperty(p, "CGErrorThreshold", "1"));
             isSammon = Boolean.parseBoolean(getProperty(p, "IsSammon", "false"));
+            isSammon = true; // GCF
             divideWeightsByShortMax = Boolean.parseBoolean(getProperty(p, "DivideWeightsByShortMax", "false"));
 
             isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
