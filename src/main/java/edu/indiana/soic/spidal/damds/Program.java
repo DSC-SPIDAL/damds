@@ -210,14 +210,15 @@ public class Program {
                     preStress = stress;
                     preX = MatrixUtils.copy(X);
 
-                    if ((itrNum % 10 == 0) || (itrNum >= MAX_ITER)) {
+                    if ((itrNum % 1 == 0) || (itrNum >= MAX_ITER)) {
                         Utils.printMessage(
                             String.format(
                                 "  Loop %d Iteration %d Avg CG count %.5g " +
                                 "Stress " +
-                                "%.5g", loopNum, itrNum,
+                                "%.5g" +  " DiffStress " +
+                                        "%.5g", loopNum, itrNum,
                                 (cgCount.getValue() * 1.0 / (itrNum + 1)),
-                                stress));
+                                stress, diffStress));
                     }
                     ++itrNum;
                     ++SMACOF_REAL_ITER;
