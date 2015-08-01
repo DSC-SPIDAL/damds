@@ -580,9 +580,10 @@ public class Program {
             for(int i = 0; i < numPoints; ++i)
                 for(int j = 0; j < targetDimension; ++j)
                     p[i][j] = r[i][j] + beta * p[i][j];
-
-            if (cgCount < 4){  // GCF
-                System.out.println("T " + CurrentTemp + " Global " + GlobalIteration + " Local " + LocalIteration + " CG# " + cgCount + " Start " + rTrStart + " Now " +rTr);
+            if (ParallelOps.procRank == 0) {
+                if (cgCount < 4) {  // GCF
+                    System.out.println("T " + CurrentTemp + " Global " + GlobalIteration + " Local " + LocalIteration + " CG# " + cgCount + " Start " + rTrStart + " Now " + rTr);
+                }
             }
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
