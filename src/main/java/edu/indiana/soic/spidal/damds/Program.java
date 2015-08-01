@@ -896,7 +896,8 @@ public class Program {
                 preX, targetDim, globalRow, globalCol) : 0.0;
 
             double heatD = origD - diff;
-            double tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
+            // double tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
+            double tmpD = origD >= diff ? heatD - euclideanD : 0.0;
             sigma += weight * tmpD * tmpD;
         }
         return sigma;
