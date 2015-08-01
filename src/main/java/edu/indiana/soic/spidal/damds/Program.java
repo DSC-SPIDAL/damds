@@ -879,7 +879,7 @@ public class Program {
                 i + ParallelOps.threadPointStartOffsets[threadIdx];
             double origD = distances.getValue(procLocalPnum);
             // suggestion from Dr. Fox
-            origD = Math.max(origD, 10*tMin);
+            // origD = Math.max(origD, 10*tMin);
             double weight = weights.getValue(procLocalPnum);
 
             if (origD < 0 || weight == 0) {
