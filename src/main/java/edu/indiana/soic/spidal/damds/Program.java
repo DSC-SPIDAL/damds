@@ -442,7 +442,7 @@ public class Program {
         long[] mmCommTimeDistribution = MMTimings.getTotalTimeDistribution(
             MMTimings.TimingTask.COMM);
 
-        try(BufferedWriter writer = Files.newBufferedWriter(Paths.get(config.timingFile),StandardOpenOption.WRITE)){
+        try(BufferedWriter writer = Files.newBufferedWriter(Paths.get(config.timingFile),StandardOpenOption.WRITE, StandardOpenOption.CREATE)){
             PrintWriter printWriter = new PrintWriter(writer,true);
             printWriter.println(mainHeader);
             printWriter.println(mainTimings);
