@@ -442,53 +442,64 @@ public class Program {
         long[] mmCommTimeDistribution = MMTimings.getTotalTimeDistribution(
             MMTimings.TimingTask.COMM);
 
-        try(BufferedWriter writer = Files.newBufferedWriter(Paths.get(config.timingFile),StandardOpenOption.WRITE, StandardOpenOption.CREATE)){
-            PrintWriter printWriter = new PrintWriter(writer,true);
-            printWriter.println(mainHeader);
-            printWriter.println(mainTimings);
-            printWriter.println();
-            printWriter.println(percentHeader);
-            printWriter.println(percentTimings);
-            printWriter.println();
+        if (ParallelOps.procRank == 0) {
+            try (BufferedWriter writer = Files.newBufferedWriter(
+                Paths.get(config.timingFile), StandardOpenOption.WRITE,
+                StandardOpenOption.CREATE)) {
+                PrintWriter printWriter = new PrintWriter(writer, true);
+                printWriter.println(mainHeader.trim());
+                printWriter.println(mainTimings.trim());
+                printWriter.println();
+                printWriter.println(percentHeader.trim());
+                printWriter.println(percentTimings.trim());
+                printWriter.println();
 
-            printWriter.println("Temperature Loop Timing Distribution");
-            String str = Arrays.toString(temperatureLoopTimeDistribution);
-            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
-            printWriter.println();
+                printWriter.println("Temperature Loop Timing Distribution");
+                String str = Arrays.toString(temperatureLoopTimeDistribution);
+                printWriter.println(
+                    str.substring(1, str.length() - 1).replace(',', '\t'));
+                printWriter.println();
 
-            printWriter.println("Stress Timing Distribution");
-            str = Arrays.toString(stressTimeDistribution);
-            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
-            printWriter.println();
+                printWriter.println("Stress Timing Distribution");
+                str = Arrays.toString(stressTimeDistribution);
+                printWriter.println(
+                    str.substring(1, str.length() - 1).replace(',', '\t'));
+                printWriter.println();
 
-            printWriter.println("BCComm Timing Distribution");
-            str = Arrays.toString(bcCommTimeDistribution);
-            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
-            printWriter.println();
+                printWriter.println("BCComm Timing Distribution");
+                str = Arrays.toString(bcCommTimeDistribution);
+                printWriter.println(
+                    str.substring(1, str.length() - 1).replace(',', '\t'));
+                printWriter.println();
 
-            printWriter.println("MMComm Timing Distribution");
-            str = Arrays.toString(mmCommTimeDistribution);
-            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
-            printWriter.println();
+                printWriter.println("MMComm Timing Distribution");
+                str = Arrays.toString(mmCommTimeDistribution);
+                printWriter.println(
+                    str.substring(1, str.length() - 1).replace(',', '\t'));
+                printWriter.println();
 
-            printWriter.println("BCInternalBofZ Timing Distribution");
-            str = Arrays.toString(bcInternalBofZTimeDistribution);
-            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
-            printWriter.println();
+                printWriter.println("BCInternalBofZ Timing Distribution");
+                str = Arrays.toString(bcInternalBofZTimeDistribution);
+                printWriter.println(
+                    str.substring(1, str.length() - 1).replace(',', '\t'));
+                printWriter.println();
 
-            printWriter.println("BCInternalMM Timing Distribution");
-            str = Arrays.toString(bcInternalMMTimeDistribution);
-            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
-            printWriter.println();
+                printWriter.println("BCInternalMM Timing Distribution");
+                str = Arrays.toString(bcInternalMMTimeDistribution);
+                printWriter.println(
+                    str.substring(1, str.length() - 1).replace(',', '\t'));
+                printWriter.println();
 
-            printWriter.println("MMInternal Timing Distribution");
-            str = Arrays.toString(mmInternalTimeDistribution);
-            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
-            printWriter.println();
+                printWriter.println("MMInternal Timing Distribution");
+                str = Arrays.toString(mmInternalTimeDistribution);
+                printWriter.println(
+                    str.substring(1, str.length() - 1).replace(',', '\t'));
+                printWriter.println();
 
-        }
-        catch (IOException e) {
-            e.printStackTrace();
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
