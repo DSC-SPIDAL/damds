@@ -495,7 +495,8 @@ public class Program {
                 printWriter.println(
                     str.substring(1, str.length() - 1).replace(',', '\t'));
                 printWriter.println();
-
+                printWriter.flush();
+                printWriter.close();
             }
             catch (IOException e) {
                 e.printStackTrace();
