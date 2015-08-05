@@ -1,5 +1,6 @@
 package edu.indiana.soic.spidal.damds;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
@@ -16,9 +17,11 @@ import org.apache.commons.cli.*;
 import java.io.*;
 import java.nio.ByteOrder;
 import java.nio.DoubleBuffer;
+import java.nio.LongBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -290,12 +293,12 @@ public class Program {
 
             Utils.printMessage("Finishing DAMDS run ...");
             long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
-            long loopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
+            long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
             Utils.printMessage(
                 String.format(
                     "  Total Time: %s (%d ms) Loop Time: %s (%d ms)",
                     formatElapsedMillis(totalTime), totalTime,
-                    formatElapsedMillis(loopTime), loopTime));
+                    formatElapsedMillis(temperatureLoopTime), temperatureLoopTime));
             Utils.printMessage("  Total Loops: " + loopNum);
             Utils.printMessage("  Total Iterations: " + SMACOF_REAL_ITER);
             Utils.printMessage(
@@ -304,46 +307,7 @@ public class Program {
                     CG_REAL_ITER, (CG_REAL_ITER * 1.0) / SMACOF_REAL_ITER));
             Utils.printMessage("  Final Stress:\t" + finalStress);
 
-            Utils.printMessage(
-                "  Total\tTempLoop\tPreStress\tStressLoop\tBC\tCG\tStress" +
-                "\tBCInternal\tBComm\tBCInternalBofZ\tBCInternalMM\tCGMM" +
-                "\tCGInnerProd\tCGLoop\tCGLoopMM\tCGLoopInnerProdPAP" +
-                "\tCGLoopInnerProdR\tMMInternal\tMMComm");
-            Utils.printMessage(
-                "  " + totalTime + "\t" + loopTime + "\t" +
-                TemperatureLoopTimings.getAverageTime(
-                    TemperatureLoopTimings.TimingTask.PRE_STRESS) + "\t" +
-                TemperatureLoopTimings.getAverageTime(
-                    TemperatureLoopTimings.TimingTask.STRESS_LOOP) + "\t" +
-                StressLoopTimings.getAverageTime(
-                    StressLoopTimings.TimingTask.BC) + "\t" +
-                StressLoopTimings.getAverageTime(
-                    StressLoopTimings.TimingTask.CG) + "\t" +
-                StressLoopTimings.getAverageTime(
-                    StressLoopTimings.TimingTask.STRESS) + "\t" +
-                BCTimings.getAverageTime(
-                    BCTimings.TimingTask.BC_INTERNAL) + "\t" +
-                BCTimings.getAverageTime(
-                    BCTimings.TimingTask.COMM) + "\t" +
-                BCInternalTimings.getAverageTime(
-                    BCInternalTimings.TimingTask.BOFZ) + "\t" +
-                BCInternalTimings.getAverageTime(
-                    BCInternalTimings.TimingTask.MM) + "\t" +
-                CGTimings.getAverageTime(
-                    CGTimings.TimingTask.MM) + "\t" + CGTimings.getAverageTime(
-                    CGTimings.TimingTask.INNER_PROD) + "\t" +
-                CGTimings.getAverageTime(
-                    CGTimings.TimingTask.CG_LOOP) + "\t" +
-                CGLoopTimings.getAverageTime(
-                    CGLoopTimings.TimingTask.MM) + "\t" +
-                CGLoopTimings.getAverageTime(
-                    CGLoopTimings.TimingTask.INNER_PROD_PAP) + "\t" +
-                CGLoopTimings.getAverageTime(
-                    CGLoopTimings.TimingTask.INNER_PROD_R) + "\t" +
-                MMTimings.getAverageTime(
-                    MMTimings.TimingTask.MM_INTERNAL) + "\t" +
-                MMTimings.getAverageTime(
-                    MMTimings.TimingTask.COMM));
+            printTimings(totalTime, temperatureLoopTime);
 
             Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
@@ -352,6 +316,192 @@ public class Program {
         catch (MPIException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
+    }
+
+    private static void printTimings(long totalTime, long temperatureLoopTime)
+        throws MPIException {
+        String mainHeader =
+            "  Total\tTempLoop\tPreStress\tStressLoop\tBC\tCG\tStress" +
+            "\tBCInternal\tBComm\tBCInternalBofZ\tBCInternalMM\tCGMM" +
+            "\tCGInnerProd\tCGLoop\tCGLoopMM\tCGLoopInnerProdPAP" +
+            "\tCGLoopInnerProdR\tMMInternal\tMMComm";
+        Utils.printMessage(
+            mainHeader);
+        String mainTimings = "  " + totalTime + "\t" + temperatureLoopTime + "\t" +
+                     TemperatureLoopTimings.getAverageTime(
+                         TemperatureLoopTimings.TimingTask.PRE_STRESS) + "\t" +
+                     TemperatureLoopTimings.getAverageTime(
+                         TemperatureLoopTimings.TimingTask.STRESS_LOOP) + "\t" +
+                     StressLoopTimings.getAverageTime(
+                         StressLoopTimings.TimingTask.BC) + "\t" +
+                     StressLoopTimings.getAverageTime(
+                         StressLoopTimings.TimingTask.CG) + "\t" +
+                     StressLoopTimings.getAverageTime(
+                         StressLoopTimings.TimingTask.STRESS) + "\t" +
+                     BCTimings.getAverageTime(
+                         BCTimings.TimingTask.BC_INTERNAL) + "\t" +
+                     BCTimings.getAverageTime(
+                         BCTimings.TimingTask.COMM) + "\t" +
+                     BCInternalTimings.getAverageTime(
+                         BCInternalTimings.TimingTask.BOFZ) + "\t" +
+                     BCInternalTimings.getAverageTime(
+                         BCInternalTimings.TimingTask.MM) + "\t" +
+                     CGTimings.getAverageTime(
+                         CGTimings.TimingTask.MM) + "\t" +
+                     CGTimings.getAverageTime(
+                         CGTimings.TimingTask.INNER_PROD) + "\t" +
+                     CGTimings.getAverageTime(
+                         CGTimings.TimingTask.CG_LOOP) + "\t" +
+                     CGLoopTimings.getAverageTime(
+                         CGLoopTimings.TimingTask.MM) + "\t" +
+                     CGLoopTimings.getAverageTime(
+                         CGLoopTimings.TimingTask.INNER_PROD_PAP) + "\t" +
+                     CGLoopTimings.getAverageTime(
+                         CGLoopTimings.TimingTask.INNER_PROD_R) + "\t" +
+                     MMTimings.getAverageTime(
+                         MMTimings.TimingTask.MM_INTERNAL) + "\t" +
+                     MMTimings.getAverageTime(
+                         MMTimings.TimingTask.COMM);
+        Utils.printMessage(
+            mainTimings);
+
+        // Accumulated times as percentages of the total time
+        // Note, for cases where threads are present, the max time
+        // is taken as the total time of that component for the particular rank
+        String percentHeader =
+            "  Total%\tTempLoop%\tPreStress%\tStressLoop%\tBC\tCG%\tStress%" +
+            "\tBCInternal%\tBComm%\tBCInternalBofZ%\tBCInternalMM%\tCGMM%" +
+            "\tCGInnerProd%\tCGLoop%\tCGLoopMM%\tCGLoopInnerProdPAP%" +
+            "\tCGLoopInnerProdR%\tMMInternal%\tMMComm%";
+        Utils.printMessage(
+            percentHeader);
+        String percentTimings =
+            "  " + 1.0 + "\t" + (temperatureLoopTime / totalTime) + "\t" +
+            TemperatureLoopTimings.getTotalTime(
+                TemperatureLoopTimings.TimingTask.PRE_STRESS) / totalTime +
+            "\t" +
+            TemperatureLoopTimings.getTotalTime(
+                TemperatureLoopTimings.TimingTask.STRESS_LOOP) / totalTime +
+            "\t" +
+            StressLoopTimings.getTotalTime(
+                StressLoopTimings.TimingTask.BC) / totalTime + "\t" +
+            StressLoopTimings.getTotalTime(
+                StressLoopTimings.TimingTask.CG) / totalTime + "\t" +
+            StressLoopTimings.getTotalTime(
+                StressLoopTimings.TimingTask.STRESS) / totalTime + "\t" +
+            BCTimings.getTotalTime(
+                BCTimings.TimingTask.BC_INTERNAL) / totalTime + "\t" +
+            BCTimings.getTotalTime(
+                BCTimings.TimingTask.COMM) / totalTime + "\t" +
+            BCInternalTimings.getTotalTime(
+                BCInternalTimings.TimingTask.BOFZ) / totalTime + "\t" +
+            BCInternalTimings.getTotalTime(
+                BCInternalTimings.TimingTask.MM) / totalTime + "\t" +
+            CGTimings.getTotalTime(
+                CGTimings.TimingTask.MM) / totalTime + "\t" +
+            CGTimings.getTotalTime(
+                CGTimings.TimingTask.INNER_PROD) / totalTime + "\t" +
+            CGTimings.getTotalTime(
+                CGTimings.TimingTask.CG_LOOP) / totalTime + "\t" +
+            CGLoopTimings.getTotalTime(
+                CGLoopTimings.TimingTask.MM) / totalTime + "\t" +
+            CGLoopTimings.getTotalTime(
+                CGLoopTimings.TimingTask.INNER_PROD_PAP) / totalTime + "\t" +
+            CGLoopTimings.getTotalTime(
+                CGLoopTimings.TimingTask.INNER_PROD_R) / totalTime + "\t" +
+            MMTimings.getTotalTime(
+                MMTimings.TimingTask.MM_INTERNAL) / totalTime + "\t" +
+            MMTimings.getTotalTime(
+                MMTimings.TimingTask.COMM) / totalTime;
+        Utils.printMessage(
+            percentTimings);
+
+        // Timing (total timings) distribution against rank/threadID for,
+        // 1. TempLoop time (MPI only)
+        // 2. Stress (within TempLoop) (MPI only)
+        // 3. BCComm (MPI only)
+        // 4. MMComm (MPI only)
+        // 5. BCInternalBofZ (has MPI+threads)
+        // 6. BCInternalMM (has MPI+threads)
+        // 7. MMInternal (has MPI+threads)
+
+        long[] temperatureLoopTimeDistribution =
+            getTemperatureLoopTimeDistribution(temperatureLoopTime);
+        long[] stressTimeDistribution = StressLoopTimings
+            .getTotalTimeDistribution(StressLoopTimings.TimingTask.STRESS);
+        long[] bcCommTimeDistribution = BCTimings.getTotalTimeDistribution(
+            BCTimings.TimingTask.COMM);
+        long[] bcInternalBofZTimeDistribution =
+            BCInternalTimings.getTotalTimeDistribution(
+                BCInternalTimings.TimingTask.BOFZ);
+        long[] bcInternalMMTimeDistribution =
+            BCInternalTimings.getTotalTimeDistribution(
+                BCInternalTimings.TimingTask.MM);
+        long[] mmInternalTimeDistribution = MMTimings.getTotalTimeDistribution(
+            MMTimings.TimingTask.MM_INTERNAL);
+        long[] mmCommTimeDistribution = MMTimings.getTotalTimeDistribution(
+            MMTimings.TimingTask.COMM);
+
+        try(BufferedWriter writer = Files.newBufferedWriter(Paths.get(config.timingFile),StandardOpenOption.WRITE)){
+            PrintWriter printWriter = new PrintWriter(writer,true);
+            printWriter.println(mainHeader);
+            printWriter.println(mainTimings);
+            printWriter.println();
+            printWriter.println(percentHeader);
+            printWriter.println(percentTimings);
+            printWriter.println();
+
+            printWriter.println("Temperature Loop Timing Distribution");
+            String str = Arrays.toString(temperatureLoopTimeDistribution);
+            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
+            printWriter.println();
+
+            printWriter.println("Stress Timing Distribution");
+            str = Arrays.toString(stressTimeDistribution);
+            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
+            printWriter.println();
+
+            printWriter.println("BCComm Timing Distribution");
+            str = Arrays.toString(bcCommTimeDistribution);
+            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
+            printWriter.println();
+
+            printWriter.println("MMComm Timing Distribution");
+            str = Arrays.toString(mmCommTimeDistribution);
+            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
+            printWriter.println();
+
+            printWriter.println("BCInternalBofZ Timing Distribution");
+            str = Arrays.toString(bcInternalBofZTimeDistribution);
+            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
+            printWriter.println();
+
+            printWriter.println("BCInternalMM Timing Distribution");
+            str = Arrays.toString(bcInternalMMTimeDistribution);
+            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
+            printWriter.println();
+
+            printWriter.println("MMInternal Timing Distribution");
+            str = Arrays.toString(mmInternalTimeDistribution);
+            printWriter.println(str.substring(1,str.length() -1).replace(',','\t'));
+            printWriter.println();
+
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static long[] getTemperatureLoopTimeDistribution(
+        long temperatureLoopTime) throws MPIException {
+        LongBuffer mpiOnlyTimingBuffer = ParallelOps.mpiOnlyTimingBuffer;
+        mpiOnlyTimingBuffer.position(0);
+        mpiOnlyTimingBuffer.put(temperatureLoopTime);
+        ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        mpiOnlyTimingBuffer.position(0);
+        mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+        return mpiOnlyTimingArray;
     }
 
     private static void initializeTimers() {

@@ -1,8 +1,11 @@
 package edu.indiana.soic.spidal.damds.timing;
 
 import com.google.common.base.Stopwatch;
+import edu.indiana.soic.spidal.damds.ParallelOps;
+import mpi.MPIException;
 import sun.awt.image.IntegerComponentRaster;
 
+import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongBinaryOperator;
@@ -13,11 +16,13 @@ public class BCTimings {
         BC_INTERNAL,COMM
     }
 
+    private static int numThreads;
     public static void init(int numThreads){
         timerBCInternal = new Stopwatch[numThreads];
         IntStream.range(0,numThreads).forEach(i -> timerBCInternal[i] = Stopwatch.createUnstarted());
         tBCInternal = new long[numThreads];
         countBCInternal = new long[numThreads];
+        BCTimings.numThreads = numThreads;
     }
 
     private static Stopwatch [] timerBCInternal;
@@ -75,6 +80,32 @@ public class BCTimings {
                 return tComm *1.0/ countComm;
         }
         return  0.0;
+    }
+
+    public static long[] getTotalTimeDistribution(TimingTask task)
+        throws MPIException {
+        LongBuffer threadsAndMPITimingBuffer =
+            ParallelOps.threadsAndMPITimingBuffer;
+        LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyTimingBuffer;
+        threadsAndMPITimingBuffer.position(0);
+        mpiOnlyTimingBuffer.position(0);
+        long [] threadsAndMPITimingArray = new long[numThreads * ParallelOps.procCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        switch (task){
+            case BC_INTERNAL:
+                threadsAndMPITimingBuffer.put(tBCInternal);
+                ParallelOps.gather(threadsAndMPITimingBuffer, numThreads, 0);
+                threadsAndMPITimingBuffer.position(0);
+                threadsAndMPITimingBuffer.get(threadsAndMPITimingArray);
+                return threadsAndMPITimingArray;
+            case COMM:
+                mpiOnlyTimingBuffer.put(tComm);
+                ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+                mpiOnlyTimingBuffer.position(0);
+                mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+                return mpiOnlyTimingArray;
+        }
+        return null;
     }
 
 

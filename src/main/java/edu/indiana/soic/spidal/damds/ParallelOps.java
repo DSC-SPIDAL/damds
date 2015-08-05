@@ -10,6 +10,7 @@ import mpi.MPIException;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
@@ -41,6 +42,9 @@ public class ParallelOps {
     private static IntBuffer intBuffer;
     static DoubleBuffer partialPointBuffer;
     static DoubleBuffer pointBuffer;
+    public static LongBuffer threadsAndMPITimingBuffer;
+    public static LongBuffer mpiOnlyTimingBuffer;
+
 
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
@@ -102,6 +106,8 @@ public class ParallelOps {
         // Allocate vector buffers
         partialPointBuffer = MPI.newDoubleBuffer(procRowCount * targetDimension);
         pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
+        mpiOnlyTimingBuffer = MPI.newLongBuffer(procCount);
+        threadsAndMPITimingBuffer = MPI.newLongBuffer(procCount * threadCount);
     }
 
     public static DoubleStatistics allReduce(DoubleStatistics stat) throws
@@ -144,5 +150,10 @@ public class ParallelOps {
     public static void broadcast(DoubleBuffer buffer, int extent, int root)
         throws MPIException {
         procComm.bcast(buffer, extent, MPI.DOUBLE, root);
+    }
+
+    public static void gather(LongBuffer buffer, int count, int root)
+        throws MPIException {
+        procComm.gather(buffer, count, MPI.LONG, root);
     }
 }
