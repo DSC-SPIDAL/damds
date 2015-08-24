@@ -10,6 +10,7 @@ import mpi.MPIException;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
@@ -25,7 +26,7 @@ public class ParallelOps {
     public static Range procRowRange;
     public static int procRowStartOffset;
     public static int procRowCount;
-    public static int procPointStartOffset;
+    public static long procPointStartOffset;
 
     public static Range[] threadRowRanges;
     public static int[] threadRowStartOffsets;
@@ -41,6 +42,9 @@ public class ParallelOps {
     private static IntBuffer intBuffer;
     static DoubleBuffer partialPointBuffer;
     static DoubleBuffer pointBuffer;
+    public static LongBuffer threadsAndMPIBuffer;
+    public static LongBuffer mpiOnlyBuffer;
+
 
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
@@ -62,8 +66,8 @@ public class ParallelOps {
 
         parallelPattern =
             "---------------------------------------------------------\n" +
-            "Machine:" + MPI.getProcessorName() + " " +
-            threadCount + "x" + mpiPerNode + "x" + nodeCount;
+            "Machine:" + MPI.getProcessorName() + ' ' +
+            threadCount + 'x' + mpiPerNode + 'x' + nodeCount;
         Utils.printMessage(parallelPattern);
     }
 
@@ -82,7 +86,7 @@ public class ParallelOps {
         procRowStartOffset = rowRange.getStartIndex();
         procRowCount = rowRange.getLength();
         globalColCount = globalRowCount;
-        procPointStartOffset = procRowStartOffset * globalColCount;
+        procPointStartOffset = ((long)procRowStartOffset) * globalColCount;
 
         // Next partition points per process among threads
         threadRowRanges = RangePartitioner.partition(procRowCount, threadCount);
@@ -102,6 +106,8 @@ public class ParallelOps {
         // Allocate vector buffers
         partialPointBuffer = MPI.newDoubleBuffer(procRowCount * targetDimension);
         pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
+        mpiOnlyBuffer = MPI.newLongBuffer(procCount);
+        threadsAndMPIBuffer = MPI.newLongBuffer(procCount * threadCount);
     }
 
     public static DoubleStatistics allReduce(DoubleStatistics stat) throws
@@ -136,7 +142,6 @@ public class ParallelOps {
         displas[0] = 0;
         System.arraycopy(lengths, 0, displas, 1, procCount - 1);
         Arrays.parallelPrefix(displas, (m, n) -> m + n);
-        int count = IntStream.of(lengths).sum(); // performs very similar to usual for loop, so no harm done
         procComm.allGatherv(partialPointBuffer, length, MPI.DOUBLE, pointBuffer, lengths, displas, MPI.DOUBLE);
         return  pointBuffer;
     }
@@ -144,5 +149,10 @@ public class ParallelOps {
     public static void broadcast(DoubleBuffer buffer, int extent, int root)
         throws MPIException {
         procComm.bcast(buffer, extent, MPI.DOUBLE, root);
+    }
+
+    public static void gather(LongBuffer buffer, int count, int root)
+        throws MPIException {
+        procComm.gather(buffer, count, MPI.LONG, root);
     }
 }

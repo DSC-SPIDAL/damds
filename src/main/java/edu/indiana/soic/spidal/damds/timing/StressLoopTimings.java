@@ -1,7 +1,10 @@
 package edu.indiana.soic.spidal.damds.timing;
 
 import com.google.common.base.Stopwatch;
+import edu.indiana.soic.spidal.damds.ParallelOps;
+import mpi.MPIException;
 
+import java.nio.LongBuffer;
 import java.util.concurrent.TimeUnit;
 
 public class StressLoopTimings {
@@ -80,6 +83,49 @@ public class StressLoopTimings {
                 return tStress*1.0/countStress;
         }
         return  0.0;
+    }
+
+    public static long[] getTotalTimeDistribution(TimingTask task)
+        throws MPIException {
+        LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
+        mpiOnlyTimingBuffer.position(0);
+        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        switch (task){
+            case BC:
+                mpiOnlyTimingBuffer.put(tBC);
+                break;
+            case CG:
+                mpiOnlyTimingBuffer.put(tCG);
+                break;
+            case STRESS:
+                mpiOnlyTimingBuffer.put(tStress);
+                break;
+        }
+        ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+        mpiOnlyTimingBuffer.position(0);
+        mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+        return mpiOnlyTimingArray;
+    }
+
+    public static long[] getCountDistribution(TimingTask task) throws MPIException{
+        LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
+        mpiOnlyTimingBuffer.position(0);
+        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        switch (task){
+            case BC:
+                mpiOnlyTimingBuffer.put(countBC);
+                break;
+            case CG:
+                mpiOnlyTimingBuffer.put(countCG);
+                break;
+            case STRESS:
+                mpiOnlyTimingBuffer.put(countStress);
+                break;
+        }
+        ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+        mpiOnlyTimingBuffer.position(0);
+        mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+        return mpiOnlyTimingArray;
     }
 
 
