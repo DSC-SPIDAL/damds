@@ -1,7 +1,10 @@
 package edu.indiana.soic.spidal.damds.timing;
 
 import com.google.common.base.Stopwatch;
+import edu.indiana.soic.spidal.damds.ParallelOps;
+import mpi.MPIException;
 
+import java.nio.LongBuffer;
 import java.util.concurrent.TimeUnit;
 
 public class TemperatureLoopTimings {
@@ -64,6 +67,22 @@ public class TemperatureLoopTimings {
                 return tStressLoop *1.0/ countStressLoop;
         }
         return  0.0;
+    }
+
+    public static long[] getCountDistribution(TimingTask task) throws MPIException{
+        LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
+        mpiOnlyTimingBuffer.position(0);
+        switch (task){
+            case PRE_STRESS:
+                mpiOnlyTimingBuffer.put(countPreStress);
+            case STRESS_LOOP:
+                mpiOnlyTimingBuffer.put(countStressLoop);
+        }
+        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+        mpiOnlyTimingBuffer.position(0);
+        mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+        return mpiOnlyTimingArray;
     }
 
 }

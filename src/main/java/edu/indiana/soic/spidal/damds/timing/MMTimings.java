@@ -87,8 +87,8 @@ public class MMTimings {
     public static long[] getTotalTimeDistribution(TimingTask task)
         throws MPIException {
         LongBuffer threadsAndMPITimingBuffer =
-            ParallelOps.threadsAndMPITimingBuffer;
-        LongBuffer mpiOnlyTimingBuffer = ParallelOps.mpiOnlyTimingBuffer;
+            ParallelOps.threadsAndMPIBuffer;
+        LongBuffer mpiOnlyTimingBuffer = ParallelOps.mpiOnlyBuffer;
         threadsAndMPITimingBuffer.position(0);
         mpiOnlyTimingBuffer.position(0);
         long [] threadsAndMPITimingArray = new long[numThreads * ParallelOps.procCount];
@@ -109,5 +109,32 @@ public class MMTimings {
         }
         return null;
     }
+
+    public static long[] getCountDistribution(TimingTask task)
+        throws MPIException {
+        LongBuffer threadsAndMPIBuffer =
+            ParallelOps.threadsAndMPIBuffer;
+        LongBuffer mpiOnlyBuffer = ParallelOps.mpiOnlyBuffer;
+        threadsAndMPIBuffer.position(0);
+        mpiOnlyBuffer.position(0);
+        long [] threadsAndMPIArray = new long[numThreads * ParallelOps.procCount];
+        long [] mpiOnlyArray = new long[ParallelOps.procCount];
+        switch (task){
+            case MM_INTERNAL:
+                threadsAndMPIBuffer.put(countMMInternal);
+                ParallelOps.gather(threadsAndMPIBuffer, numThreads, 0);
+                threadsAndMPIBuffer.position(0);
+                threadsAndMPIBuffer.get(threadsAndMPIArray);
+                return threadsAndMPIArray;
+            case COMM:
+                mpiOnlyBuffer.put(countComm);
+                ParallelOps.gather(mpiOnlyBuffer, 1, 0);
+                mpiOnlyBuffer.position(0);
+                mpiOnlyBuffer.get(mpiOnlyArray);
+                return mpiOnlyArray;
+        }
+        return null;
+    }
+
 
 }

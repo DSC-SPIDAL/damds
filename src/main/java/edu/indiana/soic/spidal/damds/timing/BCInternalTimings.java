@@ -92,7 +92,7 @@ public class BCInternalTimings {
     public static long[] getTotalTimeDistribution(TimingTask task)
         throws MPIException {
         LongBuffer threadsAndMPITimingBuffer =
-            ParallelOps.threadsAndMPITimingBuffer;
+            ParallelOps.threadsAndMPIBuffer;
         threadsAndMPITimingBuffer.position(0);
         long [] array = new long[numThreads * ParallelOps.procCount];
         switch (task){

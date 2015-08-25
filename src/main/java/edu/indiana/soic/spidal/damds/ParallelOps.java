@@ -42,8 +42,8 @@ public class ParallelOps {
     private static IntBuffer intBuffer;
     static DoubleBuffer partialPointBuffer;
     static DoubleBuffer pointBuffer;
-    public static LongBuffer threadsAndMPITimingBuffer;
-    public static LongBuffer mpiOnlyTimingBuffer;
+    public static LongBuffer threadsAndMPIBuffer;
+    public static LongBuffer mpiOnlyBuffer;
 
 
     public static void setupParallelism(String[] args) throws MPIException {
@@ -66,8 +66,8 @@ public class ParallelOps {
 
         parallelPattern =
             "---------------------------------------------------------\n" +
-            "Machine:" + MPI.getProcessorName() + " " +
-            threadCount + "x" + mpiPerNode + "x" + nodeCount;
+            "Machine:" + MPI.getProcessorName() + ' ' +
+            threadCount + 'x' + mpiPerNode + 'x' + nodeCount;
         Utils.printMessage(parallelPattern);
     }
 
@@ -106,8 +106,8 @@ public class ParallelOps {
         // Allocate vector buffers
         partialPointBuffer = MPI.newDoubleBuffer(procRowCount * targetDimension);
         pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
-        mpiOnlyTimingBuffer = MPI.newLongBuffer(procCount);
-        threadsAndMPITimingBuffer = MPI.newLongBuffer(procCount * threadCount);
+        mpiOnlyBuffer = MPI.newLongBuffer(procCount);
+        threadsAndMPIBuffer = MPI.newLongBuffer(procCount * threadCount);
     }
 
     public static DoubleStatistics allReduce(DoubleStatistics stat) throws
@@ -142,7 +142,6 @@ public class ParallelOps {
         displas[0] = 0;
         System.arraycopy(lengths, 0, displas, 1, procCount - 1);
         Arrays.parallelPrefix(displas, (m, n) -> m + n);
-        int count = IntStream.of(lengths).sum(); // performs very similar to usual for loop, so no harm done
         procComm.allGatherv(partialPointBuffer, length, MPI.DOUBLE, pointBuffer, lengths, displas, MPI.DOUBLE);
         return  pointBuffer;
     }

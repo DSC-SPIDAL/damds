@@ -1,7 +1,10 @@
 package edu.indiana.soic.spidal.damds.timing;
 
 import com.google.common.base.Stopwatch;
+import edu.indiana.soic.spidal.damds.ParallelOps;
+import mpi.MPIException;
 
+import java.nio.LongBuffer;
 import java.util.concurrent.TimeUnit;
 
 public class CGLoopTimings {
@@ -80,6 +83,28 @@ public class CGLoopTimings {
                 return tInnerProdR *1.0/ countInnerProdR;
         }
         return  0.0;
+    }
+
+    public static long[] getCountDistribution(TimingTask task) throws
+        MPIException {
+        LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
+        mpiOnlyTimingBuffer.position(0);
+        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        switch (task){
+            case MM:
+                mpiOnlyTimingBuffer.put(countMM);
+                break;
+            case INNER_PROD_PAP:
+                mpiOnlyTimingBuffer.put(countInnerProdPAP);
+                break;
+            case INNER_PROD_R:
+                mpiOnlyTimingBuffer.put(countInnerProdR);
+                break;
+        }
+        ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+        mpiOnlyTimingBuffer.position(0);
+        mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+        return mpiOnlyTimingArray;
     }
 
 }

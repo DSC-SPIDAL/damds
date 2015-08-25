@@ -3,12 +3,10 @@ package edu.indiana.soic.spidal.damds.timing;
 import com.google.common.base.Stopwatch;
 import edu.indiana.soic.spidal.damds.ParallelOps;
 import mpi.MPIException;
-import sun.awt.image.IntegerComponentRaster;
 
 import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import java.util.function.LongBinaryOperator;
 import java.util.stream.IntStream;
 
 public class BCTimings {
@@ -85,8 +83,8 @@ public class BCTimings {
     public static long[] getTotalTimeDistribution(TimingTask task)
         throws MPIException {
         LongBuffer threadsAndMPITimingBuffer =
-            ParallelOps.threadsAndMPITimingBuffer;
-        LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyTimingBuffer;
+            ParallelOps.threadsAndMPIBuffer;
+        LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         threadsAndMPITimingBuffer.position(0);
         mpiOnlyTimingBuffer.position(0);
         long [] threadsAndMPITimingArray = new long[numThreads * ParallelOps.procCount];

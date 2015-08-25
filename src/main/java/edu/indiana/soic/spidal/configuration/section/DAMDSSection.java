@@ -28,12 +28,14 @@ public class DAMDSSection {
                 getProperty(p, "DistanceTransform", "1.0"));
             threshold = Double.parseDouble(getProperty(p, "Threshold", "0.000001"));
             alpha = Double.parseDouble(getProperty(p, "Alpha", "0.95"));
-            tMinFactor = Double.parseDouble(getProperty(p, "TminFactor", "0.0001"));
+            tMinFactor = Double.parseDouble(getProperty(p, "TminFactor", "0.5"));
+            stressIter = Integer.parseInt(
+                getProperty(p, "StressIterations", "10000"));
             cgIter = Integer.parseInt(getProperty(p, "CGIterations", "20"));
             cgErrorThreshold = Double.parseDouble(
                 getProperty(p, "CGErrorThreshold", "1"));
             isSammon = Boolean.parseBoolean(getProperty(p, "IsSammon", "false"));
-            divideWeightsByShortMax = Boolean.parseBoolean(getProperty(p, "DivideWeightsByShortMax", "false"));
+            blockSize = Integer.parseInt(getProperty(p, "BlockSize", "64"));
 
             isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
             isMemoryMapped = Boolean.parseBoolean(getProperty(p, "IsMemoryMapped", "true"));
@@ -68,22 +70,23 @@ public class DAMDSSection {
     public double threshold;
     public double alpha;
     public double tMinFactor;
+    public int stressIter;
     public int cgIter;
     public double cgErrorThreshold;
     public boolean isSammon;
-    public boolean divideWeightsByShortMax;
+    public int blockSize;
 
     public boolean isBigEndian;
     public boolean isMemoryMapped;
 
     private String getPadding(int count, String prefix){
         StringBuilder sb = new StringBuilder(prefix);
-        IntStream.range(0,count).forEach(i -> sb.append(" "));
+        IntStream.range(0,count).forEach(i -> sb.append(' '));
         return sb.toString();
     }
 
     public String toString(boolean centerAligned) {
-        String[] params = new String[]{"DistanceMatrixFile",
+        String[] params = {"DistanceMatrixFile",
                                        "WeightMatrixFile",
                                        "Label Data File",
                                        "Initial Points File",
@@ -96,10 +99,11 @@ public class DAMDSSection {
                                        "Threshold value",
                                        "Cooling parameter (alpha)",
                                        "TminFactor",
+                                       "Stress Iterations",
                                        "CG Iterations",
                                        "CG Threshold",
                                        "Sammon mapping (boolean) ",
-                                       "Divide Weights By Short Max",
+                                       "Block Size",
                                        "BigEndian (boolean)",
                                        "Memory mapped (boolean)"};
         Object[] args =
@@ -115,10 +119,11 @@ public class DAMDSSection {
                          distanceTransform,
                          threshold, alpha,
                          tMinFactor,
+                         stressIter,
                          cgIter,
                          cgErrorThreshold,
                          isSammon,
-                         divideWeightsByShortMax,
+                         blockSize,
                          isBigEndian,
                          isMemoryMapped};
 
@@ -133,16 +138,16 @@ public class DAMDSSection {
                 i -> {
                     String param = params[i];
                     sb.append(getPadding(max - param.length(), prefix))
-                      .append(param).append(": ").append(args[i]).append("\n");
+                      .append(param).append(": ").append(args[i]).append('\n');
                 });
         }
         else {
             IntStream.range(0, params.length).forEach(
                 i -> {
                     String param = params[i];
-                    sb.append(prefix).append(param).append(":")
+                    sb.append(prefix).append(param).append(':')
                       .append(getPadding(max - param.length(), ""))
-                      .append(args[i]).append("\n");
+                      .append(args[i]).append('\n');
                 });
         }
         return sb.toString();
