@@ -173,7 +173,7 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
-                    X = calculateConjugateGradient(tCur, itrNum, smacofRealIterations,
+                    X = calculateConjugateGradient(
                         preX, config.targetDimension, config.numberDataPoints,
                         BC, config.cgIter, config.cgErrorThreshold, cgCount, outRealCGIterations,
                         weights, BlockSize, vArray);
@@ -717,8 +717,9 @@ public class Program {
     }
 
     private static double[][] calculateConjugateGradient(
-        double CurrentTemp, int LocalIteration, int GlobalIteration, double[][] preX, int targetDimension, int numPoints, double[][] BC, int cgIter, double cgThreshold,
-        RefObj<Integer> outCgCount, RefObj<Integer> outRealCGIterations, WeightsWrap weights,int blockSize, double [][] vArray)
+        double[][] preX, int targetDimension, int numPoints, double[][] BC, int cgIter, double cgThreshold,
+        RefObj<Integer> outCgCount, RefObj<Integer> outRealCGIterations,
+        WeightsWrap weights, int blockSize, double[][] vArray)
 
         throws MPIException {
 
@@ -744,14 +745,11 @@ public class Program {
         CGTimings.endTiming(CGTimings.TimingTask.INNER_PROD);
         // Adding relative value test for termination as suggested by Dr. Fox.
         double testEnd = rTr * cgThreshold;
-        double  rTrStart = rTr; // GCF
 
-        //System.out.println("1");
         CGTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
         while(cgCount < cgIter){
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
-            //System.out.println("2");
             //calculate alpha
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             double[][] Ap = calculateMM(p, targetDimension, numPoints,weights, blockSize, vArray);
@@ -788,16 +786,9 @@ public class Program {
                 for(int j = 0; j < targetDimension; ++j)
                     p[i][j] = r[i][j] + beta * p[i][j];
 
-            if (ParallelOps.procRank == 0) {
-                if (cgCount < 4) {  // GCF
-                    System.out.println("T " + CurrentTemp + " Global " + GlobalIteration + " Local " + LocalIteration + " CG# " + cgCount + " Start " + rTrStart + " Now " + rTr);
-                }
-            }
-
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
-        //		System.out.println("CGCount: " + cgCount + " TestEnd: " + testEnd + " rTr: " + rTr);
         return X;
 
     }
@@ -1074,7 +1065,7 @@ public class Program {
             int globalCol = procLocalPnum % ParallelOps.globalColCount;
 
             double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
-            double weight = weights.getWeight(procLocalRow,globalCol);
+            double weight = weights.getWeight(procLocalRow, globalCol);
 
             if (origD < 0 || weight == 0) {
                 continue;
