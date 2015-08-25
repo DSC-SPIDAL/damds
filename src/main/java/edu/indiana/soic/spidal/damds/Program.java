@@ -443,6 +443,8 @@ public class Program {
         // 6. BCInternalMM (has MPI+threads)
         // 7. MMInternal (has MPI+threads)
 
+        // TODO - Switching off distributions for a serial test
+        /*
         long[] temperatureLoopTimeDistribution =
             getTemperatureLoopTimeDistribution(temperatureLoopTime);
         long[] stressTimeDistribution = StressLoopTimings
@@ -568,6 +570,7 @@ public class Program {
                 e.printStackTrace();
             }
         }
+        */
     }
 
     private static long[] getTemperatureLoopTimeDistribution(
@@ -804,12 +807,13 @@ public class Program {
             for(int i = 0; i < numPoints; ++i)
                 for(int j = 0; j < targetDimension; ++j)
                     p[i][j] = r[i][j] + beta * p[i][j];
-	    
-            if (ParallelOps.procRank == 0) {
+
+            // TODO - switching off this to compare with twister in serial run
+            /*if (ParallelOps.procRank == 0) {
                 if (cgCount < 4) {  // GCF
                     System.out.println("T " + CurrentTemp + " Global " + GlobalIteration + " Local " + LocalIteration + " CG# " + cgCount + " Start " + rTrStart + " Now " + rTr);
                 }
-            }
+            }*/
 
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
