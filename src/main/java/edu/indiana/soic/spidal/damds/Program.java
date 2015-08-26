@@ -17,6 +17,7 @@ import java.nio.LongBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -248,8 +249,9 @@ public class Program {
                     distanceSummary.getAverage()));
 
 
+            // TODO - switched off points writing to save time
             /* TODO Fix error handling here */
-            if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
+            /*if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
                 "NOLABEL")) {
                 try {
                     writeOuput(X, config.pointsFile);
@@ -264,7 +266,7 @@ public class Program {
                 catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
+            }*/
 
             Double finalStress = calculateStress(
                 X, config.targetDimension, tCur, distances, weights,
@@ -423,8 +425,6 @@ public class Program {
         // 6. BCInternalMM (has MPI+threads)
         // 7. MMInternal (has MPI+threads)
 
-        // TODO - Switching off distributions for a serial test
-        /*
         long[] temperatureLoopTimeDistribution =
             getTemperatureLoopTimeDistribution(temperatureLoopTime);
         long[] stressTimeDistribution = StressLoopTimings
@@ -550,7 +550,6 @@ public class Program {
                 e.printStackTrace();
             }
         }
-        */
     }
 
     private static long[] getTemperatureLoopTimeDistribution(
