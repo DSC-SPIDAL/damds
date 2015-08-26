@@ -75,8 +75,10 @@ public class TemperatureLoopTimings {
         switch (task){
             case PRE_STRESS:
                 mpiOnlyTimingBuffer.put(countPreStress);
+                break;
             case STRESS_LOOP:
                 mpiOnlyTimingBuffer.put(countStressLoop);
+                break;
         }
         long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
         ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);

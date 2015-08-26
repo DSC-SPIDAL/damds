@@ -376,7 +376,7 @@ public class Program {
         Utils.printMessage(
             percentHeader);
         String percentTimings =
-            "  " + 1.0 + '\t' + (temperatureLoopTime / totalTime) + '\t' +
+            "  " + 1.0 + '\t' + (temperatureLoopTime *1.0 / totalTime) + '\t' +
             TemperatureLoopTimings.getTotalTime(
                 TemperatureLoopTimings.TimingTask.PRE_STRESS) / totalTime +
             '\t' +
