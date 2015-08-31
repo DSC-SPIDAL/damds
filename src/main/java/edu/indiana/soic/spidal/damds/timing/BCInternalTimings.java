@@ -94,7 +94,7 @@ public class BCInternalTimings {
         LongBuffer threadsAndMPITimingBuffer =
             ParallelOps.threadsAndMPIBuffer;
         threadsAndMPITimingBuffer.position(0);
-        long [] array = new long[numThreads * ParallelOps.procCount];
+        long [] array = new long[numThreads * ParallelOps.worldProcCount];
         switch (task){
             case BOFZ:
                 threadsAndMPITimingBuffer.put(tBofZ);

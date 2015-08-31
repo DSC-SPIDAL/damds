@@ -44,6 +44,8 @@ public class Program {
             String.valueOf(Constants.CMD_OPTION_SHORT_T),
             Constants.CMD_OPTION_LONG_T, true,
             Constants.CMD_OPTION_DESCRIPTION_T);
+
+        programOptions.addOption(Constants.CMD_OPTION_SHORT_CGPN, true, Constants.CMD_OPTION_DESCRIPTION_CGPN);
     }
 
     //Config Settings
@@ -454,7 +456,7 @@ public class Program {
         long[] mmInternalCountDistribution = MMTimings.getCountDistribution(
             MMTimings.TimingTask.MM_INTERNAL);
 
-        if (ParallelOps.procRank == 0) {
+        if (ParallelOps.worldProcRank == 0) {
             try (BufferedWriter writer = Files.newBufferedWriter(
                 Paths.get(config.timingFile), StandardOpenOption.WRITE,
                 StandardOpenOption.CREATE)) {
@@ -535,7 +537,7 @@ public class Program {
 
                 // Print MPI rank
                 String s = "";
-                for (int i = 0; i < ParallelOps.procCount * ParallelOps.threadCount; ++i){
+                for (int i = 0; i < ParallelOps.worldProcCount * ParallelOps.threadCount; ++i){
                     s += (i / ParallelOps.threadCount) + "\t";
                 }
                 printWriter.println(s);
@@ -558,7 +560,7 @@ public class Program {
         mpiOnlyTimingBuffer.position(0);
         mpiOnlyTimingBuffer.put(temperatureLoopTime);
         ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
-        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcCount];
         mpiOnlyTimingBuffer.position(0);
         mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
         return mpiOnlyTimingArray;
@@ -818,7 +820,7 @@ public class Program {
             MMTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
         }
 
-        if (ParallelOps.procCount > 1) {
+        if (ParallelOps.worldProcCount > 1) {
             mergePartials(partialMMs, targetDimension, ParallelOps.partialPointBuffer);
 
             MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
@@ -895,7 +897,7 @@ public class Program {
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
 
-        if (ParallelOps.procCount > 1) {
+        if (ParallelOps.worldProcCount > 1) {
             mergePartials(partialBCs, targetDimension, ParallelOps.partialPointBuffer);
 
             BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
@@ -1039,7 +1041,7 @@ public class Program {
                                                      distances, weights);
         }
 
-        if (ParallelOps.procCount > 1) {
+        if (ParallelOps.worldProcCount > 1) {
             sigmaValues[0] = ParallelOps.allReduce(sigmaValues[0]);
         }
         return sigmaValues[0] / sumOfSquareDist;
@@ -1108,7 +1110,7 @@ public class Program {
                                           int targetDim) throws MPIException {
 
         DoubleBuffer buffer = ParallelOps.pointBuffer;
-        if (ParallelOps.procRank == 0) {
+        if (ParallelOps.worldProcRank == 0) {
             buffer.position(0);
             // Use Random class for generating random initial mapping solution.
             Random rand = new Random(System.currentTimeMillis());
@@ -1119,7 +1121,7 @@ public class Program {
             }
         }
 
-        if (ParallelOps.procCount > 1){
+        if (ParallelOps.worldProcCount > 1){
             // Broadcast initial mapping to others
             ParallelOps.broadcast(buffer, numPoints * targetDim, 0);
         }
@@ -1154,7 +1156,7 @@ public class Program {
                 0, distances, weights, missingDistCounts);
         }
 
-        if (ParallelOps.procCount > 1) {
+        if (ParallelOps.worldProcCount > 1) {
             threadDistanceSummaries[0] =
                 ParallelOps.allReduce(threadDistanceSummaries[0]);
             missingDistCounts[0] = ParallelOps.allReduce(missingDistCounts[0]);
@@ -1209,6 +1211,9 @@ public class Program {
             Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_N));
         ParallelOps.threadCount =
             Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_T));
+        ParallelOps.cgPerNode = cmd.hasOption(Constants.CMD_OPTION_SHORT_CGPN) ? Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_CGPN)) : 1;
+        ParallelOps.cgScratchDir = cmd.hasOption(Constants.CMD_OPTION_SHORT_CG_SCRATCH_DIR) ? cmd.getOptionValue(Constants.CMD_OPTION_SHORT_CG_SCRATCH_DIR) : ".";
+
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
         BlockSize = config.blockSize;

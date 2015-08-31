@@ -87,8 +87,8 @@ public class BCTimings {
         LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         threadsAndMPITimingBuffer.position(0);
         mpiOnlyTimingBuffer.position(0);
-        long [] threadsAndMPITimingArray = new long[numThreads * ParallelOps.procCount];
-        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        long [] threadsAndMPITimingArray = new long[numThreads * ParallelOps.worldProcCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcCount];
         switch (task){
             case BC_INTERNAL:
                 threadsAndMPITimingBuffer.put(tBCInternal);

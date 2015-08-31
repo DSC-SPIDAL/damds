@@ -89,7 +89,7 @@ public class CGLoopTimings {
         MPIException {
         LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         mpiOnlyTimingBuffer.position(0);
-        long [] mpiOnlyTimingArray = new long[ParallelOps.procCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcCount];
         switch (task){
             case MM:
                 mpiOnlyTimingBuffer.put(countMM);

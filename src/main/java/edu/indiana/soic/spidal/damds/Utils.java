@@ -12,7 +12,7 @@ public class Utils {
     }
 
     public static void printMessage(String msg) {
-        if (ParallelOps.procRank != 0) {
+        if (ParallelOps.worldProcRank != 0) {
             return;
         }
         System.out.println(msg);
