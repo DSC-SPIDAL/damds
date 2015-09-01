@@ -91,8 +91,8 @@ public class MMTimings {
         LongBuffer mpiOnlyTimingBuffer = ParallelOps.mpiOnlyBuffer;
         threadsAndMPITimingBuffer.position(0);
         mpiOnlyTimingBuffer.position(0);
-        long [] threadsAndMPITimingArray = new long[numThreads * ParallelOps.worldProcCount];
-        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcCount];
+        long [] threadsAndMPITimingArray = new long[numThreads * ParallelOps.worldProcsCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcsCount];
         switch (task){
             case MM_INTERNAL:
                 threadsAndMPITimingBuffer.put(tMMInternal);
@@ -117,8 +117,8 @@ public class MMTimings {
         LongBuffer mpiOnlyBuffer = ParallelOps.mpiOnlyBuffer;
         threadsAndMPIBuffer.position(0);
         mpiOnlyBuffer.position(0);
-        long [] threadsAndMPIArray = new long[numThreads * ParallelOps.worldProcCount];
-        long [] mpiOnlyArray = new long[ParallelOps.worldProcCount];
+        long [] threadsAndMPIArray = new long[numThreads * ParallelOps.worldProcsCount];
+        long [] mpiOnlyArray = new long[ParallelOps.worldProcsCount];
         switch (task){
             case MM_INTERNAL:
                 threadsAndMPIBuffer.put(countMMInternal);

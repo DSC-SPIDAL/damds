@@ -80,7 +80,7 @@ public class TemperatureLoopTimings {
                 mpiOnlyTimingBuffer.put(countStressLoop);
                 break;
         }
-        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcsCount];
         ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
         mpiOnlyTimingBuffer.position(0);
         mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);

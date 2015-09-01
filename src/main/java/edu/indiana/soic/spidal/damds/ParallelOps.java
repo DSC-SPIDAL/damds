@@ -6,13 +6,17 @@ import edu.indiana.soic.spidal.common.RangePartitioner;
 import mpi.Intracomm;
 import mpi.MPI;
 import mpi.MPIException;
+import net.openhft.lang.io.ByteBufferBytes;
+import net.openhft.lang.io.Bytes;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
@@ -21,28 +25,34 @@ public class ParallelOps {
     public static int nodeCount=1;
     public static int threadCount=1;
 
-    public static Intracomm worldProcComm;
+    public static Intracomm worldProcsComm;
     public static int worldProcRank;
-    public static int worldProcCount;
+    public static int worldProcsCount;
 
     public static int worldProcsPerNode;
-    // Number of communicating groups per process
-    public static int cgPerNode;
-    public static String cgScratchDir;
-    public static int worldNodeLocalRank;
-    public static int cgIdLocalToNode;
-    public static int cgProcCountPerNode;
-    public static boolean isCgLead;
-    public static boolean isCgIOLead;
-    public static Intracomm cgComm;
-    public static int cgProcRank;
-    public static int cgProcCount;
-    public static int[] cgPeersWorldRanks;
-    public static int cgLeadWorldRank;
-    public static int cgLeadNodeLocalRank;
+    // Number of memory mapped groups per process
+    public static int mmapsPerNode;
+    public static String mmapScratchDir;
+    public static int worldProcRankLocalToNode;
+    public static int mmapIdLocalToNode;
+    public static int mmapProcsCount;
+    public static boolean isMmapLead;
+    public static boolean isMmapIOLead;
+    public static int[] mmapProcsWorldRanks;
+    public static int mmapLeadWorldRank;
+    public static int mmapLeadWorldRankLocalToNode;
 
+    // mmap leaders form one communicating group and the others (followers)
+    // belong to another communicating group.
+    public static Intracomm cgProcComm;
+    public static int cgProcRank;
+    public static int cgProcsCount;
+    public static int[] cgProcsRowCounts;
+    public static int[] cgProcsPartialXDoubleExtents;
+    public static int[] cgProcsPartialXDisplas;
 
     public static String parallelPattern;
+    public static Range[] procRowRanges;
     public static Range procRowRange;
     public static int procRowStartOffset;
     public static int procRowCount;
@@ -66,48 +76,60 @@ public class ParallelOps {
     public static LongBuffer threadsAndMPIBuffer;
     public static LongBuffer mpiOnlyBuffer;
 
-    public static FileChannel cgPartialPoints;
+    public static DoubleBuffer partialXDoubleBuffer;
+    public static DoubleBuffer fullXDoubleBuffer;
+    public static Bytes lockAndCountBytes;
+    public static final int LOCK_OFFSET = 0;
+    public static final int COUNT_OFFSET = 4;
+    private static final int LOCK_AND_COUNT_EXTENT = 12; // 12 bytes = 4 byte lock + 8 byte (long) count
 
 
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
-        worldProcComm = MPI.COMM_WORLD; //initializing MPI world communicator
-        worldProcRank = worldProcComm.getRank();
-        worldProcCount = worldProcComm.getSize();
+        worldProcsComm = MPI.COMM_WORLD; //initializing MPI world communicator
+        worldProcRank = worldProcsComm.getRank();
+        worldProcsCount = worldProcsComm.getSize();
 
-        worldProcsPerNode = worldProcCount / nodeCount;
-
-        if ((worldProcsPerNode * nodeCount) != worldProcCount) {
+        if ((worldProcsPerNode * nodeCount) != worldProcsCount) {
             Utils.printAndThrowRuntimeException(
-                "Inconsistent MPI counts Nodes " + nodeCount + " Size " +
-                worldProcCount);
+                "Inconsistent MPI counts Nodes " + nodeCount + " Size "
+                + worldProcsCount);
         }
 
         /* Create communicating groups */
-        worldProcsPerNode = worldProcCount / nodeCount;
+        worldProcsPerNode = worldProcsCount / nodeCount;
 
-        worldNodeLocalRank = worldProcRank % worldProcsPerNode;
-        int q = worldProcsPerNode / cgPerNode;
-        int r = worldProcsPerNode % cgPerNode;
+        worldProcRankLocalToNode = worldProcRank % worldProcsPerNode;
+        int q = worldProcsPerNode / mmapsPerNode;
+        int r = worldProcsPerNode % mmapsPerNode;
 
-        // Communicating group
-        cgIdLocalToNode = worldNodeLocalRank < r*(q+1) ? worldNodeLocalRank/(q+1) : (worldNodeLocalRank-r)/q;
-        cgProcCountPerNode = worldNodeLocalRank < r*(q+1) ? q+1 : q;
-        isCgLead = worldNodeLocalRank % cgProcCountPerNode == 0;
-        isCgIOLead = worldNodeLocalRank == 0;
-        cgPeersWorldRanks = new int[cgProcCountPerNode];
-        cgLeadNodeLocalRank = isCgLead ? worldNodeLocalRank : (q*cgIdLocalToNode + (cgIdLocalToNode < r ? cgIdLocalToNode : r));
-        cgLeadWorldRank = worldProcRank - (worldNodeLocalRank - cgLeadNodeLocalRank);
-        for (int i = 0; i < cgProcCountPerNode; ++i){
-            cgPeersWorldRanks[i] = cgLeadWorldRank+i;
+        // Memory mapped groups and communicating groups
+        mmapIdLocalToNode =
+            worldProcRankLocalToNode < r * (q + 1)
+                ? worldProcRankLocalToNode / (q + 1)
+                : (worldProcRankLocalToNode - r) / q;
+        mmapProcsCount = worldProcRankLocalToNode < r*(q+1) ? q+1 : q;
+        isMmapLead = worldProcRankLocalToNode % mmapProcsCount == 0;
+        isMmapIOLead = worldProcRankLocalToNode == 0;
+        mmapProcsWorldRanks = new int[mmapProcsCount];
+        mmapLeadWorldRankLocalToNode =
+            isMmapLead
+                ? worldProcRankLocalToNode
+                : (q * mmapIdLocalToNode + (mmapIdLocalToNode < r
+                                                ? mmapIdLocalToNode
+                                                : r));
+        mmapLeadWorldRank = worldProcRank - (worldProcRankLocalToNode
+                                             - mmapLeadWorldRankLocalToNode);
+        for (int i = 0; i < mmapProcsCount; ++i){
+            mmapProcsWorldRanks[i] = mmapLeadWorldRank +i;
         }
 
-
         // Leaders talk, their color is 0
-        // Followers will get a communicator of color 1, but will make sure they don't talk ha ha :)
-        cgComm = worldProcComm.split(isCgLead ? 0 : 1, worldProcRank);
-        cgProcRank = cgComm.getRank();
-        cgProcCount = cgComm.getSize();
+        // Followers will get a communicator of color 1,
+        // but will make sure they don't talk ha ha :)
+        cgProcComm = worldProcsComm.split(isMmapLead ? 0 : 1, worldProcRank);
+        cgProcRank = cgProcComm.getRank();
+        cgProcsCount = cgProcComm.getSize();
 
         /* Allocate basic buffers for communication */
         statBuffer = MPI.newByteBuffer(DoubleStatistics.extent);
@@ -116,9 +138,9 @@ public class ParallelOps {
 
         machineName = MPI.getProcessorName();
         parallelPattern =
-            "---------------------------------------------------------\n" +
-            "Machine:" + machineName + ' ' +
-            threadCount + 'x' + worldProcsPerNode + 'x' + nodeCount;
+            "---------------------------------------------------------\n"
+            + "Machine:" + machineName + ' ' + threadCount + 'x'
+            + worldProcsPerNode + 'x' + nodeCount;
         Utils.printMessage(parallelPattern);
     }
 
@@ -127,11 +149,12 @@ public class ParallelOps {
         MPI.Finalize();
     }
 
-    public static void setParallelDecomposition(int globalRowCount, int targetDimension) {
+    public static void setParallelDecomposition(int globalRowCount, int targetDimension)
+        throws IOException, MPIException {
         //	First divide points among processes
-        Range[] rowRanges = RangePartitioner.partition(globalRowCount,
-                                                       worldProcCount);
-        Range rowRange = rowRanges[worldProcRank]; // The range of points for this process
+        procRowRanges = RangePartitioner.partition(globalRowCount,
+                                                       worldProcsCount);
+        Range rowRange = procRowRanges[worldProcRank]; // The range of points for this process
 
         procRowRange = rowRange;
         procRowStartOffset = rowRange.getStartIndex();
@@ -144,71 +167,122 @@ public class ParallelOps {
         threadRowCounts = new int[threadCount];
         threadRowStartOffsets = new int[threadCount];
         threadPointStartOffsets = new int[threadCount];
-        IntStream.range(0, threadCount).parallel().forEach(
-            threadIdx -> {
-                Range threadRowRange = threadRowRanges[threadIdx];
-                threadRowCounts[threadIdx] = threadRowRange.getLength();
-                threadRowStartOffsets[threadIdx] =
-                    threadRowRange.getStartIndex();
-                threadPointStartOffsets[threadIdx] =
-                    threadRowStartOffsets[threadIdx] * globalColCount;
-            });
+        IntStream.range(0, threadCount)
+            .parallel()
+            .forEach(threadIdx -> {
+                         Range threadRowRange = threadRowRanges[threadIdx];
+                         threadRowCounts[threadIdx] =
+                             threadRowRange.getLength();
+                         threadRowStartOffsets[threadIdx] =
+                             threadRowRange.getStartIndex();
+                         threadPointStartOffsets[threadIdx] =
+                             threadRowStartOffsets[threadIdx] * globalColCount;
+                     });
 
         // Allocate vector buffers
         partialPointBuffer = MPI.newDoubleBuffer(procRowCount * targetDimension);
         pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
-        mpiOnlyBuffer = MPI.newLongBuffer(worldProcCount);
-        threadsAndMPIBuffer = MPI.newLongBuffer(worldProcCount * threadCount);
+        mpiOnlyBuffer = MPI.newLongBuffer(worldProcsCount);
+        threadsAndMPIBuffer = MPI.newLongBuffer(worldProcsCount * threadCount);
 
-        // TODO - continue from here
-//        cgPartialPoints = FileChannel.open(Paths.get(cgScratchDir, ))
+        cgProcsRowCounts = new int[cgProcsCount];
+        cgProcsPartialXDoubleExtents = new int[cgProcsCount];
+        cgProcsPartialXDisplas = new int[cgProcsCount];
+        if (isMmapLead){
+            int rowCount = IntStream.range(mmapLeadWorldRank,
+                                           mmapLeadWorldRank + mmapProcsCount)
+                .map(i -> procRowRanges[i].getLength())
+                .sum();
+            cgProcsRowCounts[cgProcRank] = rowCount;
+            cgProcComm.allGather(cgProcsRowCounts, 1, MPI.INT);
+            for (int i = 0; i < cgProcsCount; ++i){
+                cgProcsPartialXDoubleExtents[i] = cgProcsRowCounts[i] * targetDimension;
+            }
+
+            cgProcsPartialXDisplas[0] = 0;
+            System.arraycopy(cgProcsPartialXDoubleExtents, 0, cgProcsPartialXDisplas, 1, cgProcsCount - 1);
+            Arrays.parallelPrefix(cgProcsPartialXDisplas, (m, n) -> m + n);
+        }
+
+
+        final String partialXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".partialX.bin";
+        final String fullXFname = machineName + ".fullX.bin";
+        final String lockAndCountFname = machineName + ".lockAndCount.bin";
+        try (FileChannel partialXFc = FileChannel.open(Paths.get(mmapScratchDir,
+                                                                 partialXFname),
+                                                       StandardOpenOption
+                                                           .CREATE,
+                                                       StandardOpenOption.READ,
+                                                       StandardOpenOption
+                                                           .WRITE);
+            FileChannel fullXFc = FileChannel.open(Paths.get(mmapScratchDir,
+                                                             fullXFname),
+                                                   StandardOpenOption.CREATE,
+                                                   isMmapIOLead
+                                                       ? StandardOpenOption.WRITE
+                                                       : StandardOpenOption.READ);
+            FileChannel lockAndCountFc = FileChannel.open(Paths.get(
+                                                              mmapScratchDir,
+                                                              lockAndCountFname),
+                                                          StandardOpenOption
+                                                              .CREATE,
+                                                          StandardOpenOption.READ,
+                                                          StandardOpenOption.WRITE)){
+
+
+            long partialXExtent = (isMmapLead ? cgProcsRowCounts[cgProcRank] : procRowCount) * targetDimension * Double.BYTES;
+            long partialXOffset = (procRowStartOffset - procRowRanges[mmapLeadWorldRank].getStartIndex()) * targetDimension * Double.BYTES;
+            long fullXExtent = globalRowCount * targetDimension * Double.BYTES;
+            long fullXOffset = 0L;
+
+            partialXDoubleBuffer = partialXFc.map(
+                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXExtent)
+                .asDoubleBuffer();
+            fullXDoubleBuffer = fullXFc.map(isMmapIOLead
+                                                ? FileChannel.MapMode.READ_WRITE
+                                                : FileChannel.MapMode.READ_ONLY,
+                                            fullXOffset, fullXExtent)
+                .asDoubleBuffer();
+            lockAndCountBytes = ByteBufferBytes.wrap(lockAndCountFc.map(
+                FileChannel.MapMode.READ_WRITE, 0, LOCK_AND_COUNT_EXTENT));
+        }
     }
 
-    public static DoubleStatistics allReduce(DoubleStatistics stat) throws
-        MPIException {
-        stat.addToBuffer(statBuffer,0);
-        worldProcComm.allReduce(
-            statBuffer, DoubleStatistics.extent, MPI.BYTE,
-            DoubleStatistics.reduceSummaries());
+    public static DoubleStatistics allReduce(DoubleStatistics stat)
+        throws MPIException {
+        stat.addToBuffer(statBuffer, 0);
+        worldProcsComm.allReduce(statBuffer, DoubleStatistics.extent, MPI.BYTE,
+                                 DoubleStatistics.reduceSummaries());
         return DoubleStatistics.getFromBuffer(statBuffer, 0);
     }
 
     public static double allReduce(double value) throws MPIException{
         doubleBuffer.put(0, value);
-        worldProcComm.allReduce(doubleBuffer, 1, MPI.DOUBLE, MPI.SUM);
+        worldProcsComm.allReduce(doubleBuffer, 1, MPI.DOUBLE, MPI.SUM);
         return doubleBuffer.get(0);
     }
 
     public static int allReduce(int value) throws MPIException{
         intBuffer.put(0, value);
-        worldProcComm.allReduce(intBuffer, 1, MPI.INT, MPI.SUM);
+        worldProcsComm.allReduce(intBuffer, 1, MPI.INT, MPI.SUM);
         return intBuffer.get(0);
     }
 
-    public static DoubleBuffer allGather(
-        DoubleBuffer partialPointBuffer, int dimension) throws MPIException {
-
-        int [] lengths = new int[worldProcCount];
-        int length = procRowCount * dimension;
-        lengths[worldProcRank] = length;
-        worldProcComm.allGather(lengths, 1, MPI.INT);
-        int [] displas = new int[worldProcCount];
-        displas[0] = 0;
-        System.arraycopy(lengths, 0, displas, 1, worldProcCount - 1);
-        Arrays.parallelPrefix(displas, (m, n) -> m + n);
-        worldProcComm.allGatherv(
-            partialPointBuffer, length, MPI.DOUBLE, pointBuffer, lengths,
-            displas, MPI.DOUBLE);
-        return  pointBuffer;
+    public static DoubleBuffer partialXAllGather(
+        DoubleBuffer partialPointBuffer) throws MPIException {
+        cgProcComm.allGatherv(
+            partialPointBuffer, cgProcsPartialXDoubleExtents[cgProcRank], MPI.DOUBLE, fullXDoubleBuffer, cgProcsPartialXDoubleExtents,
+            cgProcsPartialXDisplas, MPI.DOUBLE);
+        return  fullXDoubleBuffer;
     }
 
     public static void broadcast(DoubleBuffer buffer, int extent, int root)
         throws MPIException {
-        worldProcComm.bcast(buffer, extent, MPI.DOUBLE, root);
+        worldProcsComm.bcast(buffer, extent, MPI.DOUBLE, root);
     }
 
     public static void gather(LongBuffer buffer, int count, int root)
         throws MPIException {
-        worldProcComm.gather(buffer, count, MPI.LONG, root);
+        worldProcsComm.gather(buffer, count, MPI.LONG, root);
     }
 }

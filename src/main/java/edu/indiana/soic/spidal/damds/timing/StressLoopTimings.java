@@ -89,7 +89,7 @@ public class StressLoopTimings {
         throws MPIException {
         LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         mpiOnlyTimingBuffer.position(0);
-        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcsCount];
         switch (task){
             case BC:
                 mpiOnlyTimingBuffer.put(tBC);
@@ -110,7 +110,7 @@ public class StressLoopTimings {
     public static long[] getCountDistribution(TimingTask task) throws MPIException{
         LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         mpiOnlyTimingBuffer.position(0);
-        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcsCount];
         switch (task){
             case BC:
                 mpiOnlyTimingBuffer.put(countBC);

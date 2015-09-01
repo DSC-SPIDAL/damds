@@ -8,6 +8,7 @@ import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPIException;
+import net.openhft.affinity.AffinitySupport;
 import org.apache.commons.cli.*;
 
 import java.io.*;
@@ -45,7 +46,8 @@ public class Program {
             Constants.CMD_OPTION_LONG_T, true,
             Constants.CMD_OPTION_DESCRIPTION_T);
 
-        programOptions.addOption(Constants.CMD_OPTION_SHORT_CGPN, true, Constants.CMD_OPTION_DESCRIPTION_CGPN);
+        programOptions.addOption(Constants.CMD_OPTION_SHORT_MMAPS, true, Constants.CMD_OPTION_DESCRIPTION_MMAPS);
+        programOptions.addOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR, true, Constants.CMD_OPTION_DESCRIPTION_MMAP_SCRATCH_DIR);
     }
 
     //Config Settings
@@ -67,6 +69,7 @@ public class Program {
      *             --configFile, --threadCount, and --nodeCount respectively
      */
     public static void  main(String[] args) {
+        AffinitySupport.setThreadId();
         Stopwatch mainTimer = Stopwatch.createStarted();
         Optional<CommandLine> parserResult =
             parseCommandLineArguments(args, programOptions);
@@ -299,7 +302,7 @@ public class Program {
 
             ParallelOps.tearDownParallelism();
         }
-        catch (MPIException e) {
+        catch (MPIException | IOException | InterruptedException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
     }
@@ -537,7 +540,7 @@ public class Program {
 
                 // Print MPI rank
                 String s = "";
-                for (int i = 0; i < ParallelOps.worldProcCount * ParallelOps.threadCount; ++i){
+                for (int i = 0; i < ParallelOps.worldProcsCount * ParallelOps.threadCount; ++i){
                     s += (i / ParallelOps.threadCount) + "\t";
                 }
                 printWriter.println(s);
@@ -560,7 +563,7 @@ public class Program {
         mpiOnlyTimingBuffer.position(0);
         mpiOnlyTimingBuffer.put(temperatureLoopTime);
         ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
-        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcCount];
+        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcsCount];
         mpiOnlyTimingBuffer.position(0);
         mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
         return mpiOnlyTimingArray;
@@ -820,12 +823,12 @@ public class Program {
             MMTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
         }
 
-        if (ParallelOps.worldProcCount > 1) {
-            mergePartials(partialMMs, targetDimension, ParallelOps.partialPointBuffer);
+        if (ParallelOps.worldProcsCount > 1) {
+            mergePartials(partialMMs, ParallelOps.partialPointBuffer);
 
             MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
-            DoubleBuffer result = ParallelOps.allGather(
-                ParallelOps.partialPointBuffer, targetDimension);
+            DoubleBuffer result = ParallelOps.partialXAllGather(
+                ParallelOps.partialPointBuffer);
             MMTimings.endTiming(MMTimings.TimingTask.COMM, 0);
             return extractPoints(result,
                 ParallelOps.globalColCount, targetDimension);
@@ -872,7 +875,8 @@ public class Program {
 
     private static double[][] calculateBC(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
-        WeightsWrap weights, int blockSize) throws MPIException{
+        WeightsWrap weights, int blockSize)
+        throws MPIException, InterruptedException {
 
         double [][][] partialBCs = new double[ParallelOps.threadCount][][];
 
@@ -897,13 +901,14 @@ public class Program {
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
 
-        if (ParallelOps.worldProcCount > 1) {
-            mergePartials(partialBCs, targetDimension, ParallelOps.partialPointBuffer);
-
-            BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
-            DoubleBuffer result = ParallelOps.allGather(
-                ParallelOps.partialPointBuffer, targetDimension);
-            BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+        if (ParallelOps.worldProcsCount > 1) {
+            mergePartials(partialBCs, ParallelOps.partialXDoubleBuffer);
+            if (ParallelOps.isMmapLead) {
+                BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
+                DoubleBuffer result = ParallelOps.partialXAllGather(ParallelOps.partialXDoubleBuffer);
+                BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+            }
+            // TODO - continue from here.
             return extractPoints(result,
                 ParallelOps.globalColCount, targetDimension);
         } else {
@@ -1005,13 +1010,11 @@ public class Program {
         }
     }
 
-    private static void mergePartials(double [][][] partials, int dimension, DoubleBuffer result){
-        int pos = 0;
+    private static void mergePartials(
+        double[][][] partials, DoubleBuffer result){
         for (double [][] partial : partials){
             for (double [] point : partial){
-                result.position(pos);
                 result.put(point);
-                pos += dimension;
             }
         }
     }
@@ -1041,7 +1044,7 @@ public class Program {
                                                      distances, weights);
         }
 
-        if (ParallelOps.worldProcCount > 1) {
+        if (ParallelOps.worldProcsCount > 1) {
             sigmaValues[0] = ParallelOps.allReduce(sigmaValues[0]);
         }
         return sigmaValues[0] / sumOfSquareDist;
@@ -1121,7 +1124,7 @@ public class Program {
             }
         }
 
-        if (ParallelOps.worldProcCount > 1){
+        if (ParallelOps.worldProcsCount > 1){
             // Broadcast initial mapping to others
             ParallelOps.broadcast(buffer, numPoints * targetDim, 0);
         }
@@ -1156,7 +1159,7 @@ public class Program {
                 0, distances, weights, missingDistCounts);
         }
 
-        if (ParallelOps.worldProcCount > 1) {
+        if (ParallelOps.worldProcsCount > 1) {
             threadDistanceSummaries[0] =
                 ParallelOps.allReduce(threadDistanceSummaries[0]);
             missingDistCounts[0] = ParallelOps.allReduce(missingDistCounts[0]);
@@ -1211,8 +1214,8 @@ public class Program {
             Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_N));
         ParallelOps.threadCount =
             Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_T));
-        ParallelOps.cgPerNode = cmd.hasOption(Constants.CMD_OPTION_SHORT_CGPN) ? Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_CGPN)) : 1;
-        ParallelOps.cgScratchDir = cmd.hasOption(Constants.CMD_OPTION_SHORT_CG_SCRATCH_DIR) ? cmd.getOptionValue(Constants.CMD_OPTION_SHORT_CG_SCRATCH_DIR) : ".";
+        ParallelOps.mmapsPerNode = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAPS) ? Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAPS)) : 1;
+        ParallelOps.mmapScratchDir = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) ? cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) : ".";
 
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
