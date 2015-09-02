@@ -6,8 +6,6 @@ import edu.indiana.soic.spidal.common.RangePartitioner;
 import mpi.Intracomm;
 import mpi.MPI;
 import mpi.MPIException;
-import net.openhft.lang.io.ByteBufferBytes;
-import net.openhft.lang.io.Bytes;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -80,10 +78,10 @@ public class ParallelOps {
 
     public static MappedDoubleBuffer partialXMappedDoubleBuffer;
     public static MappedDoubleBuffer fullXMappedDoubleBuffer;
-    public static Bytes lockAndCountBytes;
+ /*   public static Bytes lockAndCountBytes;
     public static final int LOCK_OFFSET = 0;
     public static final int COUNT_OFFSET = 4;
-    private static final int LOCK_AND_COUNT_EXTENT = 12; // 12 bytes = 4 byte lock + 8 byte (long) count
+    private static final int LOCK_AND_COUNT_EXTENT = 12; // 12 bytes = 4 byte lock + 8 byte (long) count*/
 
 
     public static void setupParallelism(String[] args) throws MPIException {
@@ -223,10 +221,7 @@ public class ParallelOps {
                                                            .WRITE);
             FileChannel fullXFc = FileChannel.open(Paths.get(mmapScratchDir,
                                                              fullXFname),
-                                                   StandardOpenOption.CREATE,
-                                                   isMmapLead
-                                                       ? StandardOpenOption.WRITE
-                                                       : StandardOpenOption.READ);
+                                                   StandardOpenOption.CREATE,StandardOpenOption.WRITE,StandardOpenOption.READ);
             FileChannel lockAndCountFc = FileChannel.open(Paths.get(
                                                               mmapScratchDir,
                                                               lockAndCountFname),
@@ -243,12 +238,10 @@ public class ParallelOps {
 
             partialXMappedDoubleBuffer = new MappedDoubleBuffer(partialXFc.map(
                 FileChannel.MapMode.READ_WRITE, partialXOffset, partialXExtent));
-            fullXMappedDoubleBuffer = new MappedDoubleBuffer(fullXFc.map(isMmapLead
-                                                ? FileChannel.MapMode.READ_WRITE
-                                                : FileChannel.MapMode.READ_ONLY,
+            fullXMappedDoubleBuffer = new MappedDoubleBuffer(fullXFc.map(FileChannel.MapMode.READ_WRITE,
                                             fullXOffset, fullXExtent));
-            lockAndCountBytes = ByteBufferBytes.wrap(lockAndCountFc.map(
-                FileChannel.MapMode.READ_WRITE, 0, LOCK_AND_COUNT_EXTENT));
+            /*lockAndCountBytes = ByteBufferBytes.wrap(lockAndCountFc.map(
+                FileChannel.MapMode.READ_WRITE, 0, LOCK_AND_COUNT_EXTENT));*/
         }
     }
 

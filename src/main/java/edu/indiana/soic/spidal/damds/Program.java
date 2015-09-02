@@ -8,7 +8,6 @@ import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPIException;
-import net.openhft.affinity.AffinitySupport;
 import org.apache.commons.cli.*;
 
 import java.io.*;
@@ -69,7 +68,6 @@ public class Program {
      *             --configFile, --threadCount, and --nodeCount respectively
      */
     public static void  main(String[] args) {
-        AffinitySupport.setThreadId();
         Stopwatch mainTimer = Stopwatch.createStarted();
         Optional<CommandLine> parserResult =
             parseCommandLineArguments(args, programOptions);
