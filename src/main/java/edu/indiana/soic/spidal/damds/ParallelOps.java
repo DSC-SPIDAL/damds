@@ -92,14 +92,15 @@ public class ParallelOps {
         worldProcRank = worldProcsComm.getRank();
         worldProcsCount = worldProcsComm.getSize();
 
+
+
+        /* Create communicating groups */
+        worldProcsPerNode = worldProcsCount / nodeCount;
         if ((worldProcsPerNode * nodeCount) != worldProcsCount) {
             Utils.printAndThrowRuntimeException(
                 "Inconsistent MPI counts Nodes " + nodeCount + " Size "
                 + worldProcsCount);
         }
-
-        /* Create communicating groups */
-        worldProcsPerNode = worldProcsCount / nodeCount;
 
         worldProcRankLocalToNode = worldProcRank % worldProcsPerNode;
         nodeId = worldProcRank / worldProcsPerNode;
