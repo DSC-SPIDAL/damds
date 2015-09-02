@@ -824,12 +824,17 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialMMs, ParallelOps.partialPointBuffer);
-
-            MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
-            DoubleBuffer result = ParallelOps.partialXAllGather();
-            MMTimings.endTiming(MMTimings.TimingTask.COMM, 0);
-            return extractPoints(result,
+            mergePartials(partialMMs, ParallelOps.partialXMappedDoubleBuffer);
+            if (ParallelOps.isMmapLead) {
+                MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
+                ParallelOps.partialXAllGather();
+                MMTimings.endTiming(MMTimings.TimingTask.COMM, 0);
+            }
+            // Each process in a memory group waits here.
+            // It's not necessary to wait for a process
+            // in another memory map group, hence the use of mmapProcComm
+            ParallelOps.mmapProcComm.barrier();
+            return extractPoints(ParallelOps.fullXMappedDoubleBuffer,
                 ParallelOps.globalColCount, targetDimension);
         } else {
             double [][] mm = new double[ParallelOps.globalColCount][targetDimension];
@@ -901,14 +906,17 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialBCs, ParallelOps.partialXDoubleBuffer);
+            mergePartials(partialBCs, ParallelOps.partialXMappedDoubleBuffer);
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
-                DoubleBuffer result = ParallelOps.partialXAllGather();
+                ParallelOps.partialXAllGather();
                 BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
             }
-            // TODO - continue from here.
-            return extractPoints(result,
+            // Each process in a memory group waits here.
+            // It's not necessary to wait for a process
+            // in another memory map group, hence the use of mmapProcComm
+            ParallelOps.mmapProcComm.barrier();
+            return extractPoints(ParallelOps.fullXMappedDoubleBuffer,
                 ParallelOps.globalColCount, targetDimension);
         } else {
             double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
@@ -988,13 +996,17 @@ public class Program {
     }
 
     private static double[][] extractPoints(
+        MappedDoubleBuffer buffer, int numPoints, int dimension) {
+        buffer.position(0);
+        return extractPoints(buffer.getDb(), numPoints, dimension);
+    }
+
+    private static double[][] extractPoints(
         DoubleBuffer buffer, int numPoints, int dimension) {
+        buffer.position(0);
         double [][] points = new double[numPoints][dimension];
-        int pos = 0;
         for (int i = 0; i < numPoints; ++i){
-            buffer.position(pos);
-            buffer.get(points[i]);
-            pos += dimension;
+            buffer.get(points[i],0,1);
         }
         return  points;
     }
@@ -1010,12 +1022,15 @@ public class Program {
     }
 
     private static void mergePartials(
-        double[][][] partials, DoubleBuffer result){
+        double[][][] partials, MappedDoubleBuffer result){
+        result.position(0);
+        DoubleBuffer db = result.getDb();
         for (double [][] partial : partials){
             for (double [] point : partial){
-                result.put(point);
+                db.put(point);
             }
         }
+        result.force();
     }
 
     private static double calculateStress(
@@ -1108,6 +1123,7 @@ public class Program {
         return dist;
     }
 
+    // TODO - this could be improved with shared mem trick
     static double[][] generateInitMapping(int numPoints,
                                           int targetDim) throws MPIException {
 

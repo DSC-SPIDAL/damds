@@ -25,11 +25,14 @@ public class ParallelOps {
     public static int nodeCount=1;
     public static int threadCount=1;
 
+    public static int nodeId;
+
     public static Intracomm worldProcsComm;
     public static int worldProcRank;
     public static int worldProcsCount;
-
     public static int worldProcsPerNode;
+
+    public static Intracomm mmapProcComm;
     // Number of memory mapped groups per process
     public static int mmapsPerNode;
     public static String mmapScratchDir;
@@ -37,7 +40,6 @@ public class ParallelOps {
     public static int mmapIdLocalToNode;
     public static int mmapProcsCount;
     public static boolean isMmapLead;
-    public static boolean isMmapIOLead;
     public static int[] mmapProcsWorldRanks;
     public static int mmapLeadWorldRank;
     public static int mmapLeadWorldRankLocalToNode;
@@ -76,8 +78,8 @@ public class ParallelOps {
     public static LongBuffer threadsAndMPIBuffer;
     public static LongBuffer mpiOnlyBuffer;
 
-    public static DoubleBuffer partialXDoubleBuffer;
-    public static DoubleBuffer fullXDoubleBuffer;
+    public static MappedDoubleBuffer partialXMappedDoubleBuffer;
+    public static MappedDoubleBuffer fullXMappedDoubleBuffer;
     public static Bytes lockAndCountBytes;
     public static final int LOCK_OFFSET = 0;
     public static final int COUNT_OFFSET = 4;
@@ -100,6 +102,7 @@ public class ParallelOps {
         worldProcsPerNode = worldProcsCount / nodeCount;
 
         worldProcRankLocalToNode = worldProcRank % worldProcsPerNode;
+        nodeId = worldProcRank / worldProcsPerNode;
         int q = worldProcsPerNode / mmapsPerNode;
         int r = worldProcsPerNode % mmapsPerNode;
 
@@ -110,7 +113,6 @@ public class ParallelOps {
                 : (worldProcRankLocalToNode - r) / q;
         mmapProcsCount = worldProcRankLocalToNode < r*(q+1) ? q+1 : q;
         isMmapLead = worldProcRankLocalToNode % mmapProcsCount == 0;
-        isMmapIOLead = worldProcRankLocalToNode == 0;
         mmapProcsWorldRanks = new int[mmapProcsCount];
         mmapLeadWorldRankLocalToNode =
             isMmapLead
@@ -130,6 +132,9 @@ public class ParallelOps {
         cgProcComm = worldProcsComm.split(isMmapLead ? 0 : 1, worldProcRank);
         cgProcRank = cgProcComm.getRank();
         cgProcsCount = cgProcComm.getSize();
+
+        // Communicator for processes within a  memory map group
+        mmapProcComm = worldProcsComm.split((nodeId*mmapsPerNode)+mmapIdLocalToNode, worldProcRank);
 
         /* Allocate basic buffers for communication */
         statBuffer = MPI.newByteBuffer(DoubleStatistics.extent);
@@ -235,14 +240,12 @@ public class ParallelOps {
             long fullXExtent = globalRowCount * targetDimension * Double.BYTES;
             long fullXOffset = 0L;
 
-            partialXDoubleBuffer = partialXFc.map(
-                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXExtent)
-                .asDoubleBuffer();
-            fullXDoubleBuffer = fullXFc.map(isMmapLead
+            partialXMappedDoubleBuffer = new MappedDoubleBuffer(partialXFc.map(
+                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXExtent));
+            fullXMappedDoubleBuffer = new MappedDoubleBuffer(fullXFc.map(isMmapLead
                                                 ? FileChannel.MapMode.READ_WRITE
                                                 : FileChannel.MapMode.READ_ONLY,
-                                            fullXOffset, fullXExtent)
-                .asDoubleBuffer();
+                                            fullXOffset, fullXExtent));
             lockAndCountBytes = ByteBufferBytes.wrap(lockAndCountFc.map(
                 FileChannel.MapMode.READ_WRITE, 0, LOCK_AND_COUNT_EXTENT));
         }
@@ -268,11 +271,13 @@ public class ParallelOps {
         return intBuffer.get(0);
     }
 
-    public static DoubleBuffer partialXAllGather() throws MPIException {
+    public static void partialXAllGather() throws MPIException {
+        partialXMappedDoubleBuffer.position(0);
+        fullXMappedDoubleBuffer.position(0);
         cgProcComm.allGatherv(
-            partialXDoubleBuffer, cgProcsPartialXDoubleExtents[cgProcRank], MPI.DOUBLE, fullXDoubleBuffer, cgProcsPartialXDoubleExtents,
+            partialXMappedDoubleBuffer.getDb(), cgProcsPartialXDoubleExtents[cgProcRank], MPI.DOUBLE, fullXMappedDoubleBuffer.getDb(), cgProcsPartialXDoubleExtents,
             cgProcsPartialXDisplas, MPI.DOUBLE);
-        return  fullXDoubleBuffer;
+        fullXMappedDoubleBuffer.force();
     }
 
     public static void broadcast(DoubleBuffer buffer, int extent, int root)
