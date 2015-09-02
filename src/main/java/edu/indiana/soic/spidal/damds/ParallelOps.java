@@ -218,7 +218,7 @@ public class ParallelOps {
             FileChannel fullXFc = FileChannel.open(Paths.get(mmapScratchDir,
                                                              fullXFname),
                                                    StandardOpenOption.CREATE,
-                                                   isMmapIOLead
+                                                   isMmapLead
                                                        ? StandardOpenOption.WRITE
                                                        : StandardOpenOption.READ);
             FileChannel lockAndCountFc = FileChannel.open(Paths.get(
@@ -238,7 +238,7 @@ public class ParallelOps {
             partialXDoubleBuffer = partialXFc.map(
                 FileChannel.MapMode.READ_WRITE, partialXOffset, partialXExtent)
                 .asDoubleBuffer();
-            fullXDoubleBuffer = fullXFc.map(isMmapIOLead
+            fullXDoubleBuffer = fullXFc.map(isMmapLead
                                                 ? FileChannel.MapMode.READ_WRITE
                                                 : FileChannel.MapMode.READ_ONLY,
                                             fullXOffset, fullXExtent)
@@ -268,10 +268,9 @@ public class ParallelOps {
         return intBuffer.get(0);
     }
 
-    public static DoubleBuffer partialXAllGather(
-        DoubleBuffer partialPointBuffer) throws MPIException {
+    public static DoubleBuffer partialXAllGather() throws MPIException {
         cgProcComm.allGatherv(
-            partialPointBuffer, cgProcsPartialXDoubleExtents[cgProcRank], MPI.DOUBLE, fullXDoubleBuffer, cgProcsPartialXDoubleExtents,
+            partialXDoubleBuffer, cgProcsPartialXDoubleExtents[cgProcRank], MPI.DOUBLE, fullXDoubleBuffer, cgProcsPartialXDoubleExtents,
             cgProcsPartialXDisplas, MPI.DOUBLE);
         return  fullXDoubleBuffer;
     }

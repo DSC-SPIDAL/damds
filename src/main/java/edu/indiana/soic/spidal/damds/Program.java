@@ -827,8 +827,7 @@ public class Program {
             mergePartials(partialMMs, ParallelOps.partialPointBuffer);
 
             MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
-            DoubleBuffer result = ParallelOps.partialXAllGather(
-                ParallelOps.partialPointBuffer);
+            DoubleBuffer result = ParallelOps.partialXAllGather();
             MMTimings.endTiming(MMTimings.TimingTask.COMM, 0);
             return extractPoints(result,
                 ParallelOps.globalColCount, targetDimension);
@@ -905,7 +904,7 @@ public class Program {
             mergePartials(partialBCs, ParallelOps.partialXDoubleBuffer);
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
-                DoubleBuffer result = ParallelOps.partialXAllGather(ParallelOps.partialXDoubleBuffer);
+                DoubleBuffer result = ParallelOps.partialXAllGather();
                 BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
             }
             // TODO - continue from here.
