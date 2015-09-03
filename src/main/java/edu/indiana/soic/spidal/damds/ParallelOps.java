@@ -271,6 +271,14 @@ public class ParallelOps {
                                            + "" + cgProcsCount);
                         writer.println("  cgProcsRowCounts:              "
                                        + Arrays.toString(cgProcsRowCounts));
+                        writer.println("  partialXExtent:                "
+                                       + partialXExtent);
+                        writer.println("  partialXOffset:                "
+                                       + partialXOffset);
+                        writer.println("  fullXExtent:                   "
+                                       + fullXExtent);
+                        writer.println("  fullXOffset:                   "
+                                       + fullXOffset);
                     }
                 }
             }
