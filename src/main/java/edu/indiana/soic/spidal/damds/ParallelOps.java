@@ -268,7 +268,7 @@ public class ParallelOps {
                         writer.println("  mmapLeadWorldRank:             " + mmapLeadWorldRank);
                         writer.println("  cgProcRank:                    " + cgProcRank);
                         writer.println("  cgProcsCount:                  "
-                                           + "" + cgProcRank);
+                                           + "" + cgProcsCount);
                         writer.println("  cgProcsRowCounts:              "
                                        + Arrays.toString(cgProcsRowCounts));
                     }
