@@ -910,7 +910,9 @@ public class Program {
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
             // in another memory map group, hence the use of mmapProcComm
-            ParallelOps.mmapProcComm.barrier();
+//            ParallelOps.mmapProcComm.barrier();
+            // TODO - remove after testing
+            ParallelOps.worldProcsComm.barrier();
 
             final double[][] result = extractPoints(
                 ParallelOps.fullXMappedDoubleBuffer, ParallelOps.globalColCount,
