@@ -177,10 +177,12 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
-                    X = calculateConjugateGradient(
-                        preX, config.targetDimension, config.numberDataPoints,
-                        BC, config.cgIter, config.cgErrorThreshold, cgCount, outRealCGIterations,
-                        weights, BlockSize, vArray);
+                    // TODO - remove after testing
+                    X = BC;
+//                    X = calculateConjugateGradient(
+//                        preX, config.targetDimension, config.numberDataPoints,
+//                        BC, config.cgIter, config.cgErrorThreshold, cgCount, outRealCGIterations,
+//                        weights, BlockSize, vArray);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.CG);
 
@@ -927,7 +929,17 @@ public class Program {
         Integer threadIdx, double[][] preX, int targetDimension, double tCur,
         short[][] distances, WeightsWrap weights, int blockSize) {
 
-        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        // TODO - remove after testing
+        final int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
+        final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadIdx];
+        double[][] array = new double[threadRowCount][targetDimension];
+        for (int i = threadRowStartOffset; i < threadRowCount; ++i){
+            System.arraycopy(preX[i], 0, array[i-threadRowStartOffset],0, targetDimension);
+        }
+        return array;
+
+
+        /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         float [][] BofZ = calculateBofZ(threadIdx, preX, targetDimension, tCur,
                                         distances, weights);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
@@ -937,7 +949,7 @@ public class Program {
         double [][] result = MatrixUtils.matrixMultiply(BofZ, preX, ParallelOps.threadRowCounts[threadIdx],
                                                   targetDimension, ParallelOps.globalColCount, blockSize);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        return result;
+        return result;*/
     }
 
     private static float[][] calculateBofZ(
