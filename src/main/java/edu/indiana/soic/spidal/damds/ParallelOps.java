@@ -7,12 +7,15 @@ import mpi.Intracomm;
 import mpi.MPI;
 import mpi.MPIException;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
@@ -249,17 +252,26 @@ public class ParallelOps {
                 worldProcsComm.bcast(intBuffer, 1, MPI.INT, 0);
                 int next = intBuffer.get(0);
                 if (next == worldProcRank){
-                    // Good it's my turn to print
-                    System.out.println("World rank: " + worldProcRank + " on " + machineName);
-                    System.out.println("  mmapIdLocalToNode:             " + mmapIdLocalToNode);
-                    System.out.println("  mmapProcsCount:                " + mmapProcsCount);
-                    System.out.println("  isMmapLead:                    " + isMmapLead);
-                    System.out.println("  mmapProcsWorldRanks:           " + Arrays.toString(mmapProcsWorldRanks));
-                    System.out.println("  mmapLeadWorldRankLocalToNode:  " + mmapLeadWorldRankLocalToNode);
-                    System.out.println("  mmapLeadWorldRank:             " + mmapLeadWorldRank);
-                    System.out.println("  cgProcRank:                    " + cgProcRank);
-                    System.out.println("  cgProcsCount:                  " + cgProcRank);
-                    System.out.println("  cgProcsRowCounts:              " + Arrays.toString(cgProcsRowCounts));
+                    try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("mmap.debug.out.txt"), StandardOpenOption.APPEND, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+
+                        PrintWriter writer = new PrintWriter(bw, true);
+                        // Good it's my turn to print
+                        writer.println(
+                            "World rank: " + worldProcRank + " on " + machineName);
+                        writer.println("  mmapIdLocalToNode:             " + mmapIdLocalToNode);
+                        writer.println("  mmapProcsCount:                " + mmapProcsCount);
+                        writer.println("  isMmapLead:                    " + isMmapLead);
+                        writer.println("  mmapProcsWorldRanks:           " + Arrays.toString(
+                            mmapProcsWorldRanks));
+                        writer.println("  mmapLeadWorldRankLocalToNode:  "
+                                           + "" + mmapLeadWorldRankLocalToNode);
+                        writer.println("  mmapLeadWorldRank:             " + mmapLeadWorldRank);
+                        writer.println("  cgProcRank:                    " + cgProcRank);
+                        writer.println("  cgProcsCount:                  "
+                                           + "" + cgProcRank);
+                        writer.println("  cgProcsRowCounts:              "
+                                       + Arrays.toString(cgProcsRowCounts));
+                    }
                 }
             }
         }
