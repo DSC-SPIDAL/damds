@@ -214,7 +214,7 @@ public class ParallelOps {
 
 
         final String partialXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".partialX.bin";
-        final String fullXFname = machineName + ".fullX.bin";
+        final String fullXFname = machineName + ".mmapId." + mmapIdLocalToNode +".fullX.bin";
         final String lockAndCountFname = machineName + ".lockAndCount.bin";
         try (FileChannel partialXFc = FileChannel.open(Paths.get(mmapScratchDir,
                                                                  partialXFname),
