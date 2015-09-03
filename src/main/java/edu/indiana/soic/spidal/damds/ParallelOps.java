@@ -252,7 +252,7 @@ public class ParallelOps {
                 worldProcsComm.bcast(intBuffer, 1, MPI.INT, 0);
                 int next = intBuffer.get(0);
                 if (next == worldProcRank){
-                    try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("mmap.debug.out.txt"), StandardOpenOption.APPEND, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+                    try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("mmap.debug" + worldProcRank + ".out.txt"), StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
 
                         PrintWriter writer = new PrintWriter(bw, true);
                         // Good it's my turn to print
