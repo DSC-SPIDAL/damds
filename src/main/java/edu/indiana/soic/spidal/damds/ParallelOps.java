@@ -222,13 +222,13 @@ public class ParallelOps {
             FileChannel fullXFc = FileChannel.open(Paths.get(mmapScratchDir,
                                                              fullXFname),
                                                    StandardOpenOption.CREATE,StandardOpenOption.WRITE,StandardOpenOption.READ);
-            FileChannel lockAndCountFc = FileChannel.open(Paths.get(
+            /*FileChannel lockAndCountFc = FileChannel.open(Paths.get(
                                                               mmapScratchDir,
                                                               lockAndCountFname),
                                                           StandardOpenOption
                                                               .CREATE,
                                                           StandardOpenOption.READ,
-                                                          StandardOpenOption.WRITE)){
+                                                          StandardOpenOption.WRITE)*/){
 
 
             long partialXExtent = (isMmapLead ? cgProcsRowCounts[cgProcRank] : procRowCount) * targetDimension * Double.BYTES;
@@ -242,6 +242,26 @@ public class ParallelOps {
                                             fullXOffset, fullXExtent));
             /*lockAndCountBytes = ByteBufferBytes.wrap(lockAndCountFc.map(
                 FileChannel.MapMode.READ_WRITE, 0, LOCK_AND_COUNT_EXTENT));*/
+
+            // Print debug info in order of world ranks
+            for (int i = 0; i < worldProcsCount; ++i){
+                intBuffer.put(0, i);
+                worldProcsComm.bcast(intBuffer, 1, MPI.INT, 0);
+                int next = intBuffer.get(0);
+                if (next == worldProcRank){
+                    // Good it's my turn to print
+                    System.out.println("World rank: " + worldProcRank + " on " + machineName);
+                    System.out.println("  mmapIdLocalToNode:             " + mmapIdLocalToNode);
+                    System.out.println("  mmapProcsCount:                " + mmapProcsCount);
+                    System.out.println("  isMmapLead:                    " + isMmapLead);
+                    System.out.println("  mmapProcsWorldRanks:           " + Arrays.toString(mmapProcsWorldRanks));
+                    System.out.println("  mmapLeadWorldRankLocalToNode:  " + mmapLeadWorldRankLocalToNode);
+                    System.out.println("  mmapLeadWorldRank:             " + mmapLeadWorldRank);
+                    System.out.println("  cgProcRank:                    " + cgProcRank);
+                    System.out.println("  cgProcsCount:                  " + cgProcRank);
+                    System.out.println("  cgProcsRowCounts:              " + Arrays.toString(cgProcsRowCounts));
+                }
+            }
         }
     }
 
