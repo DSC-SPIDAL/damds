@@ -822,7 +822,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialMMs, ParallelOps.partialXMappedDoubleBuffer);
+            mergePartials(partialMMs, ParallelOps.partialXWriteMappedDoubleBuffer);
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -904,7 +904,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialBCs, ParallelOps.partialXMappedDoubleBuffer);
+            mergePartials(partialBCs, ParallelOps.partialXWriteMappedDoubleBuffer);
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
