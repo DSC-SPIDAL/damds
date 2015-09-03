@@ -927,9 +927,17 @@ public class Program {
             }
             return result;
         }else {
-            double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
-            mergePartials(partials, targetDimension, bc);
-            return bc;
+            double [][] result = new double[ParallelOps.globalColCount][targetDimension];
+            mergePartials(partials, targetDimension, result);
+            for (int i = 0; i < result.length; ++i) {
+                for (int j = 0; j < targetDimension; ++j) {
+                    if (preX[i][j] != result[i][j]) {
+                        System.out.println(
+                            "(" + i + "," + j + ") preX " + preX[i][j] + " result " + result[i][j]);
+                    }
+                }
+            }
+            return result;
         }
 
     }
