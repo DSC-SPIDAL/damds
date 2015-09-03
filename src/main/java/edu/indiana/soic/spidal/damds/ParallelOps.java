@@ -316,9 +316,11 @@ public class ParallelOps {
     public static void partialXAllGather() throws MPIException {
         partialXLeaderReadMappedDoubleBuffer.position(0);
         fullXMappedDoubleBuffer.position(0);
-        cgProcComm.allGatherv(
-            partialXLeaderReadMappedDoubleBuffer.getDb(), cgProcsPartialXDoubleExtents[cgProcRank], MPI.DOUBLE, fullXMappedDoubleBuffer.getDb(), cgProcsPartialXDoubleExtents,
-            cgProcsPartialXDisplas, MPI.DOUBLE);
+        cgProcComm.allGatherv(partialXLeaderReadMappedDoubleBuffer.getDb(),
+                              cgProcsPartialXDoubleExtents[cgProcRank],
+                              MPI.DOUBLE, fullXMappedDoubleBuffer.getDb(),
+                              cgProcsPartialXDoubleExtents,
+                              cgProcsPartialXDisplas, MPI.DOUBLE);
         fullXMappedDoubleBuffer.force();
     }
 

@@ -936,10 +936,10 @@ public class Program {
 
     private static double[][] calculateNothingInternal(int threadIdx, double[][] preX, int targetDimension){
         final int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
-        final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadIdx];
+        final int globalRowStartOffset = ParallelOps.threadRowStartOffsets[threadIdx] + ParallelOps.procRowStartOffset;
         double[][] array = new double[threadRowCount][targetDimension];
-        for (int i = threadRowStartOffset; i < threadRowCount; ++i){
-            System.arraycopy(preX[i], 0, array[i-threadRowStartOffset],0, targetDimension);
+        for (int i = globalRowStartOffset; i < threadRowCount+globalRowStartOffset; ++i){
+            System.arraycopy(preX[i], 0, array[i-globalRowStartOffset],0, targetDimension);
         }
         return array;
     }
