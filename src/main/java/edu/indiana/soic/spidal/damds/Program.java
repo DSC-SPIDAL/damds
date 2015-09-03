@@ -916,8 +916,21 @@ public class Program {
             // It's not necessary to wait for a process
             // in another memory map group, hence the use of mmapProcComm
             ParallelOps.mmapProcComm.barrier();
-            return extractPoints(ParallelOps.fullXMappedDoubleBuffer,
-                ParallelOps.globalColCount, targetDimension);
+            // TODO - remove after testing
+
+            final double[][] result = extractPoints(
+                ParallelOps.fullXMappedDoubleBuffer, ParallelOps.globalColCount,
+                targetDimension);
+            if (ParallelOps.worldProcRank == 0) {
+                for (int i = 0; i < result.length; ++i) {
+                    for (int j = 0; j < targetDimension; ++j){
+                        if (preX[i][j] != result[i][j]){
+                            System.out.println("(" + i + "," + j + ") preX "  + preX[i][j] + " result " + result[i][j]);
+                        }
+                    }
+                }
+            }
+            return result;
         } else {
             double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialBCs, targetDimension, bc);
