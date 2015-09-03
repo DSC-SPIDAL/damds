@@ -236,13 +236,13 @@ public class ParallelOps {
 
 
             long partialXLeaderReadExtent = cgProcsRowCounts[cgProcRank] * targetDimension * Double.BYTES;
-            long partialXWritExtent = procRowCount * targetDimension * Double.BYTES;
+            long partialXWriteExtent = procRowCount * targetDimension * Double.BYTES;
             long partialXOffset = (procRowStartOffset - procRowRanges[mmapLeadWorldRank].getStartIndex()) * targetDimension * Double.BYTES;
             long fullXExtent = globalRowCount * targetDimension * Double.BYTES;
             long fullXOffset = 0L;
 
             partialXWriteMappedDoubleBuffer = new MappedDoubleBuffer(partialXFc.map(
-                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXWritExtent));
+                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXWriteExtent));
 
             partialXLeaderReadMappedDoubleBuffer = isMmapLead ? new MappedDoubleBuffer(partialXFc.map(
                 FileChannel.MapMode.READ_ONLY, partialXOffset, partialXLeaderReadExtent)) : null;
@@ -277,8 +277,10 @@ public class ParallelOps {
                                            + "" + cgProcsCount);
                         writer.println("  cgProcsRowCounts:              "
                                        + Arrays.toString(cgProcsRowCounts));
-                        writer.println("  partialXWritExtent:                "
-                                       + partialXWritExtent);
+                        writer.println("  partialXLeaderReadExtent:      "
+                                       + partialXLeaderReadExtent);
+                        writer.println("  partialXWriteExtent:           "
+                                       + partialXWriteExtent);
                         writer.println("  partialXOffset:                "
                                        + partialXOffset);
                         writer.println("  fullXExtent:                   "

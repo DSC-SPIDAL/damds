@@ -20,8 +20,8 @@ public class MappedDoubleBuffer{
         mbb.force();
     }
 
-    public void position(long pos) {
-        mbb.position(0);
-        db.position(0);
+    public void position(int pos) {
+        mbb.position(pos);
+        db.position(pos);
     }
 }

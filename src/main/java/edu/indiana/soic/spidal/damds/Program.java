@@ -822,7 +822,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialMMs, ParallelOps.partialXWriteMappedDoubleBuffer);
+            mergePartials(partialMMs, targetDimension, ParallelOps.partialXWriteMappedDoubleBuffer);
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -904,7 +904,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialBCs, ParallelOps.partialXWriteMappedDoubleBuffer);
+            mergePartials(partialBCs,targetDimension, ParallelOps.partialXWriteMappedDoubleBuffer);
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -1020,12 +1020,15 @@ public class Program {
     }
 
     private static void mergePartials(
-        double[][][] partials, MappedDoubleBuffer result){
+        double[][][] partials, int targetDimension, MappedDoubleBuffer result){
         result.position(0);
+        int pos = 0;
         DoubleBuffer db = result.getDb();
         for (double [][] partial : partials){
             for (double [] point : partial){
+                result.position(pos);
                 db.put(point);
+                pos += targetDimension;
             }
         }
         result.force();
