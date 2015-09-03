@@ -128,7 +128,13 @@ public class Program {
                 preX, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
             Utils.printMessage("\nInitial stress=" + preStress);
 
-            double X[][] = null;
+            // TODO - remove after testing
+            double[][] X = calculateNothing(preX, config.targetDimension);
+            preStress = calculateStress(
+                X, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
+            Utils.printMessage("\nInitial after calculate nothing stress=" + preStress);
+
+            /*double X[][] = null;
             double BC[][];
 
             tCur = config.alpha * tMax;
@@ -255,8 +261,8 @@ public class Program {
 
 
             // TODO - switched off points writing to save time
-            /* TODO Fix error handling here */
-            /*if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
+            *//* TODO Fix error handling here *//*
+            *//*if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
                 "NOLABEL")) {
                 try {
                     writeOuput(X, config.pointsFile);
@@ -271,7 +277,7 @@ public class Program {
                 catch (IOException e) {
                     e.printStackTrace();
                 }
-            }*/
+            }*//*
 
             Double finalStress = calculateStress(
                 X, config.targetDimension, tCur, distances, weights,
@@ -298,7 +304,7 @@ public class Program {
 
             printTimings(totalTime, temperatureLoopTime);
 
-            Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
+            Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");*/
 
             ParallelOps.tearDownParallelism();
         }
@@ -877,6 +883,67 @@ public class Program {
         return sum;
     }
 
+    // TODO - remove after testing
+    private static double[][] calculateNothing(double[][] preX, int targetDimension) throws MPIException, InterruptedException {
+        double [][][] partials = new double[ParallelOps.threadCount][][];
+
+        if (ParallelOps.threadCount > 1) {
+            launchHabaneroApp(
+                () -> forallChunked(
+                    0, ParallelOps.threadCount - 1,
+                    (threadIdx) -> {
+                        partials[threadIdx] =
+                            calculateNothingInternal(threadIdx, preX,
+                                                     targetDimension);
+                    }));
+        }
+        else {
+            partials[0] = calculateNothingInternal(
+                0, preX, targetDimension);
+        }
+
+        if (ParallelOps.worldProcsCount > 1) {
+            mergePartials(partials, targetDimension, ParallelOps.partialXWriteMappedDoubleBuffer);
+            if (ParallelOps.isMmapLead) {
+                ParallelOps.partialXAllGather();
+            }
+            // Each process in a memory group waits here.
+            // It's not necessary to wait for a process
+            // in another memory map group, hence the use of mmapProcComm
+            ParallelOps.mmapProcComm.barrier();
+
+            final double[][] result = extractPoints(
+                ParallelOps.fullXMappedDoubleBuffer, ParallelOps.globalColCount,
+                targetDimension);
+            if (ParallelOps.worldProcRank == 0) {
+                for (int i = 0; i < result.length; ++i) {
+                    for (int j = 0; j < targetDimension; ++j) {
+                        if (preX[i][j] != result[i][j]) {
+                            System.out.println(
+                                "(" + i + "," + j + ") preX " + preX[i][j] + " result " + result[i][j]);
+                        }
+                    }
+                }
+            }
+            return result;
+        }else {
+            double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
+            mergePartials(partials, targetDimension, bc);
+            return bc;
+        }
+
+    }
+
+    private static double[][] calculateNothingInternal(int threadIdx, double[][] preX, int targetDimension){
+        final int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
+        final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadIdx];
+        double[][] array = new double[threadRowCount][targetDimension];
+        for (int i = threadRowStartOffset; i < threadRowCount; ++i){
+            System.arraycopy(preX[i], 0, array[i-threadRowStartOffset],0, targetDimension);
+        }
+        return array;
+    }
+
     private static double[][] calculateBC(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
         WeightsWrap weights, int blockSize)
@@ -1026,10 +1093,12 @@ public class Program {
 
     private static double[][] extractPoints(
         DoubleBuffer buffer, int numPoints, int dimension) {
-        buffer.position(0);
+        int pos = 0;
         double [][] points = new double[numPoints][dimension];
         for (int i = 0; i < numPoints; ++i){
-            buffer.get(points[i],0,1);
+            buffer.position(pos);
+            buffer.get(points[i]);
+            pos += dimension;
         }
         return  points;
     }
