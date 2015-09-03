@@ -79,7 +79,8 @@ public class ParallelOps {
     public static LongBuffer threadsAndMPIBuffer;
     public static LongBuffer mpiOnlyBuffer;
 
-    public static MappedDoubleBuffer partialXMappedDoubleBuffer;
+    public static MappedDoubleBuffer partialXLeaderReadMappedDoubleBuffer;
+    public static MappedDoubleBuffer partialXWriteMappedDoubleBuffer;
     public static MappedDoubleBuffer fullXMappedDoubleBuffer;
  /*   public static Bytes lockAndCountBytes;
     public static final int LOCK_OFFSET = 0;
@@ -234,13 +235,18 @@ public class ParallelOps {
                                                           StandardOpenOption.WRITE)*/){
 
 
-            long partialXExtent = (isMmapLead ? cgProcsRowCounts[cgProcRank] : procRowCount) * targetDimension * Double.BYTES;
+            long partialXLeaderReadExtent = cgProcsRowCounts[cgProcRank] * targetDimension * Double.BYTES;
+            long partialXWritExtent = procRowCount * targetDimension * Double.BYTES;
             long partialXOffset = (procRowStartOffset - procRowRanges[mmapLeadWorldRank].getStartIndex()) * targetDimension * Double.BYTES;
             long fullXExtent = globalRowCount * targetDimension * Double.BYTES;
             long fullXOffset = 0L;
 
-            partialXMappedDoubleBuffer = new MappedDoubleBuffer(partialXFc.map(
-                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXExtent));
+            partialXWriteMappedDoubleBuffer = new MappedDoubleBuffer(partialXFc.map(
+                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXWritExtent));
+
+            partialXLeaderReadMappedDoubleBuffer = isMmapLead ? new MappedDoubleBuffer(partialXFc.map(
+                FileChannel.MapMode.READ_ONLY, partialXOffset, partialXLeaderReadExtent)) : null;
+
             fullXMappedDoubleBuffer = new MappedDoubleBuffer(fullXFc.map(FileChannel.MapMode.READ_WRITE,
                                             fullXOffset, fullXExtent));
             /*lockAndCountBytes = ByteBufferBytes.wrap(lockAndCountFc.map(
@@ -271,8 +277,8 @@ public class ParallelOps {
                                            + "" + cgProcsCount);
                         writer.println("  cgProcsRowCounts:              "
                                        + Arrays.toString(cgProcsRowCounts));
-                        writer.println("  partialXExtent:                "
-                                       + partialXExtent);
+                        writer.println("  partialXWritExtent:                "
+                                       + partialXWritExtent);
                         writer.println("  partialXOffset:                "
                                        + partialXOffset);
                         writer.println("  fullXExtent:                   "
@@ -306,10 +312,10 @@ public class ParallelOps {
     }
 
     public static void partialXAllGather() throws MPIException {
-        partialXMappedDoubleBuffer.position(0);
+        partialXLeaderReadMappedDoubleBuffer.position(0);
         fullXMappedDoubleBuffer.position(0);
         cgProcComm.allGatherv(
-            partialXMappedDoubleBuffer.getDb(), cgProcsPartialXDoubleExtents[cgProcRank], MPI.DOUBLE, fullXMappedDoubleBuffer.getDb(), cgProcsPartialXDoubleExtents,
+            partialXLeaderReadMappedDoubleBuffer.getDb(), cgProcsPartialXDoubleExtents[cgProcRank], MPI.DOUBLE, fullXMappedDoubleBuffer.getDb(), cgProcsPartialXDoubleExtents,
             cgProcsPartialXDisplas, MPI.DOUBLE);
         fullXMappedDoubleBuffer.force();
     }
