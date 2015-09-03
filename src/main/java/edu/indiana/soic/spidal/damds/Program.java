@@ -922,7 +922,7 @@ public class Program {
                     for (int j = 0; j < targetDimension; ++j) {
                         if (preX[i][j] != result[i][j]) {
                             System.out.println(
-                                "(" + i + "," + j + ") preX " + preX[i][j] + " result " + result[i][j]);
+                                "testloop1-(" + i + "," + j + ") preX " + preX[i][j] + " result " + result[i][j]);
                         }
                     }
                 }
@@ -935,7 +935,7 @@ public class Program {
                 for (int j = 0; j < targetDimension; ++j) {
                     if (preX[i][j] != result[i][j]) {
                         System.out.println(
-                            "(" + i + "," + j + ") preX " + preX[i][j] + " result " + result[i][j]);
+                            "testloop-2(" + i + "," + j + ") preX " + preX[i][j] + " result " + result[i][j]);
                     }
                 }
             }
