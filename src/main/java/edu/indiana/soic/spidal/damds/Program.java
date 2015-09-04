@@ -1139,11 +1139,11 @@ public class Program {
         int pos = 0;
         for (double [][] partial : partials){
             for (double [] point : partial){
-                result.position(pos);
                 for (int i = 0; i < targetDimension; ++i){
+                    result.position(pos);
                     result.writeDouble(point[i]);
+                    pos += Double.BYTES;
                 }
-                pos += targetDimension*Double.BYTES;
             }
         }
 //        result.force();
