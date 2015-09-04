@@ -1113,13 +1113,12 @@ public class Program {
 
     private static double[][] extractPoints(
         DoubleBuffer buffer, int numPoints, int dimension) {
-        final int offset = dimension * Double.BYTES;
         int pos = 0;
         double [][] points = new double[numPoints][dimension];
         for (int i = 0; i < numPoints; ++i){
             buffer.position(pos);
             buffer.get(points[i]);
-            pos += offset;
+            pos += dimension;
         }
         return  points;
     }
