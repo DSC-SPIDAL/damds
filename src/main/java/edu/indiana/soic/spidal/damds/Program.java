@@ -916,7 +916,7 @@ public class Program {
             ParallelOps.worldProcsComm.barrier();
 
             final double[][] result = extractPoints(
-                ParallelOps.fullXByteBuffer, ParallelOps.globalColCount,
+                ParallelOps.fullXBytes, ParallelOps.globalColCount,
                 targetDimension);
             if (ParallelOps.worldProcRank == 0) {
                 for (int i = 0; i < result.length; ++i) {
@@ -1094,6 +1094,21 @@ public class Program {
             }
         }
         return BofZ;
+    }
+
+    private static double[][] extractPoints(
+        Bytes bytes, int numPoints, int dimension) {
+        int pos = 0;
+        double [][] points = new double[numPoints][dimension];
+        for (int i = 0; i < numPoints; ++i){
+            double[] pointsRow = points[i];
+            for (int j = 0; j < dimension; ++j) {
+                bytes.position(pos);
+                pointsRow[j] = bytes.readDouble(pos);
+                pos += Double.BYTES;
+            }
+        }
+        return  points;
     }
 
     private static double[][] extractPoints(

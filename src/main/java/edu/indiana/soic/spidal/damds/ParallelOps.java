@@ -245,14 +245,20 @@ public class ParallelOps {
             long fullXExtent = globalRowCount * targetDimension * Double.BYTES;
             long fullXOffset = 0L;
 
-            partialXWriteBytes = ByteBufferBytes.wrap(
+            /*partialXWriteBytes = ByteBufferBytes.wrap(
                 partialXFc.map(FileChannel.MapMode.READ_WRITE, partialXOffset,
-                               partialXWriteExtent));
+                               partialXWriteExtent));*/
 
-            partialXLeaderReadBytes = isMmapLead ? ByteBufferBytes.wrap(partialXFc.map(
+            /*partialXLeaderReadBytes = isMmapLead ? ByteBufferBytes.wrap(partialXFc.map(
                 FileChannel.MapMode.READ_ONLY, partialXOffset, partialXLeaderReadExtent)) : null;
-            partialXLeaderReadByteBuffer = isMmapLead ? partialXLeaderReadBytes.sliceAsByteBuffer(partialXLeaderReadByteBuffer) : null;
+            partialXLeaderReadByteBuffer = isMmapLead ? partialXLeaderReadBytes.sliceAsByteBuffer(partialXLeaderReadByteBuffer) : null;*/
 
+            partialXLeaderReadBytes = ByteBufferBytes.wrap(partialXFc.map(
+                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXLeaderReadExtent));
+            partialXLeaderReadByteBuffer = partialXLeaderReadBytes.sliceAsByteBuffer(partialXLeaderReadByteBuffer);
+
+            partialXLeaderReadBytes.position(0);
+            partialXWriteBytes = partialXLeaderReadBytes.slice(0, partialXWriteExtent);
 
             fullXBytes = ByteBufferBytes.wrap(fullXFc.map(FileChannel.MapMode.READ_WRITE,
                                             fullXOffset, fullXExtent));
