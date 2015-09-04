@@ -915,10 +915,15 @@ public class Program {
             // TODO - remove after testing
             ParallelOps.worldProcsComm.barrier();
 
-            final double[][] result = extractPoints(
+            double[][] result = extractPoints(
                 ParallelOps.fullXBytes, ParallelOps.globalColCount,
                 targetDimension);
             if (ParallelOps.worldProcRank == 0) {
+                // TODO - a test to see if we assume writes are all good then this read should be good
+                // because it's reading the buffer returned by MPI allgather.
+                result = extractPoints(
+                    ParallelOps.fullXByteBuffer, ParallelOps.globalColCount,
+                    targetDimension);
                 for (int i = 0; i < result.length; ++i) {
                     for (int j = 0; j < targetDimension; ++j) {
                         if (preX[i][j] != result[i][j]) {
