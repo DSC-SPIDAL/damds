@@ -330,6 +330,8 @@ public class ParallelOps {
                               MPI.BYTE, fullXByteBuffer,
                               cgProcsPartialXByteExtents,
                               cgProcsPartialXDisplas, MPI.BYTE);
+        fullXBytes.position(0);
+        fullXBytes.write(fullXByteBuffer);
 //        fullXBytes.force();
     }
 
