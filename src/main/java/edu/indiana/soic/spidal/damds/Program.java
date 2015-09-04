@@ -921,9 +921,10 @@ public class Program {
             if (ParallelOps.worldProcRank == 0) {
                 // TODO - a test to see if we assume writes are all good then this read should be good
                 // because it's reading the buffer returned by MPI allgather.
-                result = extractPoints(
+                // OK it's a FAILURE, so writing may not be good.
+                /*result = extractPoints(
                     ParallelOps.fullXByteBuffer, ParallelOps.globalColCount,
-                    targetDimension);
+                    targetDimension);*/
                 for (int i = 0; i < result.length; ++i) {
                     for (int j = 0; j < targetDimension; ++j) {
                         if (preX[i][j] != result[i][j]) {
