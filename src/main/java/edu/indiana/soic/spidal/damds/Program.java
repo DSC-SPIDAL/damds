@@ -8,9 +8,11 @@ import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPIException;
+import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.DoubleBuffer;
 import java.nio.LongBuffer;
@@ -20,7 +22,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
@@ -830,7 +831,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialMMs, targetDimension, ParallelOps.partialXWriteMappedDoubleBuffer);
+            mergePartials(partialMMs, targetDimension, ParallelOps.partialXWriteBytes);
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -840,7 +841,7 @@ public class Program {
             // It's not necessary to wait for a process
             // in another memory map group, hence the use of mmapProcComm
             ParallelOps.mmapProcComm.barrier();
-            return extractPoints(ParallelOps.fullXMappedDoubleBuffer,
+            return extractPoints(ParallelOps.fullXByteBuffer,
                 ParallelOps.globalColCount, targetDimension);
         } else {
             double [][] mm = new double[ParallelOps.globalColCount][targetDimension];
@@ -903,7 +904,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partials, targetDimension, ParallelOps.partialXWriteMappedDoubleBuffer);
+            mergePartials(partials, targetDimension, ParallelOps.partialXWriteBytes);
             if (ParallelOps.isMmapLead) {
                 ParallelOps.partialXAllGather();
             }
@@ -915,7 +916,7 @@ public class Program {
             ParallelOps.worldProcsComm.barrier();
 
             final double[][] result = extractPoints(
-                ParallelOps.fullXMappedDoubleBuffer, ParallelOps.globalColCount,
+                ParallelOps.fullXByteBuffer, ParallelOps.globalColCount,
                 targetDimension);
             if (ParallelOps.worldProcRank == 0) {
                 for (int i = 0; i < result.length; ++i) {
@@ -983,7 +984,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialBCs,targetDimension, ParallelOps.partialXWriteMappedDoubleBuffer);
+            mergePartials(partialBCs,targetDimension, ParallelOps.partialXWriteBytes);
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -996,7 +997,7 @@ public class Program {
             // TODO - remove after testing
 
             final double[][] result = extractPoints(
-                ParallelOps.fullXMappedDoubleBuffer, ParallelOps.globalColCount,
+                ParallelOps.fullXByteBuffer, ParallelOps.globalColCount,
                 targetDimension);
             if (ParallelOps.worldProcRank == 0) {
                 for (int i = 0; i < result.length; ++i) {
@@ -1096,19 +1097,29 @@ public class Program {
     }
 
     private static double[][] extractPoints(
-        MappedDoubleBuffer buffer, int numPoints, int dimension) {
-        buffer.position(0);
-        return extractPoints(buffer.getDb(), numPoints, dimension);
+        ByteBuffer buffer, int numPoints, int dimension) {
+        int pos = 0;
+        double [][] points = new double[numPoints][dimension];
+        for (int i = 0; i < numPoints; ++i){
+            double[] pointsRow = points[i];
+            for (int j = 0; j < dimension; ++j) {
+                buffer.position(pos);
+                pointsRow[j] = buffer.getDouble(pos);
+                pos += Double.BYTES;
+            }
+        }
+        return  points;
     }
 
     private static double[][] extractPoints(
         DoubleBuffer buffer, int numPoints, int dimension) {
+        final int offset = dimension * Double.BYTES;
         int pos = 0;
         double [][] points = new double[numPoints][dimension];
         for (int i = 0; i < numPoints; ++i){
             buffer.position(pos);
             buffer.get(points[i]);
-            pos += dimension;
+            pos += offset;
         }
         return  points;
     }
@@ -1124,18 +1135,19 @@ public class Program {
     }
 
     private static void mergePartials(
-        double[][][] partials, int targetDimension, MappedDoubleBuffer result){
+        double[][][] partials, int targetDimension, Bytes result){
         result.position(0);
         int pos = 0;
-        DoubleBuffer db = result.getDb();
         for (double [][] partial : partials){
             for (double [] point : partial){
                 result.position(pos);
-                db.put(point);
-                pos += targetDimension;
+                for (int i = 0; i < targetDimension; ++i){
+                    result.writeDouble(point[i]);
+                }
+                pos += targetDimension*Double.BYTES;
             }
         }
-        result.force();
+//        result.force();
     }
 
     private static double calculateStress(
