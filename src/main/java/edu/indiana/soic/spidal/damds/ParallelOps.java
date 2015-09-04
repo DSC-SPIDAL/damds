@@ -46,6 +46,7 @@ public class ParallelOps {
     public static int[] mmapProcsWorldRanks;
     public static int mmapLeadWorldRank;
     public static int mmapLeadWorldRankLocalToNode;
+    public static int mmapsProcsRowCount;
 
     // mmap leaders form one communicating group and the others (followers)
     // belong to another communicating group.
@@ -200,11 +201,14 @@ public class ParallelOps {
         cgProcsRowCounts = new int[cgProcsCount];
         cgProcsPartialXByteExtents = new int[cgProcsCount];
         cgProcsPartialXDisplas = new int[cgProcsCount];
+        int rowCount = 0;
         if (isMmapLead){
-            int rowCount = IntStream.range(mmapLeadWorldRank,
+            rowCount = IntStream.range(mmapLeadWorldRank,
                                            mmapLeadWorldRank + mmapProcsCount)
                 .map(i -> procRowRanges[i].getLength())
                 .sum();
+
+
             cgProcsRowCounts[cgProcRank] = rowCount;
             cgProcComm.allGather(cgProcsRowCounts, 1, MPI.INT);
             for (int i = 0; i < cgProcsCount; ++i){
@@ -215,6 +219,9 @@ public class ParallelOps {
             System.arraycopy(cgProcsPartialXByteExtents, 0, cgProcsPartialXDisplas, 1, cgProcsCount - 1);
             Arrays.parallelPrefix(cgProcsPartialXDisplas, (m, n) -> m + n);
         }
+        intBuffer.put(0, rowCount);
+        mmapProcComm.bcast(intBuffer, 1, MPI.INT, 0);
+        mmapsProcsRowCount = intBuffer.get(0);
 
 
         final String partialXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".partialX.bin";
@@ -239,7 +246,7 @@ public class ParallelOps {
                                                           StandardOpenOption.WRITE)*/){
 
 
-            long partialXLeaderReadExtent = cgProcsRowCounts[cgProcRank] * targetDimension * Double.BYTES;
+            long partialXLeaderReadExtent = mmapsProcsRowCount * targetDimension * Double.BYTES;
             long partialXWriteExtent = procRowCount * targetDimension * Double.BYTES;
             long partialXOffset = (procRowStartOffset - procRowRanges[mmapLeadWorldRank].getStartIndex()) * targetDimension * Double.BYTES;
             long fullXExtent = globalRowCount * targetDimension * Double.BYTES;
