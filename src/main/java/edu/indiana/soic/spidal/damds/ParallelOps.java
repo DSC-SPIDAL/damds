@@ -249,7 +249,7 @@ public class ParallelOps {
             long partialXLeaderReadExtent = mmapsProcsRowCount * targetDimension * Double.BYTES;
             long partialXWriteExtent = procRowCount * targetDimension * Double.BYTES;
             long partialXOffset = (procRowStartOffset - procRowRanges[mmapLeadWorldRank].getStartIndex()) * targetDimension * Double.BYTES;
-            long fullXExtent = globalRowCount * targetDimension * Double.BYTES;
+            int fullXExtent = globalRowCount * targetDimension * Double.BYTES;
             long fullXOffset = 0L;
 
             /*partialXWriteBytes = ByteBufferBytes.wrap(
@@ -261,15 +261,15 @@ public class ParallelOps {
             partialXLeaderReadByteBuffer = isMmapLead ? partialXLeaderReadBytes.sliceAsByteBuffer(partialXLeaderReadByteBuffer) : null;*/
 
             partialXLeaderReadBytes = ByteBufferBytes.wrap(partialXFc.map(
-                FileChannel.MapMode.READ_WRITE, partialXOffset, partialXLeaderReadExtent));
+                FileChannel.MapMode.READ_WRITE, 0, partialXLeaderReadExtent));
             partialXLeaderReadByteBuffer = partialXLeaderReadBytes.sliceAsByteBuffer(partialXLeaderReadByteBuffer);
 
             partialXLeaderReadBytes.position(0);
-            partialXWriteBytes = partialXLeaderReadBytes.slice(0, partialXWriteExtent);
+            partialXWriteBytes = partialXLeaderReadBytes.slice(partialXOffset, partialXWriteExtent);
 
             fullXBytes = ByteBufferBytes.wrap(fullXFc.map(FileChannel.MapMode.READ_WRITE,
                                             fullXOffset, fullXExtent));
-            fullXByteBuffer = fullXBytes.sliceAsByteBuffer(fullXByteBuffer);
+            fullXByteBuffer = MPI.newByteBuffer(fullXExtent);
 
             /*lockAndCountBytes = ByteBufferBytes.wrap(lockAndCountFc.map(
                 FileChannel.MapMode.READ_WRITE, 0, LOCK_AND_COUNT_EXTENT));*/
