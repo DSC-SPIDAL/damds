@@ -131,11 +131,10 @@ public class Program {
             Utils.printMessage("\nInitial stress=" + preStress);
 
             // TODO - remove after testing
-            double[][] X = calculateNothing(preX, config.targetDimension);
+            /*double[][] X = calculateNothing(preX, config.targetDimension);
             preStress = calculateStress(
                 X, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
-            Utils.printMessage("\nInitial after calculate nothing stress=" + preStress);
-/*
+            Utils.printMessage("\nInitial after calculate nothing stress=" + preStress);*/
 
             double X[][] = null;
             double BC[][];
@@ -260,7 +259,6 @@ public class Program {
                     "Average of Delta(original distance) = %.5g",
                     distanceSummary.getAverage()));
 
-*/
 
             // TODO - switched off points writing to save time
              /*// TODO Fix error handling here
@@ -288,7 +286,7 @@ public class Program {
             mainTimer.stop();
 
 
-           /* Utils.printMessage("Finishing DAMDS run ...");
+            Utils.printMessage("Finishing DAMDS run ...");
             long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
             long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
             Utils.printMessage(
@@ -304,7 +302,7 @@ public class Program {
                     outRealCGIterations.getValue(), (outRealCGIterations.getValue() * 1.0) / smacofRealIterations));
             Utils.printMessage("  Final Stress:\t" + finalStress);
 
-            printTimings(totalTime, temperatureLoopTime);*/
+            printTimings(totalTime, temperatureLoopTime);
 
             Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
@@ -844,7 +842,7 @@ public class Program {
             // It's not necessary to wait for a process
             // in another memory map group, hence the use of mmapProcComm
             ParallelOps.mmapProcComm.barrier();
-            return extractPoints(ParallelOps.fullXByteBuffer,
+            return extractPoints(ParallelOps.fullXBytes,
                 ParallelOps.globalColCount, targetDimension);
         } else {
             double [][] mm = new double[ParallelOps.globalColCount][targetDimension];
@@ -998,7 +996,7 @@ public class Program {
             ParallelOps.mmapProcComm.barrier();
 
             return extractPoints(
-                ParallelOps.fullXByteBuffer, ParallelOps.globalColCount,
+                ParallelOps.fullXBytes, ParallelOps.globalColCount,
                 targetDimension);
         } else {
             double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
