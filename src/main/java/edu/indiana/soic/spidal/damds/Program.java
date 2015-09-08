@@ -130,6 +130,13 @@ public class Program {
                 preX, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
             Utils.printMessage("\nInitial stress=" + preStress);
 
+            // TODO - remove after testing
+            double[][] X = calculateNothing(preX, config.targetDimension);
+            preStress = calculateStress(
+                X, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
+            Utils.printMessage("\nInitial after calculate nothing stress=" + preStress);
+/*
+
             double X[][] = null;
             double BC[][];
 
@@ -253,6 +260,7 @@ public class Program {
                     "Average of Delta(original distance) = %.5g",
                     distanceSummary.getAverage()));
 
+*/
 
             // TODO - switched off points writing to save time
              /*// TODO Fix error handling here
@@ -280,7 +288,7 @@ public class Program {
             mainTimer.stop();
 
 
-            Utils.printMessage("Finishing DAMDS run ...");
+           /* Utils.printMessage("Finishing DAMDS run ...");
             long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
             long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
             Utils.printMessage(
@@ -296,7 +304,7 @@ public class Program {
                     outRealCGIterations.getValue(), (outRealCGIterations.getValue() * 1.0) / smacofRealIterations));
             Utils.printMessage("  Final Stress:\t" + finalStress);
 
-            printTimings(totalTime, temperatureLoopTime);
+            printTimings(totalTime, temperatureLoopTime);*/
 
             Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
@@ -877,6 +885,74 @@ public class Program {
             }
         }
         return sum;
+    }
+
+    // TODO - remove after testing
+    private static double[][] calculateNothing(double[][] preX, int targetDimension) throws MPIException, InterruptedException {
+        double [][][] partials = new double[ParallelOps.threadCount][][];
+
+        if (ParallelOps.threadCount > 1) {
+            launchHabaneroApp(
+                () -> forallChunked(
+                    0, ParallelOps.threadCount - 1,
+                    (threadIdx) -> {
+                        partials[threadIdx] =
+                            calculateNothingInternal(threadIdx, preX,
+                                                     targetDimension);
+                    }));
+        }
+        else {
+            partials[0] = calculateNothingInternal(
+                0, preX, targetDimension);
+        }
+
+        if (ParallelOps.worldProcsCount > 1) {
+            mergePartials(partials, targetDimension, ParallelOps.mmapXWriteBytes);
+            ParallelOps.mmapProcComm.barrier();
+            if (ParallelOps.isMmapLead) {
+                ParallelOps.partialXAllGather();
+            }
+            // Each process in a memory group waits here.
+            // It's not necessary to wait for a process
+            // in another memory map group, hence the use of mmapProcComm
+            ParallelOps.mmapProcComm.barrier();
+
+            double[][] result = extractPoints(
+                ParallelOps.fullXBytes, ParallelOps.globalColCount,
+                targetDimension);
+            for (int i = 0; i < result.length; ++i) {
+                for (int j = 0; j < targetDimension; ++j) {
+                    if (preX[i][j] != result[i][j]) {
+                        System.out.println(
+                            "Rank " + ParallelOps.worldProcRank + " testloop1-(" + i + ','
+                            + j + ") preX " + preX[i][j] + " result " + result[i][j]);
+                    }
+                }
+            }            return result;
+        }else {
+            double [][] result = new double[ParallelOps.globalColCount][targetDimension];
+            mergePartials(partials, targetDimension, result);
+            for (int i = 0; i < result.length; ++i) {
+                for (int j = 0; j < targetDimension; ++j) {
+                    if (preX[i][j] != result[i][j]) {
+                        System.out.println(
+                            "testloop-2(" + i + "," + j + ") preX " + preX[i][j] + " result " + result[i][j]);
+                    }
+                }
+            }
+            return result;
+        }
+
+    }
+
+    private static double[][] calculateNothingInternal(int threadIdx, double[][] preX, int targetDimension){
+        final int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
+        final int globalRowStartOffset = ParallelOps.threadRowStartOffsets[threadIdx] + ParallelOps.procRowStartOffset;
+        double[][] array = new double[threadRowCount][targetDimension];
+        for (int i = globalRowStartOffset; i < threadRowCount+globalRowStartOffset; ++i){
+            System.arraycopy(preX[i], 0, array[i-globalRowStartOffset],0, targetDimension);
+        }
+        return array;
     }
 
     private static double[][] calculateBC(
