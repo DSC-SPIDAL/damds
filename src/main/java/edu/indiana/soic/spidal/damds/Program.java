@@ -831,7 +831,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialMMs, targetDimension, ParallelOps.partialXWriteBytes);
+            mergePartials(partialMMs, targetDimension, ParallelOps.mmapXWriteBytes);
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -904,37 +904,28 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partials, targetDimension, ParallelOps.partialXWriteBytes);
+            mergePartials(partials, targetDimension, ParallelOps.mmapXWriteBytes);
+            ParallelOps.mmapProcComm.barrier();
             if (ParallelOps.isMmapLead) {
                 ParallelOps.partialXAllGather();
             }
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
             // in another memory map group, hence the use of mmapProcComm
-//            ParallelOps.mmapProcComm.barrier();
-            // TODO - remove after testing
-            ParallelOps.worldProcsComm.barrier();
+            ParallelOps.mmapProcComm.barrier();
 
             double[][] result = extractPoints(
                 ParallelOps.fullXBytes, ParallelOps.globalColCount,
                 targetDimension);
-            if (ParallelOps.worldProcRank == 0) {
-                // TODO - a test to see if we assume writes are all good then this read should be good
-                // because it's reading the buffer returned by MPI allgather.
-                // OK it's a FAILURE, so writing may not be good.
-                /*result = extractPoints(
-                    ParallelOps.fullXByteBuffer, ParallelOps.globalColCount,
-                    targetDimension);*/
-                for (int i = 0; i < result.length; ++i) {
-                    for (int j = 0; j < targetDimension; ++j) {
-                        if (preX[i][j] != result[i][j]) {
-                            System.out.println(
-                                "testloop1-(" + i + "," + j + ") preX " + preX[i][j] + " result " + result[i][j]);
-                        }
+            for (int i = 0; i < result.length; ++i) {
+                for (int j = 0; j < targetDimension; ++j) {
+                    if (preX[i][j] != result[i][j]) {
+                        System.out.println(
+                            "Rank " + ParallelOps.worldProcRank + " testloop1-(" + i + ','
+                            + j + ") preX " + preX[i][j] + " result " + result[i][j]);
                     }
                 }
-            }
-            return result;
+            }            return result;
         }else {
             double [][] result = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partials, targetDimension, result);
@@ -990,7 +981,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            mergePartials(partialBCs,targetDimension, ParallelOps.partialXWriteBytes);
+            mergePartials(partialBCs,targetDimension, ParallelOps.mmapXWriteBytes);
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -1157,17 +1148,13 @@ public class Program {
     private static void mergePartials(
         double[][][] partials, int targetDimension, Bytes result){
         result.position(0);
-        int pos = 0;
         for (double [][] partial : partials){
             for (double [] point : partial){
                 for (int i = 0; i < targetDimension; ++i){
-                    result.position(pos);
                     result.writeDouble(point[i]);
-                    pos += Double.BYTES;
                 }
             }
         }
-//        result.force();
     }
 
     private static double calculateStress(

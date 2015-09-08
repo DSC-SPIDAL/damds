@@ -46,16 +46,16 @@ public class ParallelOps {
     public static int[] mmapProcsWorldRanks;
     public static int mmapLeadWorldRank;
     public static int mmapLeadWorldRankLocalToNode;
-    public static int mmapsProcsRowCount;
+    public static int mmapProcsRowCount;
 
     // mmap leaders form one communicating group and the others (followers)
     // belong to another communicating group.
     public static Intracomm cgProcComm;
     public static int cgProcRank;
     public static int cgProcsCount;
-    public static int[] cgProcsRowCounts;
-    public static int[] cgProcsPartialXByteExtents;
-    public static int[] cgProcsPartialXDisplas;
+    public static int[] cgProcsMmapRowCounts;
+    public static int[] cgProcsMmapXByteExtents;
+    public static int[] cgProcsMmapXDisplas;
 
     public static String parallelPattern;
     public static Range[] procRowRanges;
@@ -74,24 +74,18 @@ public class ParallelOps {
     public static int globalColCount;
 
     // Buffers for MPI operations
+    static DoubleBuffer pointBuffer;
     private static ByteBuffer statBuffer;
     private static DoubleBuffer doubleBuffer;
     private static IntBuffer intBuffer;
-    static DoubleBuffer partialPointBuffer;
-    static DoubleBuffer pointBuffer;
     public static LongBuffer threadsAndMPIBuffer;
     public static LongBuffer mpiOnlyBuffer;
 
-    public static Bytes partialXLeaderReadBytes;
-    public static ByteBuffer partialXLeaderReadByteBuffer;
-    public static Bytes partialXWriteBytes;
+    public static Bytes mmapXReadBytes;
+    public static ByteBuffer mmapXReadByteBuffer;
+    public static Bytes mmapXWriteBytes;
     public static Bytes fullXBytes;
     public static ByteBuffer fullXByteBuffer;
- /*   public static Bytes lockAndCountBytes;
-    public static final int LOCK_OFFSET = 0;
-    public static final int COUNT_OFFSET = 4;
-    private static final int LOCK_AND_COUNT_EXTENT = 12; // 12 bytes = 4 byte lock + 8 byte (long) count*/
-
 
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
@@ -192,126 +186,72 @@ public class ParallelOps {
                              threadRowStartOffsets[threadIdx] * globalColCount;
                      });
 
-        // Allocate vector buffers
-        partialPointBuffer = MPI.newDoubleBuffer(procRowCount * targetDimension);
+        // TODO - should be able to remove this using fullXByteBuffer
+        // Allocate a point buffer
         pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
+
+        // Allocate timing buffers
         mpiOnlyBuffer = MPI.newLongBuffer(worldProcsCount);
         threadsAndMPIBuffer = MPI.newLongBuffer(worldProcsCount * threadCount);
 
-        cgProcsRowCounts = new int[cgProcsCount];
-        cgProcsPartialXByteExtents = new int[cgProcsCount];
-        cgProcsPartialXDisplas = new int[cgProcsCount];
-        int rowCount = 0;
+        cgProcsMmapRowCounts = new int[cgProcsCount];
+        cgProcsMmapXByteExtents = new int[cgProcsCount];
+        cgProcsMmapXDisplas = new int[cgProcsCount];
+        mmapProcsRowCount = IntStream.range(mmapLeadWorldRank,
+                                            mmapLeadWorldRank + mmapProcsCount)
+            .map(i -> procRowRanges[i].getLength())
+            .sum();
         if (isMmapLead){
-            rowCount = IntStream.range(mmapLeadWorldRank,
-                                           mmapLeadWorldRank + mmapProcsCount)
-                .map(i -> procRowRanges[i].getLength())
-                .sum();
-
-
-            cgProcsRowCounts[cgProcRank] = rowCount;
-            cgProcComm.allGather(cgProcsRowCounts, 1, MPI.INT);
+            cgProcsMmapRowCounts[cgProcRank] = mmapProcsRowCount;
+            cgProcComm.allGather(cgProcsMmapRowCounts, 1, MPI.INT);
             for (int i = 0; i < cgProcsCount; ++i){
-                cgProcsPartialXByteExtents[i] = cgProcsRowCounts[i] * targetDimension * Double.BYTES;
+                cgProcsMmapXByteExtents[i] = cgProcsMmapRowCounts[i] * targetDimension * Double.BYTES;
             }
 
-            cgProcsPartialXDisplas[0] = 0;
-            System.arraycopy(cgProcsPartialXByteExtents, 0, cgProcsPartialXDisplas, 1, cgProcsCount - 1);
-            Arrays.parallelPrefix(cgProcsPartialXDisplas, (m, n) -> m + n);
+            cgProcsMmapXDisplas[0] = 0;
+            System.arraycopy(cgProcsMmapXByteExtents, 0, cgProcsMmapXDisplas, 1, cgProcsCount - 1);
+            Arrays.parallelPrefix(cgProcsMmapXDisplas, (m, n) -> m + n);
         }
-        intBuffer.put(0, rowCount);
-        mmapProcComm.bcast(intBuffer, 1, MPI.INT, 0);
-        mmapsProcsRowCount = intBuffer.get(0);
 
-
-        final String partialXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".partialX.bin";
+        final String mmapXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapX.bin";
         final String fullXFname = machineName + ".mmapId." + mmapIdLocalToNode +".fullX.bin";
-        final String lockAndCountFname = machineName + ".lockAndCount.bin";
-        try (FileChannel partialXFc = FileChannel.open(Paths.get(mmapScratchDir,
-                                                                 partialXFname),
-                                                       StandardOpenOption
-                                                           .CREATE,
-                                                       StandardOpenOption.READ,
-                                                       StandardOpenOption
-                                                           .WRITE);
+        try (FileChannel mmapXFc = FileChannel.open(Paths.get(mmapScratchDir,
+                                                              mmapXFname),
+                                                    StandardOpenOption
+                                                        .CREATE,
+                                                    StandardOpenOption.READ,
+                                                    StandardOpenOption
+                                                        .WRITE);
             FileChannel fullXFc = FileChannel.open(Paths.get(mmapScratchDir,
                                                              fullXFname),
-                                                   StandardOpenOption.CREATE,StandardOpenOption.WRITE,StandardOpenOption.READ);
-            /*FileChannel lockAndCountFc = FileChannel.open(Paths.get(
-                                                              mmapScratchDir,
-                                                              lockAndCountFname),
-                                                          StandardOpenOption
-                                                              .CREATE,
-                                                          StandardOpenOption.READ,
-                                                          StandardOpenOption.WRITE)*/){
+                                                   StandardOpenOption.CREATE,StandardOpenOption.WRITE,StandardOpenOption.READ)) {
 
 
-            long partialXLeaderReadExtent = mmapsProcsRowCount * targetDimension * Double.BYTES;
-            long partialXWriteExtent = procRowCount * targetDimension * Double.BYTES;
-            long partialXOffset = (procRowStartOffset - procRowRanges[mmapLeadWorldRank].getStartIndex()) * targetDimension * Double.BYTES;
-            int fullXExtent = globalRowCount * targetDimension * Double.BYTES;
-            long fullXOffset = 0L;
+            int mmapXReadByteExtent = mmapProcsRowCount * targetDimension * Double.BYTES;
+            long mmapXReadByteOffset = 0L;
+            int mmapXWriteByteExtent = procRowCount * targetDimension * Double.BYTES;
+            long
+                mmapXWriteByteOffset =
+                (procRowStartOffset - procRowRanges[mmapLeadWorldRank].getStartIndex())
+                * targetDimension * Double.BYTES;
+            int fullXByteExtent = globalRowCount * targetDimension * Double.BYTES;
+            long fullXByteOffset = 0L;
 
-            /*partialXWriteBytes = ByteBufferBytes.wrap(
-                partialXFc.map(FileChannel.MapMode.READ_WRITE, partialXOffset,
-                               partialXWriteExtent));*/
+            mmapXReadBytes = ByteBufferBytes.wrap(mmapXFc.map(
+                FileChannel.MapMode.READ_WRITE, mmapXReadByteOffset,
+                mmapXReadByteExtent));
+            mmapXReadByteBuffer = mmapXReadBytes.sliceAsByteBuffer(
+                mmapXReadByteBuffer);
 
-            /*partialXLeaderReadBytes = isMmapLead ? ByteBufferBytes.wrap(partialXFc.map(
-                FileChannel.MapMode.READ_ONLY, partialXOffset, partialXLeaderReadExtent)) : null;
-            partialXLeaderReadByteBuffer = isMmapLead ? partialXLeaderReadBytes.sliceAsByteBuffer(partialXLeaderReadByteBuffer) : null;*/
+            mmapXReadBytes.position(0);
+            mmapXWriteBytes = mmapXReadBytes.slice(mmapXWriteByteOffset,
+                                                   mmapXWriteByteExtent);
 
-            partialXLeaderReadBytes = ByteBufferBytes.wrap(partialXFc.map(
-                FileChannel.MapMode.READ_WRITE, 0, partialXLeaderReadExtent));
-            partialXLeaderReadByteBuffer = partialXLeaderReadBytes.sliceAsByteBuffer(partialXLeaderReadByteBuffer);
-
-            partialXLeaderReadBytes.position(0);
-            partialXWriteBytes = partialXLeaderReadBytes.slice(partialXOffset, partialXWriteExtent);
-
-            fullXBytes = ByteBufferBytes.wrap(fullXFc.map(FileChannel.MapMode.READ_WRITE,
-                                            fullXOffset, fullXExtent));
-            fullXByteBuffer = MPI.newByteBuffer(fullXExtent);
-
-            /*lockAndCountBytes = ByteBufferBytes.wrap(lockAndCountFc.map(
-                FileChannel.MapMode.READ_WRITE, 0, LOCK_AND_COUNT_EXTENT));*/
-
-            // Print debug info in order of world ranks
-            for (int i = 0; i < worldProcsCount; ++i){
-                intBuffer.put(0, i);
-                worldProcsComm.bcast(intBuffer, 1, MPI.INT, 0);
-                int next = intBuffer.get(0);
-                if (next == worldProcRank){
-                    try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("mmap.debug" + worldProcRank + ".out.txt"), StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
-
-                        PrintWriter writer = new PrintWriter(bw, true);
-                        // Good it's my turn to print
-                        writer.println(
-                            "World rank: " + worldProcRank + " on " + machineName);
-                        writer.println("  mmapIdLocalToNode:             " + mmapIdLocalToNode);
-                        writer.println("  mmapProcsCount:                " + mmapProcsCount);
-                        writer.println("  isMmapLead:                    " + isMmapLead);
-                        writer.println("  mmapProcsWorldRanks:           " + Arrays.toString(
-                            mmapProcsWorldRanks));
-                        writer.println("  mmapLeadWorldRankLocalToNode:  "
-                                           + "" + mmapLeadWorldRankLocalToNode);
-                        writer.println("  mmapLeadWorldRank:             " + mmapLeadWorldRank);
-                        writer.println("  cgProcRank:                    " + cgProcRank);
-                        writer.println("  cgProcsCount:                  "
-                                           + "" + cgProcsCount);
-                        writer.println("  cgProcsRowCounts:              "
-                                       + Arrays.toString(cgProcsRowCounts));
-                        writer.println("  partialXLeaderReadExtent:      "
-                                       + partialXLeaderReadExtent);
-                        writer.println("  partialXWriteExtent:           "
-                                       + partialXWriteExtent);
-                        writer.println("  partialXOffset:                "
-                                       + partialXOffset);
-                        writer.println("  fullXExtent:                   "
-                                       + fullXExtent);
-                        writer.println("  fullXOffset:                   "
-                                       + fullXOffset);
-                    }
-                }
-            }
+            fullXBytes = ByteBufferBytes.wrap(fullXFc.map(FileChannel.MapMode
+                                                              .READ_WRITE,
+                                                          fullXByteOffset,
+                                                          fullXByteExtent));
+            fullXByteBuffer = fullXBytes.sliceAsByteBuffer(fullXByteBuffer);
         }
     }
 
@@ -336,16 +276,10 @@ public class ParallelOps {
     }
 
     public static void partialXAllGather() throws MPIException {
-        partialXLeaderReadByteBuffer.position(0);
-        fullXByteBuffer.position(0);
-        cgProcComm.allGatherv(partialXLeaderReadByteBuffer,
-                              cgProcsPartialXByteExtents[cgProcRank],
-                              MPI.BYTE, fullXByteBuffer,
-                              cgProcsPartialXByteExtents,
-                              cgProcsPartialXDisplas, MPI.BYTE);
-        fullXBytes.position(0);
-        fullXBytes.write(fullXByteBuffer);
-//        fullXBytes.force();
+        cgProcComm.allGatherv(mmapXReadByteBuffer,
+                              cgProcsMmapXByteExtents[cgProcRank], MPI.BYTE,
+                              fullXByteBuffer, cgProcsMmapXByteExtents,
+                              cgProcsMmapXDisplas, MPI.BYTE);
     }
 
     public static void broadcast(DoubleBuffer buffer, int extent, int root)
