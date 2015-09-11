@@ -829,7 +829,7 @@ public class Program {
             ParallelOps.mmapProcComm.barrier();
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
-                ParallelOps.partialXAllGather();
+                ParallelOps.partialXAllGatherLinearRing();
                 MMTimings.endTiming(MMTimings.TimingTask.COMM, 0);
             }
             // Each process in a memory group waits here.
@@ -913,7 +913,7 @@ public class Program {
             ParallelOps.mmapProcComm.barrier();
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
-                ParallelOps.partialXAllGather();
+                ParallelOps.partialXAllGatherLinearRing();
                 BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
             }
             // Each process in a memory group waits here.
