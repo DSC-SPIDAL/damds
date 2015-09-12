@@ -173,6 +173,7 @@ public class Program {
                     BC = calculateBC(
                         preX, config.targetDimension, tCur, distances,
                         weights, BlockSize);
+                    ParallelOps.worldProcsComm.barrier();
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
 
@@ -736,6 +737,7 @@ public class Program {
         r = calculateMM(X, targetDimension, numPoints, weights, blockSize,
                         vArray);
         CGTimings.endTiming(CGTimings.TimingTask.MM);
+        ParallelOps.worldProcsComm.barrier();
 
         for(int i = 0; i < numPoints; ++i)
             for(int j = 0; j < targetDimension; ++j){
@@ -758,6 +760,7 @@ public class Program {
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             double[][] Ap = calculateMM(p, targetDimension, numPoints,weights, blockSize, vArray);
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
+            ParallelOps.worldProcsComm.barrier();
 
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr
