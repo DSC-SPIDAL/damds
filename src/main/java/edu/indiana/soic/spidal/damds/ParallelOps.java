@@ -283,7 +283,7 @@ public class ParallelOps {
                                        MPI.BYTE, fullXByteBuffer,
                                        mmapLeadsXByteExtents, mmapLeadsXDisplas,
                                        MPI.BYTE);
-        req.waitFor();
+        req.waitStatus();
     }
 
     public static void partialXAllGatherLinearRing() throws MPIException {
