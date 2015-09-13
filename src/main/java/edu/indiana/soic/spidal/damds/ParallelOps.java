@@ -6,6 +6,7 @@ import edu.indiana.soic.spidal.common.RangePartitioner;
 import mpi.Intracomm;
 import mpi.MPI;
 import mpi.MPIException;
+import mpi.Request;
 import net.openhft.lang.io.ByteBufferBytes;
 import net.openhft.lang.io.Bytes;
 
@@ -80,6 +81,8 @@ public class ParallelOps {
     public static LongBuffer mpiOnlyBuffer;
 
     public static Bytes mmapXWriteBytes;
+    public static Bytes mmapXReadBytes;
+    public static ByteBuffer mmapXReadByteBuffer;
     public static Bytes fullXBytes;
     public static ByteBuffer fullXByteBuffer;
     public static Bytes[] fullXBytesSlices;
@@ -240,8 +243,10 @@ public class ParallelOps {
                 fullXBytesSlices[i] = fullXBytes.slice(offset, length);
                 fullXByteBufferSlices[i] = fullXBytesSlices[i].sliceAsByteBuffer(fullXByteBufferSlices[i]);
             }
-            mmapXWriteBytes = fullXBytesSlices[mmapLeadCgProcRank].slice(
-                mmapXWriteByteOffset, mmapXWriteByteExtent);
+            mmapXReadBytes = fullXBytesSlices[mmapLeadCgProcRank];
+            mmapXReadByteBuffer = mmapXReadBytes.sliceAsByteBuffer(mmapXReadByteBuffer);
+            mmapXWriteBytes = mmapXReadBytes.slice(mmapXWriteByteOffset,
+                                                    mmapXWriteByteExtent);
         }
     }
 
@@ -265,12 +270,21 @@ public class ParallelOps {
         return intBuffer.get(0);
     }
 
-   /* public static void partialXAllGather() throws MPIException {
+    public static void partialXAllGather() throws MPIException {
         cgProcComm.allGatherv(mmapXReadByteBuffer,
-                              mmapLeadsXByteExtents[cgProcRank], MPI.BYTE,
+                              mmapLeadsXByteExtents[mmapLeadCgProcRank], MPI.BYTE,
                               fullXByteBuffer, mmapLeadsXByteExtents,
                               mmapLeadsXDisplas, MPI.BYTE);
-    }*/
+    }
+
+    public static void iPartialXAllGather() throws MPIException{
+        Request req = cgProcComm.iAllGatherv(mmapXReadByteBuffer,
+                                       mmapLeadsXByteExtents[mmapLeadCgProcRank],
+                                       MPI.BYTE, fullXByteBuffer,
+                                       mmapLeadsXByteExtents, mmapLeadsXDisplas,
+                                       MPI.BYTE);
+        req.waitFor();
+    }
 
     public static void partialXAllGatherLinearRing() throws MPIException {
         final int mmapLeadsSub1 = mmapLeadCgProcCount - 1;
@@ -280,15 +294,14 @@ public class ParallelOps {
         int sendFullXSliceIdx = mmapLeadCgProcRank;
         for (int i = 0; i < mmapLeadsSub1; ++i){
             cgProcComm.sendRecv(fullXByteBufferSlices[sendFullXSliceIdx],
-                            mmapLeadsXByteExtents[sendFullXSliceIdx], MPI.BYTE,
-                            sendToRank, sendToRank,
-                            fullXByteBufferSlices[recvFullXSliceIdx],
-                            mmapLeadsXByteExtents[recvFullXSliceIdx],
-                            MPI.DOUBLE, recvFromRank, mmapLeadCgProcRank);
+                                mmapLeadsXByteExtents[sendFullXSliceIdx],
+                                MPI.BYTE, sendToRank, sendToRank,
+                                fullXByteBufferSlices[recvFullXSliceIdx],
+                                mmapLeadsXByteExtents[recvFullXSliceIdx],
+                                MPI.DOUBLE, recvFromRank, mmapLeadCgProcRank);
             sendFullXSliceIdx = recvFullXSliceIdx;
             recvFullXSliceIdx = (recvFullXSliceIdx + mmapLeadsSub1) % mmapLeadCgProcCount;
         }
-
     }
 
     public static void broadcast(DoubleBuffer buffer, int extent, int root)
