@@ -149,7 +149,7 @@ public class ParallelOps {
     }
 
     public static void tearDownParallelism() throws MPIException {
-        fullXByteBufferWindow.free();
+        if (isMmapLead)fullXByteBufferWindow.free();
         // End MPI
         MPI.Finalize();
     }
@@ -235,7 +235,10 @@ public class ParallelOps {
                 FileChannel.MapMode.READ_WRITE, fullXByteOffset,
                 fullXByteExtent));
             fullXByteBuffer = fullXBytes.sliceAsByteBuffer(fullXByteBuffer);
-            fullXByteBufferWindow = new Win(fullXByteBuffer, fullXByteExtent, Byte.BYTES, MPI.INFO_NULL, cgProcComm);
+            if (isMmapLead) {
+                fullXByteBufferWindow = new Win(fullXByteBuffer, fullXByteExtent, Byte.BYTES,
+                                                MPI.INFO_NULL, cgProcComm);
+            }
             fullXBytesSlices = new Bytes[mmapLeadCgProcCount];
             fullXByteBufferSlices = new ByteBuffer[mmapLeadCgProcCount];
             for (int i = 0; i < mmapLeadCgProcCount; ++i){
