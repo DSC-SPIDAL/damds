@@ -235,6 +235,7 @@ public class ParallelOps {
             fullXBytes = ByteBufferBytes.wrap(fullXFc.map(
                 FileChannel.MapMode.READ_WRITE, fullXByteOffset,
                 fullXByteExtent));
+            fullXByteBuffer = fullXBytes.sliceAsByteBuffer(fullXByteBuffer);
             fullXBytesSlices = new Bytes[mmapLeadCgProcCount];
             fullXByteBufferSlices = new ByteBuffer[mmapLeadCgProcCount];
             for (int i = 0; i < mmapLeadCgProcCount; ++i){
