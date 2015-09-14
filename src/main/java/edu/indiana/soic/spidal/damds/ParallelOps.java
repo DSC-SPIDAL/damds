@@ -69,7 +69,6 @@ public class ParallelOps {
     public static int globalColCount;
 
     // Buffers for MPI operations
-    static DoubleBuffer pointBuffer;
     private static ByteBuffer statBuffer;
     private static DoubleBuffer doubleBuffer;
     private static IntBuffer intBuffer;
@@ -85,6 +84,9 @@ public class ParallelOps {
     public static Bytes[] fullXBytesSlices;
     public static ByteBuffer[] fullXByteBufferSlices;
     public static Win fullXByteBufferWindow;
+
+    // Arrays for common use, so to relieve GC a bit
+    public static double[][] pointsArray;
 
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
@@ -184,9 +186,9 @@ public class ParallelOps {
                              threadRowStartOffsets[threadIdx] * globalColCount;
                      });
 
-        // TODO - should be able to remove this using fullXByteBuffer
-        // Allocate a point buffer
-        pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
+
+        /* Allocate arrays for common use */
+        pointsArray = new double[globalRowCount][targetDimension];
 
         // Allocate timing buffers
         mpiOnlyBuffer = MPI.newLongBuffer(worldProcsCount);
@@ -331,9 +333,9 @@ public class ParallelOps {
         fullXByteBufferWindow.fence(0);
     }
 
-    public static void broadcast(DoubleBuffer buffer, int extent, int root)
+    public static void broadcast(ByteBuffer buffer, int extent, int root)
         throws MPIException {
-        worldProcsComm.bcast(buffer, extent, MPI.DOUBLE, root);
+        worldProcsComm.bcast(buffer, extent, MPI.BYTE, root);
     }
 
     public static void gather(LongBuffer buffer, int count, int root)
