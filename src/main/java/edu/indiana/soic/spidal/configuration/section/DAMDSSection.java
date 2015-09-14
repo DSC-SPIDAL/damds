@@ -39,6 +39,7 @@ public class DAMDSSection {
 
             isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
             isMemoryMapped = Boolean.parseBoolean(getProperty(p, "IsMemoryMapped", "true"));
+            transformationFunction = getProperty(p, "TransformationFunction", null);
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
@@ -78,6 +79,7 @@ public class DAMDSSection {
 
     public boolean isBigEndian;
     public boolean isMemoryMapped;
+    public String transformationFunction;
 
     private String getPadding(int count, String prefix){
         StringBuilder sb = new StringBuilder(prefix);
