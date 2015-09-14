@@ -51,6 +51,11 @@ public class Program {
         programOptions.addOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR, true, Constants.CMD_OPTION_DESCRIPTION_MMAP_SCRATCH_DIR);
     }
 
+    // Constants
+    public static final double INV_SHORT_MAX = 1.0 / Short.MAX_VALUE;
+    public static final double SHORT_MAX = Short.MAX_VALUE;
+
+
     //Config Settings
     public static DAMDSSection config;
     public static ByteOrder byteOrder;
@@ -315,9 +320,9 @@ public class Program {
         double tmpD;
         for (short[] distanceRow : distances){
             for (int j = 0; j < distanceRow.length; ++j){
-                tmpD = distanceRow[j] * 1.0 / Short.MAX_VALUE;
+                tmpD = distanceRow[j] * INV_SHORT_MAX;
                 if (tmpD < positiveMin && tmpD >= 0.0){
-                    distanceRow[j] = (short)(positiveMin * Short.MAX_VALUE);
+                    distanceRow[j] = (short)(positiveMin * SHORT_MAX);
                 }
             }
         }
@@ -707,7 +712,7 @@ public class Program {
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; ++globalCol) {
                 if (globalRow == globalCol) continue;
 
-                double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
+                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
                 double weight = weights.getWeight(procLocalRow, globalCol);
 
                 if (origD < 0 || weight == 0) {
@@ -829,7 +834,9 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             mergePartials(partialMMs, targetDimension, ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
-            ParallelOps.mmapProcComm.barrier();
+            // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
+            // if we wait on the whole world
+            ParallelOps.worldProcsComm.barrier();
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -837,10 +844,12 @@ public class Program {
             }
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
-            // in another memory map group, hence the use of mmapProcComm
-            ParallelOps.mmapProcComm.barrier();
+            // in another memory map group, hence the use of mmapProcComm.
+            // However it's cleaner for any timings to have everyone sync here,
+            // so will use worldProcsComm instead.
+            ParallelOps.worldProcsComm.barrier();
             return extractPoints(ParallelOps.fullXBytes,
-                ParallelOps.globalColCount, targetDimension);
+                ParallelOps.globalColCount, targetDimension, ParallelOps.pointsArray);
         } else {
             double [][] mm = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialMMs, targetDimension, mm);
@@ -913,7 +922,9 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             mergePartials(partialBCs,targetDimension, ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
-            ParallelOps.mmapProcComm.barrier();
+            // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
+            // if we wait on the whole world
+            ParallelOps.worldProcsComm.barrier();
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -921,12 +932,14 @@ public class Program {
             }
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
-            // in another memory map group, hence the use of mmapProcComm
-            ParallelOps.mmapProcComm.barrier();
+            // in another memory map group, hence the use of mmapProcComm.
+            // However it's cleaner for any timings to have everyone sync here,
+            // so will use worldProcsComm instead.
+            ParallelOps.worldProcsComm.barrier();
 
             return extractPoints(
                 ParallelOps.fullXBytes, ParallelOps.globalColCount,
-                targetDimension);
+                targetDimension, ParallelOps.pointsArray);
         } else {
             double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialBCs, targetDimension, bc);
@@ -983,7 +996,7 @@ public class Program {
                 // separately (see above).
                 if (globalRow == globalCol) continue;
 
-                double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
+                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
                 double weight = weights.getWeight(procLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
@@ -1005,45 +1018,17 @@ public class Program {
     }
 
     private static double[][] extractPoints(
-        Bytes bytes, int numPoints, int dimension) {
+        Bytes bytes, int numPoints, int dimension, double[][] to) {
         int pos = 0;
-        double [][] points = new double[numPoints][dimension];
         for (int i = 0; i < numPoints; ++i){
-            double[] pointsRow = points[i];
+            double[] pointsRow = to[i];
             for (int j = 0; j < dimension; ++j) {
                 bytes.position(pos);
                 pointsRow[j] = bytes.readDouble(pos);
                 pos += Double.BYTES;
             }
         }
-        return  points;
-    }
-
-    private static double[][] extractPoints(
-        ByteBuffer buffer, int numPoints, int dimension) {
-        int pos = 0;
-        double [][] points = new double[numPoints][dimension];
-        for (int i = 0; i < numPoints; ++i){
-            double[] pointsRow = points[i];
-            for (int j = 0; j < dimension; ++j) {
-                buffer.position(pos);
-                pointsRow[j] = buffer.getDouble(pos);
-                pos += Double.BYTES;
-            }
-        }
-        return  points;
-    }
-
-    private static double[][] extractPoints(
-        DoubleBuffer buffer, int numPoints, int dimension) {
-        int pos = 0;
-        double [][] points = new double[numPoints][dimension];
-        for (int i = 0; i < numPoints; ++i){
-            buffer.position(pos);
-            buffer.get(points[i]);
-            pos += dimension;
-        }
-        return  points;
+        return  to;
     }
 
     private static void mergePartials(double [][][] partials, int dimension, double [][] result){
@@ -1117,7 +1102,7 @@ public class Program {
             int procLocalRow = procLocalPnum / ParallelOps.globalColCount;
             int globalCol = procLocalPnum % ParallelOps.globalColCount;
 
-            double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
+            double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
             double weight = weights.getWeight(procLocalRow, globalCol);
 
             if (origD < 0 || weight == 0) {
@@ -1162,23 +1147,30 @@ public class Program {
     static double[][] generateInitMapping(int numPoints,
                                           int targetDim) throws MPIException {
 
-        DoubleBuffer buffer = ParallelOps.pointBuffer;
+        Bytes fullBytes = ParallelOps.fullXBytes;
         if (ParallelOps.worldProcRank == 0) {
-            buffer.position(0);
+            int pos = 0;
             // Use Random class for generating random initial mapping solution.
             Random rand = new Random(System.currentTimeMillis());
             for (int i = 0; i < numPoints; i++) {
                 for (int j = 0; j < targetDim; j++) {
-                    buffer.put(rand.nextBoolean() ? rand.nextDouble() : -rand.nextDouble());
+                    fullBytes.position(pos);
+                    fullBytes.writeDouble(rand.nextBoolean()
+                                           ? rand.nextDouble()
+                                           : -rand.nextDouble());
+                    pos += Double.BYTES;
                 }
             }
         }
 
         if (ParallelOps.worldProcsCount > 1){
+            // Not really necessary, but just to make timings cleaner in
+            // latter parts
+            ParallelOps.worldProcsComm.barrier();
             // Broadcast initial mapping to others
-            ParallelOps.broadcast(buffer, numPoints * targetDim, 0);
+            ParallelOps.broadcast(ParallelOps.fullXByteBuffer, numPoints * targetDim*Double.BYTES, 0);
         }
-        return extractPoints(buffer, numPoints, targetDim);
+        return extractPoints(fullBytes, numPoints, targetDim, ParallelOps.pointsArray);
     }
 
     private static DoubleStatistics calculateStatistics(
@@ -1264,7 +1256,7 @@ public class Program {
                 i + ParallelOps.threadPointStartOffsets[threadIdx];
             int procLocalRow = procLocalPnum / ParallelOps.globalColCount;
             int globalCol = procLocalPnum % ParallelOps.globalColCount;
-            double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
+            double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
             double weight = weights.getWeight(procLocalRow,globalCol);
             if (origD < 0) {
                 // Missing distance
