@@ -849,7 +849,7 @@ public class Program {
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
             return extractPoints(ParallelOps.fullXBytes,
-                ParallelOps.globalColCount, targetDimension, new double[config.numberDataPoints][targetDimension]);
+                ParallelOps.globalColCount, targetDimension);
         } else {
             double [][] mm = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialMMs, targetDimension, mm);
@@ -939,11 +939,11 @@ public class Program {
 
             return extractPoints(
                 ParallelOps.fullXBytes, ParallelOps.globalColCount,
-                targetDimension, ParallelOps.pointsArray);
+                targetDimension);
         } else {
-            double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
-            mergePartials(partialBCs, targetDimension, bc);
-            return bc;
+            double[][] to = new double[ParallelOps.globalColCount][targetDimension];
+            mergePartials(partialBCs, targetDimension, to);
+            return to;
         }
     }
 
@@ -1018,7 +1018,8 @@ public class Program {
     }
 
     private static double[][] extractPoints(
-        Bytes bytes, int numPoints, int dimension, double[][] to) {
+        Bytes bytes, int numPoints, int dimension) {
+        double[][] to = new double[numPoints][dimension];
         int pos = 0;
         for (int i = 0; i < numPoints; ++i){
             double[] pointsRow = to[i];
@@ -1170,7 +1171,7 @@ public class Program {
             // Broadcast initial mapping to others
             ParallelOps.broadcast(ParallelOps.fullXByteBuffer, numPoints * targetDim*Double.BYTES, 0);
         }
-        return extractPoints(fullBytes, numPoints, targetDim, ParallelOps.pointsArray);
+        return extractPoints(fullBytes, numPoints, targetDim);
     }
 
     private static DoubleStatistics calculateStatistics(

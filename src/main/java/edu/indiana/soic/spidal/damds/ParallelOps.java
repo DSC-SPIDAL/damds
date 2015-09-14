@@ -85,9 +85,6 @@ public class ParallelOps {
     public static ByteBuffer[] fullXByteBufferSlices;
     public static Win fullXByteBufferWindow;
 
-    // Arrays for common use, so to relieve GC a bit
-    public static double[][] pointsArray;
-
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
         worldProcsComm = MPI.COMM_WORLD; //initializing MPI world communicator
@@ -186,9 +183,6 @@ public class ParallelOps {
                              threadRowStartOffsets[threadIdx] * globalColCount;
                      });
 
-
-        /* Allocate arrays for common use */
-        pointsArray = new double[globalRowCount][targetDimension];
 
         // Allocate timing buffers
         mpiOnlyBuffer = MPI.newLongBuffer(worldProcsCount);
