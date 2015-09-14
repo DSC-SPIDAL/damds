@@ -275,13 +275,17 @@ public class ParallelOps {
     }
 
     public static void partialXAllGather() throws MPIException {
+        if (!isMmapLead) return;
+
         cgProcComm.allGatherv(mmapXReadByteBuffer,
                               mmapLeadsXByteExtents[mmapLeadCgProcRank], MPI.BYTE,
                               fullXByteBuffer, mmapLeadsXByteExtents,
                               mmapLeadsXDisplas, MPI.BYTE);
     }
 
-    public static void iPartialXAllGather() throws MPIException{
+    public static void partialXAllGatherAsync() throws MPIException{
+        if (!isMmapLead) return;
+
         Request req = cgProcComm.iAllGatherv(mmapXReadByteBuffer,
                                        mmapLeadsXByteExtents[mmapLeadCgProcRank],
                                        MPI.BYTE, fullXByteBuffer,
@@ -292,6 +296,8 @@ public class ParallelOps {
     }
 
     public static void partialXAllGatherLinearRing() throws MPIException {
+        if (!isMmapLead) return;
+
         final int mmapLeadsSub1 = mmapLeadCgProcCount - 1;
         int recvFromRank = (mmapLeadCgProcRank + mmapLeadsSub1) % mmapLeadCgProcCount;
         int sendToRank = (mmapLeadCgProcRank+1)% mmapLeadCgProcCount;
@@ -310,6 +316,7 @@ public class ParallelOps {
     }
 
     public static void partialXAllGatherRemoteMemory() throws MPIException {
+        if (!isMmapLead) return;
 
         fullXByteBufferWindow.fence(0);
         for (int i = 0; i < mmapLeadCgProcCount; ++i) {
