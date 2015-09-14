@@ -939,7 +939,7 @@ public class Program {
 
             return extractPoints(
                 ParallelOps.fullXBytes, ParallelOps.globalColCount,
-                targetDimension, new double[config.numberDataPoints][targetDimension]);
+                targetDimension, ParallelOps.pointsArray);
         } else {
             double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialBCs, targetDimension, bc);
