@@ -829,7 +829,9 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             mergePartials(partialMMs, targetDimension, ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
-            ParallelOps.mmapProcComm.barrier();
+            // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
+            // if we wait on the whole world
+            ParallelOps.worldProcsComm.barrier();
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -837,8 +839,10 @@ public class Program {
             }
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
-            // in another memory map group, hence the use of mmapProcComm
-            ParallelOps.mmapProcComm.barrier();
+            // in another memory map group, hence the use of mmapProcComm.
+            // However it's cleaner for any timings to have everyone sync here,
+            // so will use worldProcsComm instead.
+            ParallelOps.worldProcsComm.barrier();
             return extractPoints(ParallelOps.fullXBytes,
                 ParallelOps.globalColCount, targetDimension);
         } else {
@@ -913,7 +917,9 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             mergePartials(partialBCs,targetDimension, ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
-            ParallelOps.mmapProcComm.barrier();
+            // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
+            // if we wait on the whole world
+            ParallelOps.worldProcsComm.barrier();
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -921,8 +927,10 @@ public class Program {
             }
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
-            // in another memory map group, hence the use of mmapProcComm
-            ParallelOps.mmapProcComm.barrier();
+            // in another memory map group, hence the use of mmapProcComm.
+            // However it's cleaner for any timings to have everyone sync here,
+            // so will use worldProcsComm instead.
+            ParallelOps.worldProcsComm.barrier();
 
             return extractPoints(
                 ParallelOps.fullXBytes, ParallelOps.globalColCount,
