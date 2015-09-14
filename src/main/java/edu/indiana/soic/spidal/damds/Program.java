@@ -849,7 +849,7 @@ public class Program {
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
             return extractPoints(ParallelOps.fullXBytes,
-                ParallelOps.globalColCount, targetDimension, ParallelOps.pointsArray);
+                ParallelOps.globalColCount, targetDimension, new double[config.numberDataPoints][targetDimension]);
         } else {
             double [][] mm = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialMMs, targetDimension, mm);
@@ -939,7 +939,7 @@ public class Program {
 
             return extractPoints(
                 ParallelOps.fullXBytes, ParallelOps.globalColCount,
-                targetDimension, ParallelOps.pointsArray);
+                targetDimension, new double[config.numberDataPoints][targetDimension]);
         } else {
             double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialBCs, targetDimension, bc);
