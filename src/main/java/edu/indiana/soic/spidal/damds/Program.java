@@ -75,7 +75,7 @@ public class Program {
      *             --configFile, --threadCount, and --nodeCount respectively
      */
     public static void  main(String[] args) {
-        Stopwatch mainTimer = Stopwatch.createStarted();
+
         Optional<CommandLine> parserResult =
             parseCommandLineArguments(args, programOptions);
 
@@ -102,6 +102,9 @@ public class Program {
 
             //  Set up MPI and threads parallelism
             ParallelOps.setupParallelism(args);
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
+            Stopwatch mainTimer = Stopwatch.createStarted();
 
             ParallelOps.setParallelDecomposition(
                 config.numberDataPoints, config.targetDimension);
@@ -140,19 +143,25 @@ public class Program {
 
             tCur = config.alpha * tMax;
 
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mainTimer.stop();
             Utils.printMessage(
                 "\nUp to the loop took " + mainTimer.elapsed(
                     TimeUnit.SECONDS) + " seconds");
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mainTimer.start();
-
             Stopwatch loopTimer = Stopwatch.createStarted();
+
             int loopNum = 0;
             double diffStress;
             double stress = -1.0;
             RefObj<Integer> outRealCGIterations = new RefObj<>(0);
             int smacofRealIterations = 0;
             while (true) {
+                // Note - a barrier to get cleaner timings
+                ParallelOps.worldProcsComm.barrier();
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
                 preStress = calculateStress(
@@ -169,10 +178,14 @@ public class Program {
 
                 int itrNum = 0;
                 RefObj<Integer> cgCount = new RefObj<>(0);
+                // Note - a barrier to get cleaner timings
+                ParallelOps.worldProcsComm.barrier();
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
 
+                    // Note - a barrier to get cleaner timings
+                    ParallelOps.worldProcsComm.barrier();
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     BC = calculateBC(
@@ -183,6 +196,8 @@ public class Program {
                         StressLoopTimings.TimingTask.BC);
 
 
+                    // Note - a barrier to get cleaner timings
+                    ParallelOps.worldProcsComm.barrier();
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
                     X = calculateConjugateGradient(
@@ -193,6 +208,8 @@ public class Program {
                         StressLoopTimings.TimingTask.CG);
 
 
+                    // Note - a barrier to get cleaner timings
+                    ParallelOps.worldProcsComm.barrier();
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
@@ -218,6 +235,8 @@ public class Program {
                     ++itrNum;
                     ++smacofRealIterations;
                 }
+                // Note - a barrier to get cleaner timings
+                ParallelOps.worldProcsComm.barrier();
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
 
@@ -246,6 +265,8 @@ public class Program {
                     tCur = 0;
                 ++loopNum;
             }
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             loopTimer.stop();
 
             double QoR1 = stress / (config.numberDataPoints * (config.numberDataPoints - 1) / 2);
@@ -283,6 +304,8 @@ public class Program {
                 X, config.targetDimension, tCur, distances, weights,
                 distanceSummary.getSumOfSquare());
 
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mainTimer.stop();
 
 
@@ -738,6 +761,8 @@ public class Program {
         double[][] p = new double[numPoints][targetDimension];
 
         X = preX;
+        // Note - a barrier to get cleaner timings
+        ParallelOps.worldProcsComm.barrier();
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         r = calculateMM(X, targetDimension, numPoints, weights, blockSize,
                         vArray);
@@ -757,10 +782,15 @@ public class Program {
         // Adding relative value test for termination as suggested by Dr. Fox.
         double testEnd = rTr * cgThreshold;
 
+        // Note - a barrier to get cleaner timings
+        ParallelOps.worldProcsComm.barrier();
         CGTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
         while(cgCount < cgIter){
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
+
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             //calculate alpha
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             double[][] Ap = calculateMM(p, targetDimension, numPoints,weights, blockSize, vArray);
@@ -799,6 +829,8 @@ public class Program {
                     p[i][j] = r[i][j] + beta * p[i][j];
 
         }
+        // Note - a barrier to get cleaner timings
+        ParallelOps.worldProcsComm.barrier();
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
         return X;
@@ -812,6 +844,8 @@ public class Program {
         double [][][] partialMMs = new double[ParallelOps.threadCount][][];
 
         if (ParallelOps.threadCount > 1) {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
@@ -825,6 +859,8 @@ public class Program {
                     }));
         }
         else {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
             partialMMs[0] = calculateMMInternal(
                 0,x, targetDimension, numPoints, weights, blockSize, vArray);
@@ -832,6 +868,8 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mergePartials(partialMMs, targetDimension, ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
             // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
@@ -899,6 +937,8 @@ public class Program {
         double [][][] partialBCs = new double[ParallelOps.threadCount][][];
 
         if (ParallelOps.threadCount > 1) {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
@@ -912,6 +952,8 @@ public class Program {
                     }));
         }
         else {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
             partialBCs[0] = calculateBCInternal(
                 0, preX, targetDimension, tCur, distances, weights, blockSize);
@@ -920,6 +962,8 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mergePartials(partialBCs,targetDimension, ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
             // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
