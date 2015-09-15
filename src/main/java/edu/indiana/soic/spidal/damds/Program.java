@@ -757,8 +757,8 @@ public class Program {
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         r = calculateMM(X, targetDimension, numPoints, weights, blockSize,
                         vArray);
-        CGTimings.endTiming(CGTimings.TimingTask.MM);
         ParallelOps.worldProcsComm.barrier();
+        CGTimings.endTiming(CGTimings.TimingTask.MM);
 
         for(int i = 0; i < numPoints; ++i)
             for(int j = 0; j < targetDimension; ++j){
@@ -785,8 +785,8 @@ public class Program {
             //calculate alpha
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             double[][] Ap = calculateMM(p, targetDimension, numPoints,weights, blockSize, vArray);
-            CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
             ParallelOps.worldProcsComm.barrier();
+            CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
 
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr
