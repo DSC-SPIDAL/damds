@@ -51,6 +51,11 @@ public class Program {
         programOptions.addOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR, true, Constants.CMD_OPTION_DESCRIPTION_MMAP_SCRATCH_DIR);
     }
 
+    // Constants
+    public static final double INV_SHORT_MAX = 1.0 / Short.MAX_VALUE;
+    public static final double SHORT_MAX = Short.MAX_VALUE;
+
+
     //Config Settings
     public static DAMDSSection config;
     public static ByteOrder byteOrder;
@@ -70,7 +75,7 @@ public class Program {
      *             --configFile, --threadCount, and --nodeCount respectively
      */
     public static void  main(String[] args) {
-        Stopwatch mainTimer = Stopwatch.createStarted();
+
         Optional<CommandLine> parserResult =
             parseCommandLineArguments(args, programOptions);
 
@@ -97,6 +102,9 @@ public class Program {
 
             //  Set up MPI and threads parallelism
             ParallelOps.setupParallelism(args);
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
+            Stopwatch mainTimer = Stopwatch.createStarted();
 
             ParallelOps.setParallelDecomposition(
                 config.numberDataPoints, config.targetDimension);
@@ -135,19 +143,26 @@ public class Program {
 
             tCur = config.alpha * tMax;
 
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mainTimer.stop();
             Utils.printMessage(
                 "\nUp to the loop took " + mainTimer.elapsed(
                     TimeUnit.SECONDS) + " seconds");
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mainTimer.start();
 
             Stopwatch loopTimer = Stopwatch.createStarted();
+
             int loopNum = 0;
             double diffStress;
             double stress = -1.0;
             RefObj<Integer> outRealCGIterations = new RefObj<>(0);
             int smacofRealIterations = 0;
             while (true) {
+                // Note - a barrier to get cleaner timings
+                ParallelOps.worldProcsComm.barrier();
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
                 preStress = calculateStress(
@@ -164,19 +179,26 @@ public class Program {
 
                 int itrNum = 0;
                 RefObj<Integer> cgCount = new RefObj<>(0);
+                // Note - a barrier to get cleaner timings
+                ParallelOps.worldProcsComm.barrier();
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
 
+                    // Note - a barrier to get cleaner timings
+                    ParallelOps.worldProcsComm.barrier();
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     BC = calculateBC(
                         preX, config.targetDimension, tCur, distances,
                         weights, BlockSize);
+                    ParallelOps.worldProcsComm.barrier();
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
 
 
+                    // Note - a barrier to get cleaner timings
+                    ParallelOps.worldProcsComm.barrier();
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
                     X = calculateConjugateGradient(
@@ -187,6 +209,8 @@ public class Program {
                         StressLoopTimings.TimingTask.CG);
 
 
+                    // Note - a barrier to get cleaner timings
+                    ParallelOps.worldProcsComm.barrier();
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
@@ -212,6 +236,8 @@ public class Program {
                     ++itrNum;
                     ++smacofRealIterations;
                 }
+                // Note - a barrier to get cleaner timings
+                ParallelOps.worldProcsComm.barrier();
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
 
@@ -240,6 +266,8 @@ public class Program {
                     tCur = 0;
                 ++loopNum;
             }
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             loopTimer.stop();
 
             double QoR1 = stress / (config.numberDataPoints * (config.numberDataPoints - 1) / 2);
@@ -277,6 +305,8 @@ public class Program {
                 X, config.targetDimension, tCur, distances, weights,
                 distanceSummary.getSumOfSquare());
 
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mainTimer.stop();
 
 
@@ -314,9 +344,9 @@ public class Program {
         double tmpD;
         for (short[] distanceRow : distances){
             for (int j = 0; j < distanceRow.length; ++j){
-                tmpD = distanceRow[j] * 1.0 / Short.MAX_VALUE;
+                tmpD = distanceRow[j] * INV_SHORT_MAX;
                 if (tmpD < positiveMin && tmpD >= 0.0){
-                    distanceRow[j] = (short)(positiveMin * Short.MAX_VALUE);
+                    distanceRow[j] = (short)(positiveMin * SHORT_MAX);
                 }
             }
         }
@@ -706,7 +736,7 @@ public class Program {
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; ++globalCol) {
                 if (globalRow == globalCol) continue;
 
-                double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
+                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
                 double weight = weights.getWeight(procLocalRow, globalCol);
 
                 if (origD < 0 || weight == 0) {
@@ -732,10 +762,13 @@ public class Program {
         double[][] p = new double[numPoints][targetDimension];
 
         X = preX;
+        // Note - a barrier to get cleaner timings
+        ParallelOps.worldProcsComm.barrier();
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         r = calculateMM(X, targetDimension, numPoints, weights, blockSize,
                         vArray);
         CGTimings.endTiming(CGTimings.TimingTask.MM);
+        ParallelOps.worldProcsComm.barrier();
 
         for(int i = 0; i < numPoints; ++i)
             for(int j = 0; j < targetDimension; ++j){
@@ -750,14 +783,20 @@ public class Program {
         // Adding relative value test for termination as suggested by Dr. Fox.
         double testEnd = rTr * cgThreshold;
 
+        // Note - a barrier to get cleaner timings
+        ParallelOps.worldProcsComm.barrier();
         CGTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
         while(cgCount < cgIter){
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
+
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             //calculate alpha
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             double[][] Ap = calculateMM(p, targetDimension, numPoints,weights, blockSize, vArray);
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
+            ParallelOps.worldProcsComm.barrier();
 
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr
@@ -791,6 +830,8 @@ public class Program {
                     p[i][j] = r[i][j] + beta * p[i][j];
 
         }
+        // Note - a barrier to get cleaner timings
+        ParallelOps.worldProcsComm.barrier();
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
         return X;
@@ -804,6 +845,8 @@ public class Program {
         double [][][] partialMMs = new double[ParallelOps.threadCount][][];
 
         if (ParallelOps.threadCount > 1) {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
@@ -817,6 +860,8 @@ public class Program {
                     }));
         }
         else {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
             partialMMs[0] = calculateMMInternal(
                 0,x, targetDimension, numPoints, weights, blockSize, vArray);
@@ -824,9 +869,13 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mergePartials(partialMMs, targetDimension, ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
-            ParallelOps.mmapProcComm.barrier();
+            // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
+            // if we wait on the whole world
+            ParallelOps.worldProcsComm.barrier();
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -834,8 +883,10 @@ public class Program {
             }
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
-            // in another memory map group, hence the use of mmapProcComm
-            ParallelOps.mmapProcComm.barrier();
+            // in another memory map group, hence the use of mmapProcComm.
+            // However it's cleaner for any timings to have everyone sync here,
+            // so will use worldProcsComm instead.
+            ParallelOps.worldProcsComm.barrier();
             return extractPoints(ParallelOps.fullXBytes,
                 ParallelOps.globalColCount, targetDimension);
         } else {
@@ -887,6 +938,8 @@ public class Program {
         double [][][] partialBCs = new double[ParallelOps.threadCount][][];
 
         if (ParallelOps.threadCount > 1) {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
@@ -900,6 +953,8 @@ public class Program {
                     }));
         }
         else {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
             partialBCs[0] = calculateBCInternal(
                 0, preX, targetDimension, tCur, distances, weights, blockSize);
@@ -908,9 +963,13 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
+            // Note - a barrier to get cleaner timings
+            ParallelOps.worldProcsComm.barrier();
             mergePartials(partialBCs,targetDimension, ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
-            ParallelOps.mmapProcComm.barrier();
+            // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
+            // if we wait on the whole world
+            ParallelOps.worldProcsComm.barrier();
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -918,16 +977,18 @@ public class Program {
             }
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
-            // in another memory map group, hence the use of mmapProcComm
-            ParallelOps.mmapProcComm.barrier();
+            // in another memory map group, hence the use of mmapProcComm.
+            // However it's cleaner for any timings to have everyone sync here,
+            // so will use worldProcsComm instead.
+            ParallelOps.worldProcsComm.barrier();
 
             return extractPoints(
                 ParallelOps.fullXBytes, ParallelOps.globalColCount,
                 targetDimension);
         } else {
-            double [][] bc = new double[ParallelOps.globalColCount][targetDimension];
-            mergePartials(partialBCs, targetDimension, bc);
-            return bc;
+            double[][] to = new double[ParallelOps.globalColCount][targetDimension];
+            mergePartials(partialBCs, targetDimension, to);
+            return to;
         }
     }
 
@@ -980,7 +1041,7 @@ public class Program {
                 // separately (see above).
                 if (globalRow == globalCol) continue;
 
-                double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
+                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
                 double weight = weights.getWeight(procLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
@@ -1003,17 +1064,17 @@ public class Program {
 
     private static double[][] extractPoints(
         Bytes bytes, int numPoints, int dimension) {
+        double[][] to = new double[numPoints][dimension];
         int pos = 0;
-        double [][] points = new double[numPoints][dimension];
         for (int i = 0; i < numPoints; ++i){
-            double[] pointsRow = points[i];
+            double[] pointsRow = to[i];
             for (int j = 0; j < dimension; ++j) {
                 bytes.position(pos);
                 pointsRow[j] = bytes.readDouble(pos);
                 pos += Double.BYTES;
             }
         }
-        return  points;
+        return  to;
     }
 
     private static double[][] extractPoints(
@@ -1114,7 +1175,7 @@ public class Program {
             int procLocalRow = procLocalPnum / ParallelOps.globalColCount;
             int globalCol = procLocalPnum % ParallelOps.globalColCount;
 
-            double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
+            double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
             double weight = weights.getWeight(procLocalRow, globalCol);
 
             if (origD < 0 || weight == 0) {
@@ -1240,7 +1301,7 @@ public class Program {
                 i + ParallelOps.threadPointStartOffsets[threadIdx];
             int procLocalRow = procLocalPnum / ParallelOps.globalColCount;
             int globalCol = procLocalPnum % ParallelOps.globalColCount;
-            double origD = distances[procLocalRow][globalCol] * 1.0 / Short.MAX_VALUE;
+            double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
             double weight = weights.getWeight(procLocalRow,globalCol);
             if (origD < 0) {
                 // Missing distance
