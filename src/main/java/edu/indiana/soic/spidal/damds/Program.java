@@ -358,7 +358,7 @@ public class Program {
             "  Total\tTempLoop\tPreStress\tStressLoop\tBC\tCG\tStress" +
             "\tBCInternal\tBComm\tBCInternalBofZ\tBCInternalMM\tCGMM" +
             "\tCGInnerProd\tCGLoop\tCGLoopMM\tCGLoopInnerProdPAP" +
-            "\tCGLoopInnerProdR\tMMInternal\tMMComm";
+            "\tCGLoopInnerProdR\tMMInternal\tMMComm\tBCMerge\tBCExtract\tMMMerge\tMMExtract";
         Utils.printMessage(
             mainHeader);
         String mainTimings = "  " + totalTime + '\t' + temperatureLoopTime +
@@ -396,7 +396,11 @@ public class Program {
                      MMTimings.getAverageTime(
                          MMTimings.TimingTask.MM_INTERNAL) + '\t' +
                      MMTimings.getAverageTime(
-                         MMTimings.TimingTask.COMM);
+                         MMTimings.TimingTask.COMM) + '\t' +
+                     BCTimings.getAverageTime(BCTimings.TimingTask.BC_MERGE) + '\t' +
+                     BCTimings.getAverageTime(BCTimings.TimingTask.BC_EXTRACT) + '\t' +
+                     MMTimings.getAverageTime(MMTimings.TimingTask.MM_MERGE) + '\t' +
+                     MMTimings.getAverageTime(MMTimings.TimingTask.MM_EXTRACT);
         Utils.printMessage(
             mainTimings);
 
@@ -407,47 +411,52 @@ public class Program {
             "  Total%\tTempLoop%\tPreStress%\tStressLoop%\tBC\tCG%\tStress%" +
             "\tBCInternal%\tBComm%\tBCInternalBofZ%\tBCInternalMM%\tCGMM%" +
             "\tCGInnerProd%\tCGLoop%\tCGLoopMM%\tCGLoopInnerProdPAP%" +
-            "\tCGLoopInnerProdR%\tMMInternal%\tMMComm%";
+            "\tCGLoopInnerProdR%\tMMInternal%\tMMComm%\tBCMerge%\tBCExtract%"
+            + "\tMMMerge%\tMMExtract%";
         Utils.printMessage(
             percentHeader);
         String percentTimings =
             "  " + 1.0 + '\t' + (temperatureLoopTime *1.0 / totalTime) + '\t' +
             TemperatureLoopTimings.getTotalTime(
-                TemperatureLoopTimings.TimingTask.PRE_STRESS) / totalTime +
+                TemperatureLoopTimings.TimingTask.PRE_STRESS) * 1.0 / totalTime +
             '\t' +
             TemperatureLoopTimings.getTotalTime(
-                TemperatureLoopTimings.TimingTask.STRESS_LOOP) / totalTime +
+                TemperatureLoopTimings.TimingTask.STRESS_LOOP) * 1.0 / totalTime +
             '\t' +
             StressLoopTimings.getTotalTime(
-                StressLoopTimings.TimingTask.BC) / totalTime + '\t' +
+                StressLoopTimings.TimingTask.BC) * 1.0 / totalTime + '\t' +
             StressLoopTimings.getTotalTime(
-                StressLoopTimings.TimingTask.CG) / totalTime + '\t' +
+                StressLoopTimings.TimingTask.CG) * 1.0 / totalTime + '\t' +
             StressLoopTimings.getTotalTime(
-                StressLoopTimings.TimingTask.STRESS) / totalTime + '\t' +
+                StressLoopTimings.TimingTask.STRESS) * 1.0 / totalTime + '\t' +
             BCTimings.getTotalTime(
-                BCTimings.TimingTask.BC_INTERNAL) / totalTime + '\t' +
+                BCTimings.TimingTask.BC_INTERNAL) * 1.0 / totalTime + '\t' +
             BCTimings.getTotalTime(
-                BCTimings.TimingTask.COMM) / totalTime + '\t' +
+                BCTimings.TimingTask.COMM) * 1.0 / totalTime + '\t' +
             BCInternalTimings.getTotalTime(
-                BCInternalTimings.TimingTask.BOFZ) / totalTime + '\t' +
+                BCInternalTimings.TimingTask.BOFZ) * 1.0 / totalTime + '\t' +
             BCInternalTimings.getTotalTime(
-                BCInternalTimings.TimingTask.MM) / totalTime + '\t' +
+                BCInternalTimings.TimingTask.MM) * 1.0 / totalTime + '\t' +
             CGTimings.getTotalTime(
-                CGTimings.TimingTask.MM) / totalTime + '\t' +
+                CGTimings.TimingTask.MM) * 1.0 / totalTime + '\t' +
             CGTimings.getTotalTime(
-                CGTimings.TimingTask.INNER_PROD) / totalTime + '\t' +
+                CGTimings.TimingTask.INNER_PROD) * 1.0 / totalTime + '\t' +
             CGTimings.getTotalTime(
-                CGTimings.TimingTask.CG_LOOP) / totalTime + '\t' +
+                CGTimings.TimingTask.CG_LOOP) * 1.0 / totalTime + '\t' +
             CGLoopTimings.getTotalTime(
-                CGLoopTimings.TimingTask.MM) / totalTime + '\t' +
+                CGLoopTimings.TimingTask.MM) * 1.0 / totalTime + '\t' +
             CGLoopTimings.getTotalTime(
-                CGLoopTimings.TimingTask.INNER_PROD_PAP) / totalTime + '\t' +
+                CGLoopTimings.TimingTask.INNER_PROD_PAP) * 1.0 / totalTime + '\t' +
             CGLoopTimings.getTotalTime(
-                CGLoopTimings.TimingTask.INNER_PROD_R) / totalTime + '\t' +
+                CGLoopTimings.TimingTask.INNER_PROD_R) * 1.0 / totalTime + '\t' +
             MMTimings.getTotalTime(
-                MMTimings.TimingTask.MM_INTERNAL) / totalTime + '\t' +
+                MMTimings.TimingTask.MM_INTERNAL) * 1.0 / totalTime + '\t' +
             MMTimings.getTotalTime(
-                MMTimings.TimingTask.COMM) / totalTime;
+                MMTimings.TimingTask.COMM) * 1.0 / totalTime + '\t' +
+            BCTimings.getTotalTime(BCTimings.TimingTask.BC_MERGE) * 1.0 / totalTime + '\t' +
+            BCTimings.getTotalTime(BCTimings.TimingTask.BC_EXTRACT) * 1.0 / totalTime + '\t' +
+            MMTimings.getTotalTime(MMTimings.TimingTask.MM_MERGE) * 1.0 / totalTime + '\t' +
+            MMTimings.getTotalTime(MMTimings.TimingTask.MM_EXTRACT) * 1.0 / totalTime;
         Utils.printMessage(
             percentTimings);
 
@@ -476,6 +485,14 @@ public class Program {
             MMTimings.TimingTask.MM_INTERNAL);
         long[] mmCommTimeDistribution = MMTimings.getTotalTimeDistribution(
             MMTimings.TimingTask.COMM);
+        long[] bcMergeTimeDistribution = BCTimings.getTotalTimeDistribution(
+            BCTimings.TimingTask.BC_MERGE);
+        long[] bcExtractTimeDistribution = BCTimings.getTotalTimeDistribution(
+            BCTimings.TimingTask.BC_EXTRACT);
+        long[] mmMergeTimeDistribution = MMTimings.getTotalTimeDistribution(
+            MMTimings.TimingTask.MM_MERGE);
+        long[] mmExtractTimeDistribution = MMTimings.getTotalTimeDistribution(
+            MMTimings.TimingTask.MM_EXTRACT);
 
         // Count distributions
         long[] temperatureLoopCountDistribution =
@@ -501,73 +518,38 @@ public class Program {
                 printWriter.println(percentTimings.trim());
                 printWriter.println();
 
-                printWriter.println("Temperature Loop Timing Distribution");
-                String str = Arrays.toString(temperatureLoopTimeDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
+                prettyPrintArray("Temperature Loop Timing Distribution",
+                                 temperatureLoopTimeDistribution, printWriter);
+                prettyPrintArray("Stress Timing Distribution", stressTimeDistribution, printWriter);
+                prettyPrintArray("BCComm Timing Distribution",
+                                 bcCommTimeDistribution, printWriter);
+                prettyPrintArray("MMComm Timing Distribution",
+                                 mmCommTimeDistribution, printWriter);
+                prettyPrintArray("BCInternalBofZ Timing Distribution",
+                                 bcInternalBofZTimeDistribution, printWriter);
+                prettyPrintArray("BCInternalMM Timing Distribution",
+                                 bcInternalMMTimeDistribution, printWriter);
+                prettyPrintArray("MMInternal Timing Distribution",
+                                 mmInternalTimeDistribution, printWriter);
+                prettyPrintArray("BC Merge Timing Distribution",
+                                 bcMergeTimeDistribution, printWriter);
+                prettyPrintArray("BC Extract Timing Distribution",
+                                 bcExtractTimeDistribution, printWriter);
+                prettyPrintArray("MM Merge Timing Distribution", mmMergeTimeDistribution, printWriter);
+                prettyPrintArray("MM Extract Timing Distribution", mmExtractTimeDistribution, printWriter);
+
+
                 printWriter.println();
 
-                printWriter.println("Stress Timing Distribution");
-                str = Arrays.toString(stressTimeDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
+                prettyPrintArray("Temperature Loop Count Distribution",
+                                 temperatureLoopCountDistribution, printWriter);
+                prettyPrintArray("Stress Loop Count Distribution",
+                                 stressLoopCountDistribution, printWriter);
+                prettyPrintArray("CG Loop Count Distribution",
+                                 cgLoopCountDistribution, printWriter);
+                prettyPrintArray("MM Internal Count Distribution", mmInternalCountDistribution, printWriter);
 
-                printWriter.println("BCComm Timing Distribution");
-                str = Arrays.toString(bcCommTimeDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
                 printWriter.println();
-
-                printWriter.println("MMComm Timing Distribution");
-                str = Arrays.toString(mmCommTimeDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
-
-                printWriter.println("BCInternalBofZ Timing Distribution");
-                str = Arrays.toString(bcInternalBofZTimeDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
-
-                printWriter.println("BCInternalMM Timing Distribution");
-                str = Arrays.toString(bcInternalMMTimeDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
-
-                printWriter.println("MMInternal Timing Distribution");
-                str = Arrays.toString(mmInternalTimeDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
-                printWriter.println();
-
-                printWriter.println("Temperature Loop Count Distribution");
-                str = Arrays.toString(temperatureLoopCountDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
-
-                printWriter.println("Stress Loop Count Distribution");
-                str = Arrays.toString(stressLoopCountDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
-
-                printWriter.println("CG Loop Count Distribution");
-                str = Arrays.toString(cgLoopCountDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
-
-                printWriter.println("MM Internal Count Distribution");
-                str = Arrays.toString(mmInternalCountDistribution);
-                printWriter.println(
-                    str.substring(1, str.length() - 1).replace(',', '\t'));
-                printWriter.println();
-
                 // Print MPI rank
                 String s = "";
                 for (int i = 0; i < ParallelOps.worldProcsCount * ParallelOps.threadCount; ++i){
@@ -576,8 +558,6 @@ public class Program {
                 printWriter.println(s);
                 printWriter.println();
 
-
-
                 printWriter.flush();
                 printWriter.close();
             }
@@ -585,6 +565,16 @@ public class Program {
                 e.printStackTrace();
             }
         }
+    }
+
+    private static void prettyPrintArray(
+        String title, long[] mmExtractTimeDistribution, PrintWriter printWriter) {
+        String str;
+        printWriter.println(title);
+        str = Arrays.toString(mmExtractTimeDistribution);
+        printWriter.println(
+            str.substring(1, str.length() - 1).replace(',', '\t'));
+        printWriter.println();
     }
 
     private static long[] getTemperatureLoopTimeDistribution(
@@ -871,11 +861,15 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
-            mergePartials(partialMMs, targetDimension, ParallelOps.mmapXWriteBytes);
+            MMTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
+            mergePartials(partialMMs, targetDimension,
+                          ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
             // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
             // if we wait on the whole world
             ParallelOps.worldProcsComm.barrier();
+            MMTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
+
             if (ParallelOps.isMmapLead) {
                 MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -887,8 +881,13 @@ public class Program {
             // However it's cleaner for any timings to have everyone sync here,
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
-            return extractPoints(ParallelOps.fullXBytes,
-                ParallelOps.globalColCount, targetDimension);
+            MMTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+            final double[][] result = extractPoints(ParallelOps.fullXBytes,
+                                                     ParallelOps.globalColCount,
+                                                     targetDimension);
+            ParallelOps.worldProcsComm.barrier();
+            MMTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+            return result;
         } else {
             double [][] mm = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialMMs, targetDimension, mm);
@@ -965,11 +964,15 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
-            mergePartials(partialBCs,targetDimension, ParallelOps.mmapXWriteBytes);
+            BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
+            mergePartials(partialBCs, targetDimension,
+                          ParallelOps.mmapXWriteBytes);
             // Important barrier here - as we need to make sure writes are done to the mmap file
             // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
             // if we wait on the whole world
             ParallelOps.worldProcsComm.barrier();
+            BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
+
             if (ParallelOps.isMmapLead) {
                 BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
@@ -981,10 +984,13 @@ public class Program {
             // However it's cleaner for any timings to have everyone sync here,
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
-
-            return extractPoints(
-                ParallelOps.fullXBytes, ParallelOps.globalColCount,
-                targetDimension);
+            BCTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
+            final double[][] result = extractPoints(ParallelOps.fullXBytes,
+                                                     ParallelOps.globalColCount,
+                                                     targetDimension);
+            ParallelOps.worldProcsComm.barrier();
+            BCTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
+            return result;
         } else {
             double[][] to = new double[ParallelOps.globalColCount][targetDimension];
             mergePartials(partialBCs, targetDimension, to);

@@ -11,7 +11,7 @@ import java.util.stream.IntStream;
 
 public class BCTimings {
     public static enum TimingTask{
-        BC_INTERNAL,COMM
+        BC_INTERNAL,COMM, BC_MERGE, BC_EXTRACT
     }
 
     private static int numThreads;
@@ -25,12 +25,18 @@ public class BCTimings {
 
     private static Stopwatch [] timerBCInternal;
     private static Stopwatch timerComm = Stopwatch.createUnstarted();
+    private static Stopwatch timerBCMerge = Stopwatch.createUnstarted();
+    private static Stopwatch timerBCExtract = Stopwatch.createUnstarted();
 
     private static long [] tBCInternal;
     private static long tComm;
+    private static long tBCMerge;
+    private static long tBCExtract;
 
     private static long [] countBCInternal;
     private static long countComm;
+    private static long countBCMerge;
+    private static long countBCExtract;
 
     public static void startTiming(TimingTask task, int threadIdx){
         switch (task){
@@ -41,6 +47,14 @@ public class BCTimings {
             case COMM:
                 timerComm.start();
                 ++countComm;
+                break;
+            case BC_MERGE:
+                timerBCMerge.start();
+                ++countBCMerge;
+                break;
+            case BC_EXTRACT:
+                timerBCExtract.start();
+                ++countBCExtract;
                 break;
         }
     }
@@ -57,6 +71,16 @@ public class BCTimings {
                 tComm += timerComm.elapsed(TimeUnit.MILLISECONDS);
                 timerComm.reset();
                 break;
+            case BC_MERGE:
+                timerBCMerge.stop();
+                tBCMerge += timerBCMerge.elapsed(TimeUnit.MILLISECONDS);
+                timerBCMerge.reset();
+                break;
+            case BC_EXTRACT:
+                timerBCExtract.stop();
+                tBCExtract += timerBCExtract.elapsed(TimeUnit.MILLISECONDS);
+                timerBCExtract.reset();
+                break;
         }
     }
 
@@ -66,6 +90,10 @@ public class BCTimings {
                 return Arrays.stream(tBCInternal).reduce(0, (i,j) -> i+j);
             case COMM:
                 return tComm;
+            case BC_MERGE:
+                return tBCMerge;
+            case BC_EXTRACT:
+                return tBCExtract;
         }
         return  0.0;
     }
@@ -76,6 +104,10 @@ public class BCTimings {
                 return Arrays.stream(tBCInternal).reduce(0, (i,j) -> i+j) *1.0 / Arrays.stream(countBCInternal).reduce(0, (i,j)->i+j);
             case COMM:
                 return tComm *1.0/ countComm;
+            case BC_MERGE:
+                return tBCMerge * 1.0 / countBCMerge;
+            case BC_EXTRACT:
+                return tBCExtract * 1.0 / countBCExtract;
         }
         return  0.0;
     }
@@ -98,6 +130,18 @@ public class BCTimings {
                 return threadsAndMPITimingArray;
             case COMM:
                 mpiOnlyTimingBuffer.put(tComm);
+                ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+                mpiOnlyTimingBuffer.position(0);
+                mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+                return mpiOnlyTimingArray;
+            case BC_MERGE:
+                mpiOnlyTimingBuffer.put(tBCMerge);
+                ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+                mpiOnlyTimingBuffer.position(0);
+                mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+                return mpiOnlyTimingArray;
+            case BC_EXTRACT:
+                mpiOnlyTimingBuffer.put(tBCExtract);
                 ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
                 mpiOnlyTimingBuffer.position(0);
                 mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
