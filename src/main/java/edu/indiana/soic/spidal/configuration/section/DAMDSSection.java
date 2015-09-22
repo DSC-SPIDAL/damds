@@ -80,6 +80,7 @@ public class DAMDSSection {
     public boolean isBigEndian;
     public boolean isMemoryMapped;
     public String transformationFunction;
+    public String weightTransformationFunction;
 
     private String getPadding(int count, String prefix){
         StringBuilder sb = new StringBuilder(prefix);
@@ -108,7 +109,8 @@ public class DAMDSSection {
                                        "Block Size",
                                        "BigEndian (boolean)",
                                        "Memory mapped (boolean)",
-                                       "TransformationFunction"};
+                                       "TransformationFunction",
+                                       "WeightTransformationFunction"};
         Object[] args =
             new Object[]{distanceMatrixFile,
                          weightMatrixFile,
@@ -129,7 +131,8 @@ public class DAMDSSection {
                          blockSize,
                          isBigEndian,
                          isMemoryMapped,
-                         transformationFunction};
+                         transformationFunction,
+                         weightTransformationFunction};
 
         java.util.Optional<Integer> maxLength =
             Arrays.stream(params).map(String::length).reduce(Math::max);

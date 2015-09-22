@@ -145,8 +145,8 @@ public class Program {
 
             mainTimer.stop();
             Utils.printMessage(
-                "\nUp to the loop took " + mainTimer.elapsed(
-                    TimeUnit.SECONDS) + " seconds");
+                    "\nUp to the loop took " + mainTimer.elapsed(
+                            TimeUnit.SECONDS) + " seconds");
             mainTimer.start();
 
             Stopwatch loopTimer = Stopwatch.createStarted();
@@ -832,7 +832,7 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             MMTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
             mergePartials(partialMMs, targetDimension,
-                          ParallelOps.mmapXWriteBytes);
+                    ParallelOps.mmapXWriteBytes);
             MMTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
 
             // Important barrier here - as we need to make sure writes are done to the mmap file
@@ -929,7 +929,7 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
             mergePartials(partialBCs, targetDimension,
-                          ParallelOps.mmapXWriteBytes);
+                    ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
             // Important barrier here - as we need to make sure writes are done to the mmap file
@@ -1238,15 +1238,26 @@ public class Program {
 
     private static void readDistancesAndWeights(boolean isSammon) {
         TransformationFunction function = null;
-        if (config.transformationFunction != null) {
+        if (config.transformationFunction != null && !"".equals(config.transformationFunction)) {
             function = loadFunction(config.transformationFunction);
         }
-        distances = BinaryReader2D.readRowRange(
-            config.distanceMatrixFile, ParallelOps.procRowRange,
-            ParallelOps.globalColCount, byteOrder, true, config.distanceTransform);
+        if (function == null) {
+            distances = BinaryReader2D.readRowRange(
+                    config.distanceMatrixFile, ParallelOps.procRowRange,
+                    ParallelOps.globalColCount, byteOrder, true, config.distanceTransform);
+        } else {
+            distances = BinaryReader2D.readRowRange(
+                    config.distanceMatrixFile, ParallelOps.procRowRange,
+                    ParallelOps.globalColCount, byteOrder, true, function);
+        }
+        TransformationFunction weightFunction = null;
+        if (config.weightTransformationFunction != null && !"".equals(config.weightTransformationFunction)) {
+            weightFunction = loadFunction(config.weightTransformationFunction);
+        }
+
         short[][] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
-            if (function == null) {
+            if (weightFunction == null) {
                 w = BinaryReader2D
                         .readRowRange(
                                 config.weightMatrixFile, ParallelOps.procRowRange,
@@ -1255,7 +1266,7 @@ public class Program {
                 w = BinaryReader2D
                         .readRowRange(
                                 config.weightMatrixFile, ParallelOps.procRowRange,
-                                ParallelOps.globalColCount, byteOrder, true, function);
+                                ParallelOps.globalColCount, byteOrder, true, weightFunction);
             }
         }
         weights = new WeightsWrap(w, distances, isSammon);
