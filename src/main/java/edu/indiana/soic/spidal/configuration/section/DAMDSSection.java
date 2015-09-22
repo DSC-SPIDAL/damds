@@ -107,7 +107,8 @@ public class DAMDSSection {
                                        "Sammon mapping (boolean) ",
                                        "Block Size",
                                        "BigEndian (boolean)",
-                                       "Memory mapped (boolean)"};
+                                       "Memory mapped (boolean)",
+                                       "TransformationFunction"};
         Object[] args =
             new Object[]{distanceMatrixFile,
                          weightMatrixFile,
@@ -127,7 +128,8 @@ public class DAMDSSection {
                          isSammon,
                          blockSize,
                          isBigEndian,
-                         isMemoryMapped};
+                         isMemoryMapped,
+                         transformationFunction};
 
         java.util.Optional<Integer> maxLength =
             Arrays.stream(params).map(String::length).reduce(Math::max);

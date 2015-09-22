@@ -12,7 +12,7 @@ import java.util.stream.IntStream;
 
 public class MMTimings {
     public static enum TimingTask{
-        MM_INTERNAL,COMM
+        MM_INTERNAL,COMM, MM_MERGE, MM_EXTRACT
     }
 
     private static int numThreads;
@@ -26,12 +26,20 @@ public class MMTimings {
 
     private static Stopwatch [] timerMMInternal;
     private static Stopwatch timerComm = Stopwatch.createUnstarted();
+    private static Stopwatch timerMMMerge = Stopwatch.createUnstarted();
+    private static Stopwatch timerMMExtract = Stopwatch.createUnstarted();
 
     private static long [] tMMInternal;
     private static long tComm;
+    private static long tMMMerge;
+    private static long tMMExtract;
 
     private static long [] countMMInternal;
     private static long countComm;
+    private static long countMMMerge;
+    private static long countMMExtract;
+
+
 
     public static void startTiming(TimingTask task, int threadIdx){
         switch (task){
@@ -42,6 +50,14 @@ public class MMTimings {
             case COMM:
                 timerComm.start();
                 ++countComm;
+                break;
+            case MM_MERGE:
+                timerMMMerge.start();
+                ++countMMMerge;
+                break;
+            case MM_EXTRACT:
+                timerMMExtract.start();
+                ++countMMExtract;
                 break;
         }
     }
@@ -59,6 +75,16 @@ public class MMTimings {
                 tComm += timerComm.elapsed(TimeUnit.MILLISECONDS);
                 timerComm.reset();
                 break;
+            case MM_MERGE:
+                timerMMMerge.stop();
+                tMMMerge += timerMMMerge.elapsed(TimeUnit.MILLISECONDS);
+                timerMMMerge.reset();
+                break;
+            case MM_EXTRACT:
+                timerMMExtract.stop();
+                tMMExtract += timerMMExtract.elapsed(TimeUnit.MILLISECONDS);
+                timerMMExtract.reset();
+                break;
         }
     }
 
@@ -69,6 +95,10 @@ public class MMTimings {
                 return max.isPresent() ? max.getAsLong() * 1.0 : 0.0;
             case COMM:
                 return tComm;
+            case MM_MERGE:
+                return tMMMerge;
+            case MM_EXTRACT:
+                return tMMExtract;
         }
         return  0.0;
     }
@@ -80,6 +110,10 @@ public class MMTimings {
                     countMMInternal).reduce(0, (i,j)->i+j);
             case COMM:
                 return tComm *1.0/ countComm;
+            case MM_MERGE:
+                return tMMMerge * 1.0 / countMMMerge;
+            case MM_EXTRACT:
+                return tMMExtract * 1.0 / countMMExtract;
         }
         return  0.0;
     }
@@ -106,7 +140,20 @@ public class MMTimings {
                 mpiOnlyTimingBuffer.position(0);
                 mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
                 return mpiOnlyTimingArray;
+            case MM_MERGE:
+                mpiOnlyTimingBuffer.put(tMMMerge);
+                ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+                mpiOnlyTimingBuffer.position(0);
+                mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+                return mpiOnlyTimingArray;
+            case MM_EXTRACT:
+                mpiOnlyTimingBuffer.put(tMMExtract);
+                ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
+                mpiOnlyTimingBuffer.position(0);
+                mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
+                return mpiOnlyTimingArray;
         }
+
         return null;
     }
 
@@ -128,6 +175,18 @@ public class MMTimings {
                 return threadsAndMPIArray;
             case COMM:
                 mpiOnlyBuffer.put(countComm);
+                ParallelOps.gather(mpiOnlyBuffer, 1, 0);
+                mpiOnlyBuffer.position(0);
+                mpiOnlyBuffer.get(mpiOnlyArray);
+                return mpiOnlyArray;
+            case MM_MERGE:
+                mpiOnlyBuffer.put(countMMMerge);
+                ParallelOps.gather(mpiOnlyBuffer, 1, 0);
+                mpiOnlyBuffer.position(0);
+                mpiOnlyBuffer.get(mpiOnlyArray);
+                return mpiOnlyArray;
+            case MM_EXTRACT:
+                mpiOnlyBuffer.put(countMMExtract);
                 ParallelOps.gather(mpiOnlyBuffer, 1, 0);
                 mpiOnlyBuffer.position(0);
                 mpiOnlyBuffer.get(mpiOnlyArray);
