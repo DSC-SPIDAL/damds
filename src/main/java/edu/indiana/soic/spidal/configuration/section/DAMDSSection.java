@@ -40,6 +40,7 @@ public class DAMDSSection {
             isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
             isMemoryMapped = Boolean.parseBoolean(getProperty(p, "IsMemoryMapped", "true"));
             transformationFunction = getProperty(p, "TransformationFunction", null);
+            weightTransformationFunction = getProperty(p, "WeightTransformationFunction", null);
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
