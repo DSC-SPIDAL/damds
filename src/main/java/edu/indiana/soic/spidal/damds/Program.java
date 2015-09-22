@@ -1246,16 +1246,37 @@ public class Program {
         return threadDistanceSummaries[0];
     }
 
+    private static TransformationFunction loadFunction(String classFile) {
+        ClassLoader classLoader = Program.class.getClassLoader();
+        try {
+            Class aClass = classLoader.loadClass(classFile);
+            return (TransformationFunction) aClass.newInstance();
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to load class: " + classFile, e);
+        }
+    }
+
     private static void readDistancesAndWeights(boolean isSammon) {
+        TransformationFunction function = null;
+        if (config.transformationFunction != null) {
+            function = loadFunction(config.transformationFunction);
+        }
         distances = BinaryReader2D.readRowRange(
             config.distanceMatrixFile, ParallelOps.procRowRange,
             ParallelOps.globalColCount, byteOrder, true, config.distanceTransform);
         short[][] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
-            w = BinaryReader2D
-                .readRowRange(
-                    config.weightMatrixFile, ParallelOps.procRowRange,
-                    ParallelOps.globalColCount, byteOrder, true, 1.0);
+            if (function == null) {
+                w = BinaryReader2D
+                        .readRowRange(
+                                config.weightMatrixFile, ParallelOps.procRowRange,
+                                ParallelOps.globalColCount, byteOrder, true, 1.0);
+            } else {
+                w = BinaryReader2D
+                        .readRowRange(
+                                config.weightMatrixFile, ParallelOps.procRowRange,
+                                ParallelOps.globalColCount, byteOrder, true, function);
+            }
         }
         weights = new WeightsWrap(w, distances, isSammon);
     }

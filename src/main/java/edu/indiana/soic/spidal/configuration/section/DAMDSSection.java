@@ -39,6 +39,8 @@ public class DAMDSSection {
 
             isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
             isMemoryMapped = Boolean.parseBoolean(getProperty(p, "IsMemoryMapped", "true"));
+            transformationFunction = getProperty(p, "TransformationFunction",
+                                                 null);
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
@@ -78,6 +80,7 @@ public class DAMDSSection {
 
     public boolean isBigEndian;
     public boolean isMemoryMapped;
+    public String transformationFunction;
 
     private String getPadding(int count, String prefix){
         StringBuilder sb = new StringBuilder(prefix);
@@ -105,7 +108,8 @@ public class DAMDSSection {
                                        "Sammon mapping (boolean) ",
                                        "Block Size",
                                        "BigEndian (boolean)",
-                                       "Memory mapped (boolean)"};
+                                       "Memory mapped (boolean)",
+                                       "TransformationFunction"};
         Object[] args =
             new Object[]{distanceMatrixFile,
                          weightMatrixFile,
@@ -125,7 +129,8 @@ public class DAMDSSection {
                          isSammon,
                          blockSize,
                          isBigEndian,
-                         isMemoryMapped};
+                         isMemoryMapped,
+                         transformationFunction};
 
         java.util.Optional<Integer> maxLength =
             Arrays.stream(params).map(String::length).reduce(Math::max);
