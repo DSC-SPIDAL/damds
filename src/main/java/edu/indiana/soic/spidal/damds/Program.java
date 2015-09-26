@@ -1257,28 +1257,30 @@ public class Program {
     }
 
     private static void readDistancesAndWeights(boolean isSammon) {
-        TransformationFunction function = null;
-        if (config.transformationFunction != null) {
+        TransformationFunction function;
+        if (!Strings.isNullOrEmpty(config.transformationFunction)) {
             function = loadFunction(config.transformationFunction);
+        } else {
+            function = (config.distanceTransform != 1.0
+                            ? (d -> Math.pow(d, config.distanceTransform))
+                            : null);
         }
+
         distances = BinaryReader2D.readRowRange(
             config.distanceMatrixFile, ParallelOps.procRowRange,
-            ParallelOps.globalColCount, byteOrder, true, config.distanceTransform);
-        short[][] w = null;
+            ParallelOps.globalColCount, byteOrder, true, function);
+
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
-            if (function == null) {
-                w = BinaryReader2D
-                        .readRowRange(
-                                config.weightMatrixFile, ParallelOps.procRowRange,
-                                ParallelOps.globalColCount, byteOrder, true, 1.0);
-            } else {
-                w = BinaryReader2D
-                        .readRowRange(
-                                config.weightMatrixFile, ParallelOps.procRowRange,
-                                ParallelOps.globalColCount, byteOrder, true, function);
-            }
+            function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
+                ? loadFunction(config.weightTransformationFunction)
+                : null;
+            short[][] w = BinaryReader2D
+                .readRowRange(config.weightMatrixFile,
+                              ParallelOps.procRowRange,
+                              ParallelOps.globalColCount, byteOrder,
+                              true, function);
+            weights = new WeightsWrap(w, distances, isSammon);
         }
-        weights = new WeightsWrap(w, distances, isSammon);
     }
 
     private static DoubleStatistics calculateStatisticsInternal(
