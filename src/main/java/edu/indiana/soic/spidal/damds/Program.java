@@ -1270,17 +1270,18 @@ public class Program {
             config.distanceMatrixFile, ParallelOps.procRowRange,
             ParallelOps.globalColCount, byteOrder, true, function);
 
+        short[][] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
             function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
                 ? loadFunction(config.weightTransformationFunction)
                 : null;
-            short[][] w = BinaryReader2D
+            w = BinaryReader2D
                 .readRowRange(config.weightMatrixFile,
                               ParallelOps.procRowRange,
                               ParallelOps.globalColCount, byteOrder,
                               true, function);
-            weights = new WeightsWrap(w, distances, isSammon);
         }
+        weights = new WeightsWrap(w, distances, isSammon);
     }
 
     private static DoubleStatistics calculateStatisticsInternal(
