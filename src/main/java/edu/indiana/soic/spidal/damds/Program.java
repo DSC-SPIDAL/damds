@@ -55,6 +55,12 @@ public class Program {
     public static final double INV_SHORT_MAX = 1.0 / Short.MAX_VALUE;
     public static final double SHORT_MAX = Short.MAX_VALUE;
 
+    // Arrays
+    public static double[][] preX;
+    public static double[][] BC;
+
+    public static double[][][] commonThreadPartialPointsA;
+    public static double[][][] commonThreadPartialPointsB;
 
     //Config Settings
     public static DAMDSSection config;
@@ -127,8 +133,16 @@ public class Program {
             weights.setAvgDistForSammon(distanceSummary.getAverage());
             changeZeroDistancesToPostiveMin(distances, distanceSummary.getPositiveMin());
 
-            double[][] preX = Strings.isNullOrEmpty(config.initialPointsFile) ? generateInitMapping(
-                config.numberDataPoints, config.targetDimension): readInitMapping(config.initialPointsFile, config.numberDataPoints, config.targetDimension);
+            // Allocating point arrays once for all
+            preX = new double[config.numberDataPoints][config.targetDimension];
+            BC = new double[config.numberDataPoints][config.targetDimension];
+
+            if (Strings.isNullOrEmpty(config.initialPointsFile)){
+                generateInitMapping(
+                    config.numberDataPoints, config.targetDimension, preX);
+            } else {
+                readInitMapping(config.initialPointsFile, preX);
+            }
             double tCur = 0.0;
             double tMax = distanceSummary.getMax() / Math.sqrt(2.0 * config.targetDimension);
             double tMin = config.tMinFactor * distanceSummary.getPositiveMin() / Math.sqrt(2.0 * config.targetDimension);
@@ -137,8 +151,6 @@ public class Program {
             double preStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
             Utils.printMessage("\nInitial stress=" + preStress);
-
-            double BC[][];
 
             tCur = config.alpha * tMax;
 
@@ -181,9 +193,9 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
-                    BC = calculateBC(
+                    calculateBC(
                         preX, config.targetDimension, tCur, distances,
-                        weights, BlockSize);
+                        weights, BlockSize, BC);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
                     // This barrier was necessary for correctness when using
@@ -580,11 +592,10 @@ public class Program {
         MMTimings.init(ParallelOps.threadCount);
     }
 
-    private static double[][] readInitMapping(
-        String initialPointsFile, int numPoints, int targetDimension) {
+    private static void readInitMapping(
+        String initialPointsFile, double[][] preX) {
         try (BufferedReader br = Files.newBufferedReader(Paths.get(initialPointsFile),
                                                          Charset.defaultCharset())){
-            double x[][] = new double[numPoints][targetDimension];
             String line;
             Pattern pattern = Pattern.compile("[\t]");
             int row = 0;
@@ -595,11 +606,10 @@ public class Program {
                 String[] splits = pattern.split(line.trim());
 
                 for (int i = 0; i < splits.length; ++i){
-                    x[row][i] = Double.parseDouble(splits[i].trim());
+                    preX[row][i] = Double.parseDouble(splits[i].trim());
                 }
                 ++row;
             }
-            return x;
         }
         catch (IOException e) {
             throw new RuntimeException(e);
@@ -898,9 +908,9 @@ public class Program {
         return sum;
     }
 
-    private static double[][] calculateBC(
+    private static void calculateBC(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
-        WeightsWrap weights, int blockSize)
+        WeightsWrap weights, int blockSize, double[][] BC)
         throws MPIException, InterruptedException {
 
         double [][][] partialBCs = new double[ParallelOps.threadCount][][];
@@ -950,15 +960,12 @@ public class Program {
             ParallelOps.worldProcsComm.barrier();
 
             BCTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
-            final double[][] result = extractPoints(ParallelOps.fullXBytes,
+            extractPoints(ParallelOps.fullXBytes,
                                                      ParallelOps.globalColCount,
-                                                     targetDimension);
+                                                     targetDimension, BC);
             BCTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
-            return result;
         } else {
-            double[][] to = new double[ParallelOps.globalColCount][targetDimension];
-            mergePartials(partialBCs, targetDimension, to);
-            return to;
+            mergePartials(partialBCs, targetDimension, BC);
         }
     }
 
@@ -1032,6 +1039,7 @@ public class Program {
         return BofZ;
     }
 
+    // TODO - this should be removed as it allocates arrays all the time.
     private static double[][] extractPoints(
         Bytes bytes, int numPoints, int dimension) {
         double[][] to = new double[numPoints][dimension];
@@ -1045,6 +1053,19 @@ public class Program {
             }
         }
         return  to;
+    }
+
+    private static void extractPoints(
+        Bytes bytes, int numPoints, int dimension, double[][] to) {
+        int pos = 0;
+        for (int i = 0; i < numPoints; ++i){
+            double[] pointsRow = to[i];
+            for (int j = 0; j < dimension; ++j) {
+                bytes.position(pos);
+                pointsRow[j] = bytes.readDouble(pos);
+                pos += Double.BYTES;
+            }
+        }
     }
 
     private static double[][] extractPoints(
@@ -1186,8 +1207,8 @@ public class Program {
         return dist;
     }
 
-    static double[][] generateInitMapping(int numPoints,
-                                          int targetDim) throws MPIException {
+    private static void generateInitMapping(
+        int numPoints, int targetDim, double[][] preX) throws MPIException {
 
         Bytes fullBytes = ParallelOps.fullXBytes;
         if (ParallelOps.worldProcRank == 0) {
@@ -1209,7 +1230,7 @@ public class Program {
             // Broadcast initial mapping to others
             ParallelOps.broadcast(ParallelOps.fullXByteBuffer, numPoints * targetDim*Double.BYTES, 0);
         }
-        return extractPoints(fullBytes, numPoints, targetDim);
+        extractPoints(fullBytes, numPoints, targetDim, preX);
     }
 
     private static DoubleStatistics calculateStatistics(
