@@ -138,7 +138,6 @@ public class Program {
                 preX, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
             Utils.printMessage("\nInitial stress=" + preStress);
 
-            double X[][] = null;
             double BC[][];
 
             tCur = config.alpha * tMax;
@@ -193,7 +192,7 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
-                    X = calculateConjugateGradient(
+                    calculateConjugateGradient(
                         preX, config.targetDimension, config.numberDataPoints,
                         BC, config.cgIter, config.cgErrorThreshold, cgCount, outRealCGIterations,
                         weights, BlockSize, vArray);
@@ -204,7 +203,7 @@ public class Program {
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
-                        X, config.targetDimension, tCur, distances,
+                        preX, config.targetDimension, tCur, distances,
                         weights, distanceSummary.getSumOfSquare());
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.STRESS);
@@ -212,7 +211,6 @@ public class Program {
 
                     diffStress = preStress - stress;
                     preStress = stress;
-                    preX = MatrixUtils.copy(X);
 
                     if ((itrNum % 10 == 0) || (itrNum >= config.stressIter)) {
                         Utils.printMessage(
@@ -288,7 +286,7 @@ public class Program {
             }*/
 
             Double finalStress = calculateStress(
-                X, config.targetDimension, tCur, distances, weights,
+                preX, config.targetDimension, tCur, distances, weights,
                 distanceSummary.getSumOfSquare());
 
             mainTimer.stop();
@@ -724,20 +722,18 @@ public class Program {
         return v;
     }
 
-    private static double[][] calculateConjugateGradient(
+    private static void calculateConjugateGradient(
         double[][] preX, int targetDimension, int numPoints, double[][] BC, int cgIter, double cgThreshold,
         RefObj<Integer> outCgCount, RefObj<Integer> outRealCGIterations,
         WeightsWrap weights, int blockSize, double[][] vArray)
 
         throws MPIException {
 
-        double[][] X;
         double[][] r;
         double[][] p = new double[numPoints][targetDimension];
 
-        X = preX;
         CGTimings.startTiming(CGTimings.TimingTask.MM);
-        r = calculateMM(X, targetDimension, numPoints, weights, blockSize,
+        r = calculateMM(preX, targetDimension, numPoints, weights, blockSize,
                         vArray);
         CGTimings.endTiming(CGTimings.TimingTask.MM);
         // This barrier was necessary for correctness when using
@@ -776,7 +772,7 @@ public class Program {
             //update Xi to Xi+1
             for(int i = 0; i < numPoints; ++i)
                 for(int j = 0; j < targetDimension; ++j)
-                    X[i][j] += alpha * p[i][j];
+                    preX[i][j] += alpha * p[i][j];
 
             if (rTr < testEnd) {
                 break;
@@ -802,7 +798,6 @@ public class Program {
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
-        return X;
     }
 
     private static double[][] calculateMM(
