@@ -154,6 +154,7 @@ public class Program {
             double diffStress;
             double stress = -1.0;
             RefObj<Integer> outRealCGIterations = new RefObj<>(0);
+            RefObj<Integer> cgCount = new RefObj<>(0);
             int smacofRealIterations = 0;
             while (true) {
 
@@ -173,7 +174,7 @@ public class Program {
                         loopNum, tCur));
 
                 int itrNum = 0;
-                RefObj<Integer> cgCount = new RefObj<>(0);
+                cgCount.setValue(0);
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
@@ -192,10 +193,12 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
-                    calculateConjugateGradient(
-                        preX, config.targetDimension, config.numberDataPoints,
-                        BC, config.cgIter, config.cgErrorThreshold, cgCount, outRealCGIterations,
-                        weights, BlockSize, vArray);
+                    calculateConjugateGradient(preX, config.targetDimension,
+                                               config.numberDataPoints, BC,
+                                               config.cgIter,
+                                               config.cgErrorThreshold, cgCount,
+                                               outRealCGIterations, weights,
+                                               BlockSize, vArray);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.CG);
 
@@ -1195,8 +1198,8 @@ public class Program {
                 for (int j = 0; j < targetDim; j++) {
                     fullBytes.position(pos);
                     fullBytes.writeDouble(rand.nextBoolean()
-                                           ? rand.nextDouble()
-                                           : -rand.nextDouble());
+                                              ? rand.nextDouble()
+                                              : -rand.nextDouble());
                     pos += Double.BYTES;
                 }
             }
@@ -1276,10 +1279,9 @@ public class Program {
                 ? loadFunction(config.weightTransformationFunction)
                 : null;
             w = BinaryReader2D
-                .readRowRange(config.weightMatrixFile,
-                              ParallelOps.procRowRange,
-                              ParallelOps.globalColCount, byteOrder,
-                              true, function);
+                .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
+                              ParallelOps.globalColCount, byteOrder, true,
+                              function);
         }
         weights = new WeightsWrap(w, distances, isSammon);
     }
