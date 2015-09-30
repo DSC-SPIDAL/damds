@@ -74,7 +74,6 @@ public class ParallelOps {
     public static int globalColCount;
 
     // Buffers for MPI operations
-    static DoubleBuffer pointBuffer;
     private static ByteBuffer statBuffer;
     private static DoubleBuffer doubleBuffer;
     private static IntBuffer intBuffer;
@@ -185,10 +184,6 @@ public class ParallelOps {
                          threadPointStartOffsets[threadIdx] =
                              threadRowStartOffsets[threadIdx] * globalColCount;
                      });
-
-        // TODO - should be able to remove this using fullXByteBuffer
-        // Allocate a point buffer
-        pointBuffer = MPI.newDoubleBuffer(globalRowCount * targetDimension);
 
         // Allocate timing buffers
         mpiOnlyBuffer = MPI.newLongBuffer(worldProcsCount);
