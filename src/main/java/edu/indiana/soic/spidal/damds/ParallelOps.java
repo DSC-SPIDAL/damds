@@ -282,9 +282,9 @@ public class ParallelOps {
                               cgProcsMmapXDisplas, MPI.BYTE);
     }
 
-    public static void broadcast(DoubleBuffer buffer, int extent, int root)
+    public static void broadcast(ByteBuffer buffer, int extent, int root)
         throws MPIException {
-        worldProcsComm.bcast(buffer, extent, MPI.DOUBLE, root);
+        worldProcsComm.bcast(buffer, extent, MPI.BYTE, root);
     }
 
     public static void gather(LongBuffer buffer, int count, int root)

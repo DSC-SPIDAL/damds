@@ -1186,27 +1186,30 @@ public class Program {
         return dist;
     }
 
-    // TODO - this could be improved with shared mem trick
     static double[][] generateInitMapping(int numPoints,
                                           int targetDim) throws MPIException {
 
-        DoubleBuffer buffer = ParallelOps.pointBuffer;
+        Bytes fullBytes = ParallelOps.fullXBytes;
         if (ParallelOps.worldProcRank == 0) {
-            buffer.position(0);
+            int pos = 0;
             // Use Random class for generating random initial mapping solution.
             Random rand = new Random(System.currentTimeMillis());
             for (int i = 0; i < numPoints; i++) {
                 for (int j = 0; j < targetDim; j++) {
-                    buffer.put(rand.nextBoolean() ? rand.nextDouble() : -rand.nextDouble());
+                    fullBytes.position(pos);
+                    fullBytes.writeDouble(rand.nextBoolean()
+                                           ? rand.nextDouble()
+                                           : -rand.nextDouble());
+                    pos += Double.BYTES;
                 }
             }
         }
 
         if (ParallelOps.worldProcsCount > 1){
             // Broadcast initial mapping to others
-            ParallelOps.broadcast(buffer, numPoints * targetDim, 0);
+            ParallelOps.broadcast(ParallelOps.fullXByteBuffer, numPoints * targetDim*Double.BYTES, 0);
         }
-        return extractPoints(buffer, numPoints, targetDim);
+        return extractPoints(fullBytes, numPoints, targetDim);
     }
 
     private static DoubleStatistics calculateStatistics(
