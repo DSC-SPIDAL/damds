@@ -145,8 +145,8 @@ public class Program {
 
             mainTimer.stop();
             Utils.printMessage(
-                    "\nUp to the loop took " + mainTimer.elapsed(
-                            TimeUnit.SECONDS) + " seconds");
+                "\nUp to the loop took " + mainTimer.elapsed(
+                    TimeUnit.SECONDS) + " seconds");
             mainTimer.start();
 
             Stopwatch loopTimer = Stopwatch.createStarted();
@@ -832,7 +832,7 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             MMTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
             mergePartials(partialMMs, targetDimension,
-                    ParallelOps.mmapXWriteBytes);
+                          ParallelOps.mmapXWriteBytes);
             MMTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
 
             // Important barrier here - as we need to make sure writes are done to the mmap file
@@ -929,7 +929,7 @@ public class Program {
         if (ParallelOps.worldProcsCount > 1) {
             BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
             mergePartials(partialBCs, targetDimension,
-                    ParallelOps.mmapXWriteBytes);
+                          ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
             // Important barrier here - as we need to make sure writes are done to the mmap file
@@ -1237,37 +1237,29 @@ public class Program {
     }
 
     private static void readDistancesAndWeights(boolean isSammon) {
-        TransformationFunction function = null;
-        if (config.transformationFunction != null && !"".equals(config.transformationFunction)) {
+        TransformationFunction function;
+        if (!Strings.isNullOrEmpty(config.transformationFunction)) {
             function = loadFunction(config.transformationFunction);
-        }
-        if (function == null) {
-            distances = BinaryReader2D.readRowRange(
-                    config.distanceMatrixFile, ParallelOps.procRowRange,
-                    ParallelOps.globalColCount, byteOrder, true, config.distanceTransform);
         } else {
-            distances = BinaryReader2D.readRowRange(
-                    config.distanceMatrixFile, ParallelOps.procRowRange,
-                    ParallelOps.globalColCount, byteOrder, true, function);
+            function = (config.distanceTransform != 1.0
+                            ? (d -> Math.pow(d, config.distanceTransform))
+                            : null);
         }
-        TransformationFunction weightFunction = null;
-        if (config.weightTransformationFunction != null && !"".equals(config.weightTransformationFunction)) {
-            weightFunction = loadFunction(config.weightTransformationFunction);
-        }
+
+        distances = BinaryReader2D.readRowRange(
+            config.distanceMatrixFile, ParallelOps.procRowRange,
+            ParallelOps.globalColCount, byteOrder, true, function);
 
         short[][] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
-            if (weightFunction == null) {
-                w = BinaryReader2D
-                        .readRowRange(
-                                config.weightMatrixFile, ParallelOps.procRowRange,
-                                ParallelOps.globalColCount, byteOrder, true, 1.0);
-            } else {
-                w = BinaryReader2D
-                        .readRowRange(
-                                config.weightMatrixFile, ParallelOps.procRowRange,
-                                ParallelOps.globalColCount, byteOrder, true, weightFunction);
-            }
+            function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
+                ? loadFunction(config.weightTransformationFunction)
+                : null;
+            w = BinaryReader2D
+                .readRowRange(config.weightMatrixFile,
+                              ParallelOps.procRowRange,
+                              ParallelOps.globalColCount, byteOrder,
+                              true, function);
         }
         weights = new WeightsWrap(w, distances, isSammon);
     }
