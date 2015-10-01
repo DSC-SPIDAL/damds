@@ -59,8 +59,8 @@ public class Program {
     public static double[][] preX;
     public static double[][] BC;
 
-    public static double[][][] commonThreadPartialPointsA;
-    public static double[][][] commonThreadPartialPointsB;
+    public static float[][][] threadPartialBCInternalBofZ;
+    public static double[][][] threadPartialBCInternalMM;
 
     //Config Settings
     public static DAMDSSection config;
@@ -136,6 +136,12 @@ public class Program {
             // Allocating point arrays once for all
             preX = new double[config.numberDataPoints][config.targetDimension];
             BC = new double[config.numberDataPoints][config.targetDimension];
+            threadPartialBCInternalBofZ = new float[ParallelOps.threadCount][][];
+            threadPartialBCInternalMM = new double[ParallelOps.threadCount][][];
+            for (int i = 0; i < ParallelOps.threadCount; ++i){
+                threadPartialBCInternalBofZ[i] = new float[ParallelOps.threadRowCounts[i]][ParallelOps.globalColCount];
+                threadPartialBCInternalMM[i] = new double[ParallelOps.threadRowCounts[i]][ParallelOps.globalColCount];
+            }
 
             if (Strings.isNullOrEmpty(config.initialPointsFile)){
                 generateInitMapping(
@@ -194,7 +200,7 @@ public class Program {
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
                         preX, config.targetDimension, tCur, distances,
-                        weights, BlockSize, BC);
+                        weights, BlockSize, BC, threadPartialBCInternalBofZ, threadPartialBCInternalMM);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
                     // This barrier was necessary for correctness when using
@@ -910,10 +916,10 @@ public class Program {
 
     private static void calculateBC(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
-        WeightsWrap weights, int blockSize, double[][] BC)
+        WeightsWrap weights, int blockSize, double[][] BC,
+        float[][][] threadPartialBCInternalBofZ,
+        double[][][] threadPartialBCInternalMM)
         throws MPIException, InterruptedException {
-
-        double [][][] partialBCs = new double[ParallelOps.threadCount][][];
 
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
@@ -921,24 +927,23 @@ public class Program {
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
-                        partialBCs[threadIdx] =
                         calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize);
+                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
         }
         else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
-            partialBCs[0] = calculateBCInternal(
-                0, preX, targetDimension, tCur, distances, weights, blockSize);
+            calculateBCInternal(
+                0, preX, targetDimension, tCur, distances, weights, blockSize,threadPartialBCInternalBofZ[0], threadPartialBCInternalMM[0]);
             BCTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
             BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
-            mergePartials(partialBCs, targetDimension,
+            mergePartials(threadPartialBCInternalMM, targetDimension,
                           ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
@@ -965,32 +970,33 @@ public class Program {
                                                      targetDimension, BC);
             BCTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
         } else {
-            mergePartials(partialBCs, targetDimension, BC);
+            mergePartials(threadPartialBCInternalMM, targetDimension, BC);
         }
     }
 
-    private static double[][] calculateBCInternal(
+    private static void calculateBCInternal(
         Integer threadIdx, double[][] preX, int targetDimension, double tCur,
-        short[][] distances, WeightsWrap weights, int blockSize) {
+        short[][] distances, WeightsWrap weights, int blockSize,
+        float[][] outBofZ, double[][] outMM) {
 
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
-        float [][] BofZ = calculateBofZ(threadIdx, preX, targetDimension, tCur,
-                                        distances, weights);
+        calculateBofZ(threadIdx, preX, targetDimension, tCur,
+                                        distances, weights, outBofZ);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
 
         // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        double [][] result = MatrixUtils.matrixMultiply(BofZ, preX, ParallelOps.threadRowCounts[threadIdx],
-                                                  targetDimension, ParallelOps.globalColCount, blockSize);
+        MatrixUtils.matrixMultiply(outBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
+                                                  targetDimension, ParallelOps.globalColCount, blockSize, outMM);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        return result;
     }
 
     private static float[][] calculateBofZ(
-        int threadIdx, double[][] preX, int targetDimension, double tCur, short[][] distances, WeightsWrap weights) {
+        int threadIdx, double[][] preX, int targetDimension, double tCur, short[][] distances, WeightsWrap weights,
+        float[][] outBofZ) {
 
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
-        float [][] BofZ = new float[threadRowCount][ParallelOps.globalColCount];
+        /*float [][] BofZ = new float[threadRowCount][ParallelOps.globalColCount];*/
 
         double vBlockValue = -1;
 
@@ -1003,7 +1009,7 @@ public class Program {
             int globalRow = localRow + ParallelOps.threadRowStartOffsets[threadIdx] +
                      ParallelOps.procRowStartOffset;
             int procLocalRow = globalRow - ParallelOps.procRowStartOffset;
-            BofZ[localRow][globalRow] = 0;
+            outBofZ[localRow][globalRow] = 0;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
 				/*
 				 * B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
@@ -1028,15 +1034,15 @@ public class Program {
                 double dist = calculateEuclideanDist(
                     preX, targetDimension, globalRow, globalCol);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    BofZ[localRow][globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
+                    outBofZ[localRow][globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
                 } else {
-                    BofZ[localRow][globalCol] = 0;
+                    outBofZ[localRow][globalCol] = 0;
                 }
 
-                BofZ[localRow][globalRow] -= BofZ[localRow][globalCol];
+                outBofZ[localRow][globalRow] -= outBofZ[localRow][globalCol];
             }
         }
-        return BofZ;
+        return outBofZ;
     }
 
     // TODO - this should be removed as it allocates arrays all the time.
