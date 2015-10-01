@@ -57,10 +57,10 @@ public class Program {
 
     // Arrays
     public static double[][] preX;
-    public static double[][] BC;
+    public static double[][] resultBC;
 
-    public static double[][][] commonThreadPartialPointsA;
-    public static double[][][] commonThreadPartialPointsB;
+    public static double[][][] tmpThreadPartialPointsA;
+    public static double[][][] tmpThreadPartialPointsB;
 
     //Config Settings
     public static DAMDSSection config;
@@ -119,6 +119,16 @@ public class Program {
             Utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
             Utils.printMessage(config.toString(false));
 
+            // Allocating point arrays once for all
+            preX = new double[config.numberDataPoints][config.targetDimension];
+            resultBC = new double[config.numberDataPoints][config.targetDimension];
+            tmpThreadPartialPointsA = new double[ParallelOps.threadCount][][];
+            tmpThreadPartialPointsB = new double[ParallelOps.threadCount][][];
+            for (int i = 0; i < ParallelOps.threadCount; ++i){
+                tmpThreadPartialPointsA[i] = new double[ParallelOps.threadRowCounts[i]][ParallelOps.globalColCount];
+                tmpThreadPartialPointsB[i] = new double[ParallelOps.threadRowCounts[i]][ParallelOps.globalColCount];
+            }
+
             readDistancesAndWeights(config.isSammon);
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(
@@ -133,9 +143,7 @@ public class Program {
             weights.setAvgDistForSammon(distanceSummary.getAverage());
             changeZeroDistancesToPostiveMin(distances, distanceSummary.getPositiveMin());
 
-            // Allocating point arrays once for all
-            preX = new double[config.numberDataPoints][config.targetDimension];
-            BC = new double[config.numberDataPoints][config.targetDimension];
+
 
             if (Strings.isNullOrEmpty(config.initialPointsFile)){
                 generateInitMapping(
@@ -194,7 +202,8 @@ public class Program {
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
                         preX, config.targetDimension, tCur, distances,
-                        weights, BlockSize, BC);
+                        weights, BlockSize, resultBC, tmpThreadPartialPointsA,
+                        tmpThreadPartialPointsB);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
                     // This barrier was necessary for correctness when using
@@ -205,7 +214,8 @@ public class Program {
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
                     calculateConjugateGradient(preX, config.targetDimension,
-                                               config.numberDataPoints, BC,
+                                               config.numberDataPoints,
+                                               resultBC,
                                                config.cgIter,
                                                config.cgErrorThreshold, cgCount,
                                                outRealCGIterations, weights,
@@ -909,10 +919,10 @@ public class Program {
 
     private static void calculateBC(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
-        WeightsWrap weights, int blockSize, double[][] BC)
+        WeightsWrap weights, int blockSize, double[][] outBC,
+        double[][][] tmpThreadPartialBofZ,
+        double[][][] tmpThreadPartialMM)
         throws MPIException, InterruptedException {
-
-        double [][][] partialBCs = new double[ParallelOps.threadCount][][];
 
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
@@ -920,24 +930,23 @@ public class Program {
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
-                        partialBCs[threadIdx] =
                         calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize);
+                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, tmpThreadPartialBofZ[threadIdx], tmpThreadPartialMM[threadIdx]);
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
         }
         else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
-            partialBCs[0] = calculateBCInternal(
-                0, preX, targetDimension, tCur, distances, weights, blockSize);
+            calculateBCInternal(
+                0, preX, targetDimension, tCur, distances, weights, blockSize, tmpThreadPartialBofZ[0], tmpThreadPartialMM[0]);
             BCTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
             BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
-            mergePartials(partialBCs, targetDimension,
+            mergePartials(tmpThreadPartialMM, targetDimension,
                           ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
@@ -961,35 +970,35 @@ public class Program {
             BCTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
             extractPoints(ParallelOps.fullXBytes,
                                                      ParallelOps.globalColCount,
-                                                     targetDimension, BC);
+                                                     targetDimension, outBC);
             BCTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
         } else {
-            mergePartials(partialBCs, targetDimension, BC);
+            mergePartials(tmpThreadPartialMM, targetDimension, outBC);
         }
     }
 
-    private static double[][] calculateBCInternal(
+    private static void calculateBCInternal(
         Integer threadIdx, double[][] preX, int targetDimension, double tCur,
-        short[][] distances, WeightsWrap weights, int blockSize) {
+        short[][] distances, WeightsWrap weights, int blockSize,
+        double[][] tmpBofZ, double[][] outMM) {
 
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
-        float [][] BofZ = calculateBofZ(threadIdx, preX, targetDimension, tCur,
-                                        distances, weights);
+        calculateBofZ(threadIdx, preX, targetDimension, tCur,
+                                        distances, weights, tmpBofZ);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
 
         // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        double [][] result = MatrixUtils.matrixMultiply(BofZ, preX, ParallelOps.threadRowCounts[threadIdx],
-                                                  targetDimension, ParallelOps.globalColCount, blockSize);
+        MatrixUtils.matrixMultiply(tmpBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
+                                                  targetDimension, ParallelOps.globalColCount, blockSize, outMM);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        return result;
     }
 
-    private static float[][] calculateBofZ(
-        int threadIdx, double[][] preX, int targetDimension, double tCur, short[][] distances, WeightsWrap weights) {
+    private static void calculateBofZ(
+        int threadIdx, double[][] preX, int targetDimension, double tCur, short[][] distances, WeightsWrap weights,
+        double[][] outBofZ) {
 
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
-        float [][] BofZ = new float[threadRowCount][ParallelOps.globalColCount];
 
         double vBlockValue = -1;
 
@@ -998,11 +1007,17 @@ public class Program {
             diff = Math.sqrt(2.0 * targetDimension)  * tCur;
         }
 
+        final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
+            + ParallelOps.procRowStartOffset;
+        final int localRowOffset = ParallelOps.procRowStartOffset;
+        int globalRow, procLocalRow;
+        double origD, weight, dist;
+        double[] outBofZLocalRow;
         for (int localRow = 0; localRow < threadRowCount; ++localRow) {
-            int globalRow = localRow + ParallelOps.threadRowStartOffsets[threadIdx] +
-                     ParallelOps.procRowStartOffset;
-            int procLocalRow = globalRow - ParallelOps.procRowStartOffset;
-            BofZ[localRow][globalRow] = 0;
+            globalRow = localRow + globalRowOffset;
+            procLocalRow = globalRow - localRowOffset;
+            outBofZLocalRow = outBofZ[localRow];
+            outBofZLocalRow[globalRow] = 0;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
 				/*
 				 * B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
@@ -1017,25 +1032,24 @@ public class Program {
                 // separately (see above).
                 if (globalRow == globalCol) continue;
 
-                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
-                double weight = weights.getWeight(procLocalRow,globalCol);
+                origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
+                weight = weights.getWeight(procLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
 
-                double dist = calculateEuclideanDist(
-                    preX, targetDimension, globalRow, globalCol);
+                dist = calculateEuclideanDist(
+                    preX[globalRow], preX[globalCol], targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    BofZ[localRow][globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
+                    outBofZLocalRow[globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
                 } else {
-                    BofZ[localRow][globalCol] = 0;
+                    outBofZLocalRow[globalCol] = 0;
                 }
 
-                BofZ[localRow][globalRow] -= BofZ[localRow][globalCol];
+                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
             }
         }
-        return BofZ;
     }
 
     // TODO - this should be removed as it allocates arrays all the time.
@@ -1177,7 +1191,7 @@ public class Program {
             int globalRow = (int)(globalPointStart / ParallelOps.globalColCount);
 
             double euclideanD = globalRow != globalCol ? calculateEuclideanDist(
-                preX, targetDim, globalRow, globalCol) : 0.0;
+                preX[globalRow], preX[globalCol], targetDim) : 0.0;
 
             double heatD = origD - diff;
             double tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
@@ -1187,19 +1201,12 @@ public class Program {
     }
 
     private static double calculateEuclideanDist(
-        double[][] vectors, int targetDim, int i, int j) {
+        double[] v, double[] w, int targetDim) {
         double dist = 0.0;
+        double diff;
         for (int k = 0; k < targetDim; k++) {
-            try {
-                double diff = vectors[i][k] - vectors[j][k];
-                dist += diff * diff;
-            } catch (IndexOutOfBoundsException e){
-                // Usually this should not happen, also this is not
-                // necessary to catch, but it seems some (unknown) parent block
-                // hides this error if/when it happens, so explicitly
-                // printing it here.
-                e.printStackTrace();
-            }
+            diff = v[k] - w[k];
+            dist += diff * diff;
         }
 
         dist = Math.sqrt(dist);
