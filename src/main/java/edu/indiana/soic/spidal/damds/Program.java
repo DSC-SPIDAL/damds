@@ -930,16 +930,19 @@ public class Program {
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
-                        calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, tmpThreadPartialBofZ[threadIdx], tmpThreadPartialMM[threadIdx]);
+                        calculateBCInternal(threadIdx, preX, targetDimension,
+                                            tCur, distances, weights, blockSize,
+                                            tmpThreadPartialBofZ[threadIdx],
+                                            tmpThreadPartialMM[threadIdx]);
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
         }
         else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
-            calculateBCInternal(
-                0, preX, targetDimension, tCur, distances, weights, blockSize, tmpThreadPartialBofZ[0], tmpThreadPartialMM[0]);
+            calculateBCInternal(0, preX, targetDimension, tCur, distances,
+                                weights, blockSize, tmpThreadPartialBofZ[0],
+                                tmpThreadPartialMM[0]);
             BCTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
@@ -1017,6 +1020,8 @@ public class Program {
             globalRow = localRow + globalRowOffset;
             procLocalRow = globalRow - localRowOffset;
             outBofZLocalRow = outBofZ[localRow];
+            // TODO - testing
+            Arrays.fill(outBofZLocalRow, 0.0);
             outBofZLocalRow[globalRow] = 0;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
 				/*
