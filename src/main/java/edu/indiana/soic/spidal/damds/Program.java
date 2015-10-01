@@ -1040,7 +1040,7 @@ public class Program {
                 }
 
                 dist = calculateEuclideanDist(
-                    preX[globalRow], preX[globalCol], targetDimension);
+                    preX, targetDimension, globalRow, globalCol);
                 if (dist >= 1.0E-10 && diff < origD) {
                     outBofZLocalRow[globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
                 } else {
@@ -1191,7 +1191,7 @@ public class Program {
             int globalRow = (int)(globalPointStart / ParallelOps.globalColCount);
 
             double euclideanD = globalRow != globalCol ? calculateEuclideanDist(
-                preX[globalRow], preX[globalCol], targetDim) : 0.0;
+                preX, targetDim, globalRow, globalCol) : 0.0;
 
             double heatD = origD - diff;
             double tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
@@ -1201,12 +1201,19 @@ public class Program {
     }
 
     private static double calculateEuclideanDist(
-        double[] v, double[] w, int targetDim) {
+        double[][] vectors, int targetDim, int i, int j) {
         double dist = 0.0;
-        double diff;
         for (int k = 0; k < targetDim; k++) {
-            diff = v[k] - w[k];
-            dist += diff * diff;
+            try {
+                double diff = vectors[i][k] - vectors[j][k];
+                dist += diff * diff;
+            } catch (IndexOutOfBoundsException e){
+                // Usually this should not happen, also this is not
+                // necessary to catch, but it seems some (unknown) parent block
+                // hides this error if/when it happens, so explicitly
+                // printing it here.
+                e.printStackTrace();
+            }
         }
 
         dist = Math.sqrt(dist);
