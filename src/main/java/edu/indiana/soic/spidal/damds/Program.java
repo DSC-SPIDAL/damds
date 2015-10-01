@@ -1002,6 +1002,7 @@ public class Program {
         double[][] outBofZ) {
 
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
+        double [][] BofZ = new double[threadRowCount][ParallelOps.globalColCount];
 
         double vBlockValue = -1;
 
@@ -1010,19 +1011,11 @@ public class Program {
             diff = Math.sqrt(2.0 * targetDimension)  * tCur;
         }
 
-        final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
-            + ParallelOps.procRowStartOffset;
-        final int localRowOffset = ParallelOps.procRowStartOffset;
-        int globalRow, procLocalRow;
-        double origD, weight, dist;
-        double[] outBofZLocalRow;
         for (int localRow = 0; localRow < threadRowCount; ++localRow) {
-            globalRow = localRow + globalRowOffset;
-            procLocalRow = globalRow - localRowOffset;
-            outBofZLocalRow = outBofZ[localRow];
-            // TODO - testing
-            Arrays.fill(outBofZLocalRow, 0.0);
-            outBofZLocalRow[globalRow] = 0;
+            int globalRow = localRow + ParallelOps.threadRowStartOffsets[threadIdx] +
+                     ParallelOps.procRowStartOffset;
+            int procLocalRow = globalRow - ParallelOps.procRowStartOffset;
+            BofZ[localRow][globalRow] = 0;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
 				/*
 				 * B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
@@ -1037,23 +1030,27 @@ public class Program {
                 // separately (see above).
                 if (globalRow == globalCol) continue;
 
-                origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
-                weight = weights.getWeight(procLocalRow,globalCol);
+                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
+                double weight = weights.getWeight(procLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
 
-                dist = calculateEuclideanDist(
+                double dist = calculateEuclideanDist(
                     preX, targetDimension, globalRow, globalCol);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZLocalRow[globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
+                    BofZ[localRow][globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
                 } else {
-                    outBofZLocalRow[globalCol] = 0;
+                    BofZ[localRow][globalCol] = 0;
                 }
 
-                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
+                BofZ[localRow][globalRow] -= BofZ[localRow][globalCol];
             }
+        }
+        // TODO - crude way of testing
+        for (int i = 0; i < threadRowCount; ++i){
+            System.arraycopy(BofZ[i], 0, outBofZ[i], 0, ParallelOps.globalColCount);
         }
     }
 
