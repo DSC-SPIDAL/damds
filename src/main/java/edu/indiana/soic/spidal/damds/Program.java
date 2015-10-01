@@ -170,13 +170,12 @@ public class Program {
             int smacofRealIterations = 0;
             while (true) {
 
-                // TODO - to remove - this is not necessary as we compute at the end stress loop and nothing changes after that
-                /*TemperatureLoopTimings.startTiming(
+                TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
                 preStress = calculateStress(
                     preX, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
                 TemperatureLoopTimings.endTiming(
-                    TemperatureLoopTimings.TimingTask.PRE_STRESS);*/
+                    TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
                 diffStress = config.threshold + 1.0;
 
