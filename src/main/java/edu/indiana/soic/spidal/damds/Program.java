@@ -196,6 +196,14 @@ public class Program {
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
 
+                    // TODO - testing
+                    for (int i = 0; i < ParallelOps.threadCount; ++i){
+                        for (int j = 0; j < ParallelOps.threadRowCounts[i]; ++j){
+                            Arrays.fill(threadPartialBCInternalBofZ[i][j], 0.0f);
+                            Arrays.fill(threadPartialBCInternalMM[i][j], 0.0d);
+                        }
+                    }
+
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
