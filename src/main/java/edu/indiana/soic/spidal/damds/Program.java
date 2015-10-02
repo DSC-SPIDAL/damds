@@ -196,14 +196,7 @@ public class Program {
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
 
-                    // TODO - testing
-                    /*for (int i = 0; i < ParallelOps.threadCount; ++i){
-                        for (int j = 0; j < ParallelOps.threadRowCounts[i]; ++j){
-                            Arrays.fill(threadPartialBCInternalBofZ[i][j], 0.0f);
-                            Arrays.fill(threadPartialBCInternalMM[i][j], 0.0d);
-                        }
-                    }
-*/
+                    zeroOutArrays(threadPartialBCInternalMM, threadPartialBCInternalBofZ);
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
@@ -348,6 +341,26 @@ public class Program {
         }
     }
 
+    private static void zeroOutArrays(double[][][] a, float[][][] b) {
+        if (ParallelOps.threadCount > 1) {
+            launchHabaneroApp(
+                () -> forallChunked(
+                    0, ParallelOps.threadCount - 1,
+                    (threadIdx) -> {
+                        zeroOutArraysInternal(ParallelOps.threadRowCounts[threadIdx], a[threadIdx], b[threadIdx]);
+                    }));
+        }
+        else {
+            zeroOutArraysInternal(ParallelOps.threadRowCounts[0], a[0], b[0]);
+        }
+    }
+
+    private static void zeroOutArraysInternal(int threadRowCount, double[][] a, float[][] b){
+        for (int j = 0; j < threadRowCount; ++j){
+            Arrays.fill(a[j], 0.0d);
+            Arrays.fill(b[j], 0.0f);
+        }
+    }
 
 
     private static void changeZeroDistancesToPostiveMin(
