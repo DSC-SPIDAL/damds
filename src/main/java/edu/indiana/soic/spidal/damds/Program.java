@@ -1012,13 +1012,11 @@ public class Program {
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
     }
 
-    private static float[][] calculateBofZ(
-        int threadIdx, double[][] preX, int targetDimension, double tCur, short[][] distances, WeightsWrap weights,
-        float[][] outBofZ) {
+    private static void calculateBofZ(
+        int threadIdx, double[][] preX, int targetDimension, double tCur,
+        short[][] distances, WeightsWrap weights, float[][] outBofZ) {
 
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
-        /*float [][] BofZ = new float[threadRowCount][ParallelOps.globalColCount];*/
-
         double vBlockValue = -1;
 
         double diff = 0.0;
@@ -1026,11 +1024,25 @@ public class Program {
             diff = Math.sqrt(2.0 * targetDimension)  * tCur;
         }
 
+        final int
+            globalRowOffset =
+            ParallelOps.threadRowStartOffsets[threadIdx]
+            + ParallelOps.procRowStartOffset;
+
+        float[] outBofZLocalRow;
+        short[] distancesLocalRow;
+
+        double origD, weight, dist;
+        int globalRow, procLocalRow;
+
         for (int localRow = 0; localRow < threadRowCount; ++localRow) {
-            int globalRow = localRow + ParallelOps.threadRowStartOffsets[threadIdx] +
-                     ParallelOps.procRowStartOffset;
-            int procLocalRow = globalRow - ParallelOps.procRowStartOffset;
-            outBofZ[localRow][globalRow] = 0;
+            globalRow = localRow + globalRowOffset;
+            procLocalRow = globalRow - ParallelOps.procRowStartOffset;
+
+            outBofZLocalRow = outBofZ[localRow];
+            distancesLocalRow = distances[localRow];
+
+            outBofZLocalRow[globalRow] = 0;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
 				/*
 				 * B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
@@ -1045,33 +1057,24 @@ public class Program {
                 // separately (see above).
                 if (globalRow == globalCol) continue;
 
-                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
-                double weight = weights.getWeight(procLocalRow,globalCol);
+                origD = distancesLocalRow[globalCol] * INV_SHORT_MAX;
+                weight = weights.getWeight(procLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
 
-                double dist = calculateEuclideanDist(
-                    preX, targetDimension, globalRow, globalCol);
+                dist = calculateEuclideanDist(
+                    preX[globalRow], preX[globalCol], targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZ[localRow][globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
+                    outBofZLocalRow[globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
                 } else {
-                    outBofZ[localRow][globalCol] = 0;
+                    outBofZLocalRow[globalCol] = 0;
                 }
 
-                // TODO - testing - could there be a case when an old value of outBofZ is used
-                // let's check
-                float a = (float) (weight * vBlockValue * (origD - diff) / dist);
-                float b = 0;
-                if (outBofZ[localRow][globalCol] != a && outBofZ[localRow][globalCol] != 0){
-                    throw new RuntimeException("This can't be " + globalRow + " " + globalCol + " " + outBofZ[localRow][globalCol] + " a=" + a + " b=" + b);
-                }
-
-                outBofZ[localRow][globalRow] -= outBofZ[localRow][globalCol];
+                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
             }
         }
-        return outBofZ;
     }
 
     // TODO - this should be removed as it allocates arrays all the time.
@@ -1213,7 +1216,7 @@ public class Program {
             int globalRow = (int)(globalPointStart / ParallelOps.globalColCount);
 
             double euclideanD = globalRow != globalCol ? calculateEuclideanDist(
-                preX, targetDim, globalRow, globalCol) : 0.0;
+                preX[globalRow], preX[globalCol], targetDim) : 0.0;
 
             double heatD = origD - diff;
             double tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
@@ -1223,19 +1226,11 @@ public class Program {
     }
 
     private static double calculateEuclideanDist(
-        double[][] vectors, int targetDim, int i, int j) {
+        double[] v, double[] w, int targetDim) {
         double dist = 0.0;
         for (int k = 0; k < targetDim; k++) {
-            try {
-                double diff = vectors[i][k] - vectors[j][k];
-                dist += diff * diff;
-            } catch (IndexOutOfBoundsException e){
-                // Usually this should not happen, also this is not
-                // necessary to catch, but it seems some (unknown) parent block
-                // hides this error if/when it happens, so explicitly
-                // printing it here.
-                e.printStackTrace();
-            }
+            double diff = v[k] - w[k];
+            dist += diff * diff;
         }
 
         dist = Math.sqrt(dist);
