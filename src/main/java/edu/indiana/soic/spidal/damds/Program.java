@@ -55,6 +55,9 @@ public class Program {
     public static final double INV_SHORT_MAX = 1.0 / Short.MAX_VALUE;
     public static final double SHORT_MAX = Short.MAX_VALUE;
 
+    // Calculated Constants
+    public static double INV_SUM_OF_SQUARE;
+
     // Arrays
     public static double[][] preX;
     public static double[][] BC;
@@ -63,6 +66,8 @@ public class Program {
 
     public static float[][][] threadPartialBofZ;
     public static double[][][] threadPartialMM;
+
+    public static double[] partialSigmas;
 
     //Config Settings
     public static DAMDSSection config;
@@ -127,6 +132,7 @@ public class Program {
                 distances, weights, missingDistCount);
             double missingDistPercent = missingDistCount.getValue() /
                                         (Math.pow(config.numberDataPoints, 2));
+            INV_SUM_OF_SQUARE = 1.0/distanceSummary.getSumOfSquare();
             Utils.printMessage(
                 "\nDistance summary... \n" + distanceSummary.toString() +
                 "\n  MissingDistPercentage=" +
@@ -150,7 +156,7 @@ public class Program {
 
             double [][] vArray = generateVArray(distances, weights);
             double preStress = calculateStress(
-                preX, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
+                preX, config.targetDimension, tCur, distances, weights, INV_SUM_OF_SQUARE, partialSigmas);
             Utils.printMessage("\nInitial stress=" + preStress);
 
             tCur = config.alpha * tMax;
@@ -174,7 +180,7 @@ public class Program {
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
                 preStress = calculateStress(
-                    preX, config.targetDimension, tCur, distances, weights, distanceSummary.getSumOfSquare());
+                    preX, config.targetDimension, tCur, distances, weights, INV_SUM_OF_SQUARE, partialSigmas);
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
@@ -222,7 +228,7 @@ public class Program {
                         StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
                         preX, config.targetDimension, tCur, distances,
-                        weights, distanceSummary.getSumOfSquare());
+                        weights, INV_SUM_OF_SQUARE, partialSigmas);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.STRESS);
 
@@ -305,7 +311,7 @@ public class Program {
 
             Double finalStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
-                distanceSummary.getSumOfSquare());
+                INV_SUM_OF_SQUARE, partialSigmas);
 
             mainTimer.stop();
 
@@ -339,16 +345,20 @@ public class Program {
 
     private static void allocateArrays() {
         // Allocating point arrays once for all
-        preX = new double[config.numberDataPoints][config.targetDimension];
-        BC = new double[config.numberDataPoints][config.targetDimension];
-        MMr = new double[config.numberDataPoints][config.targetDimension];
-        MMAp = new double[config.numberDataPoints][config.targetDimension];
-        threadPartialBofZ = new float[ParallelOps.threadCount][][];
-        threadPartialMM = new double[ParallelOps.threadCount][][];
-        for (int i = 0; i < ParallelOps.threadCount; ++i){
+        final int numberDataPoints = config.numberDataPoints;
+        final int targetDimension = config.targetDimension;
+        preX = new double[numberDataPoints][targetDimension];
+        BC = new double[numberDataPoints][targetDimension];
+        MMr = new double[numberDataPoints][targetDimension];
+        MMAp = new double[numberDataPoints][targetDimension];
+        final int threadCount = ParallelOps.threadCount;
+        threadPartialBofZ = new float[threadCount][][];
+        threadPartialMM = new double[threadCount][][];
+        for (int i = 0; i < threadCount; ++i){
             threadPartialBofZ[i] = new float[ParallelOps.threadRowCounts[i]][ParallelOps.globalColCount];
             threadPartialMM[i] = new double[ParallelOps.threadRowCounts[i]][ParallelOps.globalColCount];
         }
+        partialSigmas = new double[threadCount];
     }
 
     private static void zeroOutArrays(double[][][] a, float[][][] b) {
@@ -1095,22 +1105,6 @@ public class Program {
         }
     }
 
-    // TODO - this should be removed as it allocates arrays all the time.
-    private static double[][] extractPoints(
-        Bytes bytes, int numPoints, int dimension) {
-        double[][] to = new double[numPoints][dimension];
-        int pos = 0;
-        for (int i = 0; i < numPoints; ++i){
-            double[] pointsRow = to[i];
-            for (int j = 0; j < dimension; ++j) {
-                bytes.position(pos);
-                pointsRow[j] = bytes.readDouble(pos);
-                pos += Double.BYTES;
-            }
-        }
-        return  to;
-    }
-
     private static void extractPoints(
         Bytes bytes, int numPoints, int dimension, double[][] to) {
         int pos = 0;
@@ -1122,33 +1116,6 @@ public class Program {
                 pos += Double.BYTES;
             }
         }
-    }
-
-    private static double[][] extractPoints(
-        ByteBuffer buffer, int numPoints, int dimension) {
-        int pos = 0;
-        double [][] points = new double[numPoints][dimension];
-        for (int i = 0; i < numPoints; ++i){
-            double[] pointsRow = points[i];
-            for (int j = 0; j < dimension; ++j) {
-                buffer.position(pos);
-                pointsRow[j] = buffer.getDouble(pos);
-                pos += Double.BYTES;
-            }
-        }
-        return  points;
-    }
-
-    private static double[][] extractPoints(
-        DoubleBuffer buffer, int numPoints, int dimension) {
-        int pos = 0;
-        double [][] points = new double[numPoints][dimension];
-        for (int i = 0; i < numPoints; ++i){
-            buffer.position(pos);
-            buffer.get(points[i]);
-            pos += dimension;
-        }
-        return  points;
     }
 
     private static void mergePartials(double [][][] partials, int dimension, double [][] result){
@@ -1175,33 +1142,30 @@ public class Program {
 
     private static double calculateStress(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
-        WeightsWrap weights, double sumOfSquareDist)
+        WeightsWrap weights, double invSumOfSquare, double[] partialSigmas)
         throws MPIException {
-
-        final double [] sigmaValues = new double [ParallelOps.threadCount];
-        IntStream.range(0, ParallelOps.threadCount).forEach(i -> sigmaValues[i] = 0.0);
 
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> sigmaValues[threadIdx] =
+                    (threadIdx) -> partialSigmas[threadIdx] =
                         calculateStressInternal(threadIdx, preX, targetDimension, tCur,
 
                                                 distances, weights)));
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
-                i -> sigmaValues[0] += sigmaValues[i]);
+                i -> partialSigmas[0] += partialSigmas[i]);
         }
         else {
-            sigmaValues[0] = calculateStressInternal(0, preX, targetDimension, tCur,
+            partialSigmas[0] = calculateStressInternal(0, preX, targetDimension, tCur,
                                                      distances, weights);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            sigmaValues[0] = ParallelOps.allReduce(sigmaValues[0]);
+            partialSigmas[0] = ParallelOps.allReduce(partialSigmas[0]);
         }
-        return sigmaValues[0] / sumOfSquareDist;
+        return partialSigmas[0] * invSumOfSquare;
     }
 
     private static double calculateStressInternal(
