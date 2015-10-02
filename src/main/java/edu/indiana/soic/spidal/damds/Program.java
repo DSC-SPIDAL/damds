@@ -770,8 +770,6 @@ public class Program {
         throws MPIException {
 
         double[][] r;
-        double[][] p = new double[numPoints][targetDimension];
-
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         r = calculateMM(preX, targetDimension, numPoints, weights, blockSize,
                         vArray);
@@ -780,11 +778,12 @@ public class Program {
         // a single mmap file
         ParallelOps.worldProcsComm.barrier();
 
-        for(int i = 0; i < numPoints; ++i)
-            for(int j = 0; j < targetDimension; ++j){
-                p[i][j] = BC[i][j] - r[i][j];
-                r[i][j] = p[i][j];
+        for(int i = 0; i < numPoints; ++i) {
+            for (int j = 0; j < targetDimension; ++j) {
+                BC[i][j] -= r[i][j];
+                r[i][j] = BC[i][j];
             }
+        }
 
         int cgCount = 0;
         CGTimings.startTiming(CGTimings.TimingTask.INNER_PROD);
@@ -800,19 +799,19 @@ public class Program {
 
             //calculate alpha
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
-            double[][] Ap = calculateMM(p, targetDimension, numPoints,weights, blockSize, vArray);
+            double[][] Ap = calculateMM(BC, targetDimension, numPoints,weights, blockSize, vArray);
             ParallelOps.worldProcsComm.barrier();
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
 
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr
-                           /innerProductCalculation(p, Ap);
+                           /innerProductCalculation(BC, Ap);
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
 
             //update Xi to Xi+1
             for(int i = 0; i < numPoints; ++i)
                 for(int j = 0; j < targetDimension; ++j)
-                    preX[i][j] += alpha * p[i][j];
+                    preX[i][j] += alpha * BC[i][j];
 
             if (rTr < testEnd) {
                 break;
@@ -833,7 +832,7 @@ public class Program {
             //update pi to pi+1
             for(int i = 0; i < numPoints; ++i)
                 for(int j = 0; j < targetDimension; ++j)
-                    p[i][j] = r[i][j] + beta * p[i][j];
+                    BC[i][j] = r[i][j] + beta * BC[i][j];
 
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
