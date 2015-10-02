@@ -68,6 +68,7 @@ public class Program {
     public static double[][][] threadPartialMM;
 
     public static double[] partialSigmas;
+    public static double[][] vArray;
 
     //Config Settings
     public static DAMDSSection config;
@@ -154,7 +155,7 @@ public class Program {
             double tMax = distanceSummary.getMax() / Math.sqrt(2.0 * config.targetDimension);
             double tMin = config.tMinFactor * distanceSummary.getPositiveMin() / Math.sqrt(2.0 * config.targetDimension);
 
-            double [][] vArray = generateVArray(distances, weights);
+            generateVArray(distances, weights, vArray);
             double preStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights, INV_SUM_OF_SQUARE, partialSigmas);
             Utils.printMessage("\nInitial stress=" + preStress);
@@ -354,9 +355,13 @@ public class Program {
         final int threadCount = ParallelOps.threadCount;
         threadPartialBofZ = new float[threadCount][][];
         threadPartialMM = new double[threadCount][][];
+        vArray = new double[threadCount][];
+        int threadRowCount;
         for (int i = 0; i < threadCount; ++i){
-            threadPartialBofZ[i] = new float[ParallelOps.threadRowCounts[i]][ParallelOps.globalColCount];
-            threadPartialMM[i] = new double[ParallelOps.threadRowCounts[i]][ParallelOps.globalColCount];
+            threadRowCount = ParallelOps.threadRowCounts[i];
+            threadPartialBofZ[i] = new float[threadRowCount][ParallelOps.globalColCount];
+            threadPartialMM[i] = new double[threadRowCount][ParallelOps.globalColCount];
+            vArray[i] = new double[threadRowCount];
         }
         partialSigmas = new double[threadCount];
     }
@@ -738,47 +743,49 @@ public class Program {
         writer.close();
     }
 
-    private static double[][] generateVArray(short[][] distances, WeightsWrap weights) {
-        double [][] vArray = new double[ParallelOps.threadCount][];
+    private static double[][] generateVArray(
+        short[][] distances, WeightsWrap weights, double[][] vArray) {
 
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> vArray[threadIdx] =
-                        generateVArrayInternal(threadIdx, distances,weights)));
+                    (threadIdx) ->
+                        generateVArrayInternal(threadIdx, distances,weights, vArray[threadIdx])));
         }
         else {
-            vArray[0] = generateVArrayInternal(0, distances, weights);
+            generateVArrayInternal(0, distances, weights, vArray[0]);
         }
         return vArray;
     }
 
     private static double[] generateVArrayInternal(
-        Integer threadIdx, short[][] distances, WeightsWrap weights) {
+        Integer threadIdx, short[][] distances, WeightsWrap weights,
+        double[] outV) {
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
-        double [] v = new double[threadRowCount];
 
         int rowOffset = ParallelOps.threadRowStartOffsets[threadIdx] +
                      ParallelOps.procRowStartOffset;
+        int globalRow, procLocalRow;
+        double origD, weight;
         for (int i = 0; i < threadRowCount; ++i) {
-            int globalRow = i + rowOffset;
-            int procLocalRow = globalRow - ParallelOps.procRowStartOffset;
+            globalRow = i + rowOffset;
+            procLocalRow = globalRow - ParallelOps.procRowStartOffset;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; ++globalCol) {
                 if (globalRow == globalCol) continue;
 
-                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
-                double weight = weights.getWeight(procLocalRow, globalCol);
+                origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
+                weight = weights.getWeight(procLocalRow, globalCol);
 
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
 
-                v[i] += weight;
+                outV[i] += weight;
             }
-            v[i] += 1;
+            outV[i] += 1;
         }
-        return v;
+        return outV;
     }
 
     private static void calculateConjugateGradient(
