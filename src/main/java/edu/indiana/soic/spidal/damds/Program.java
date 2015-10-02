@@ -289,24 +289,7 @@ public class Program {
                     distanceSummary.getAverage()));
 
 
-            // TODO - switched off points writing to save time
-             /*// TODO Fix error handling here
-            if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
-                "NOLABEL")) {
-                try {
-                    writeOuput(X, config.pointsFile);
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                try {
-                    writeOuput(X, config.labelFile, config.pointsFile);
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }*/
+            writePoints();
 
             Double finalStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
@@ -339,6 +322,25 @@ public class Program {
         }
         catch (MPIException | IOException | InterruptedException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
+        }
+    }
+
+    private static void writePoints() {
+        if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
+            "NOLABEL")) {
+            try {
+                writeOuput(preX, config.pointsFile);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            try {
+                writeOuput(preX, config.labelFile, config.pointsFile);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
