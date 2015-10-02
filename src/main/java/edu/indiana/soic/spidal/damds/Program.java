@@ -197,13 +197,13 @@ public class Program {
                 while (diffStress >= config.threshold) {
 
                     // TODO - testing
-                    for (int i = 0; i < ParallelOps.threadCount; ++i){
+                    /*for (int i = 0; i < ParallelOps.threadCount; ++i){
                         for (int j = 0; j < ParallelOps.threadRowCounts[i]; ++j){
                             Arrays.fill(threadPartialBCInternalBofZ[i][j], 0.0f);
                             Arrays.fill(threadPartialBCInternalMM[i][j], 0.0d);
                         }
                     }
-
+*/
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
@@ -1045,6 +1045,14 @@ public class Program {
                     outBofZ[localRow][globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
                 } else {
                     outBofZ[localRow][globalCol] = 0;
+                }
+
+                // TODO - testing - could there be a case when an old value of outBofZ is used
+                // let's check
+                float a = (float) (weight * vBlockValue * (origD - diff) / dist);
+                float b = 0;
+                if (outBofZ[localRow][globalCol] != a && outBofZ[localRow][globalCol] != 0){
+                    throw new RuntimeException("This can't be " + globalRow + " " + globalCol + " " + outBofZ[localRow][globalCol] + " a=" + a + " b=" + b);
                 }
 
                 outBofZ[localRow][globalRow] -= outBofZ[localRow][globalCol];
