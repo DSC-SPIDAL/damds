@@ -1,7 +1,5 @@
 package edu.indiana.soic.spidal.damds;
 
-import org.apache.commons.cli.Option;
-
 public class Constants {
     static final String PROGRAM_NAME = "DAMDS";
 
