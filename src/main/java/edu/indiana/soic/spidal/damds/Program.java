@@ -197,7 +197,7 @@ public class Program {
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
 
-                    zeroOutArrays(threadPartialMM, threadPartialBofZ);
+                    zeroOutArray(threadPartialMM);
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
@@ -361,24 +361,23 @@ public class Program {
         partialSigmas = new double[threadCount];
     }
 
-    private static void zeroOutArrays(double[][][] a, float[][][] b) {
+    private static void zeroOutArray(double[][][] a) {
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
-                        zeroOutArraysInternal(ParallelOps.threadRowCounts[threadIdx], a[threadIdx], b[threadIdx]);
+                        zeroOutArraysInternal(ParallelOps.threadRowCounts[threadIdx], a[threadIdx]);
                     }));
         }
         else {
-            zeroOutArraysInternal(ParallelOps.threadRowCounts[0], a[0], b[0]);
+            zeroOutArraysInternal(ParallelOps.threadRowCounts[0], a[0]);
         }
     }
 
-    private static void zeroOutArraysInternal(int threadRowCount, double[][] a, float[][] b){
+    private static void zeroOutArraysInternal(int threadRowCount, double[][] a){
         for (int j = 0; j < threadRowCount; ++j){
             Arrays.fill(a[j], 0.0d);
-            Arrays.fill(b[j], 0.0f);
         }
     }
 
@@ -789,6 +788,7 @@ public class Program {
 
         throws MPIException {
 
+        zeroOutArray(threadPartialMM);
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         calculateMM(preX, targetDimension, numPoints, weights, blockSize,
                         vArray, MMr, threadPartialMM);
@@ -820,6 +820,7 @@ public class Program {
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
 
+            zeroOutArray(threadPartialMM);
             //calculate alpha
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             calculateMM(BC, targetDimension, numPoints,weights, blockSize, vArray, MMAp, threadPartialMM);
