@@ -369,9 +369,7 @@ public class Program {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> {
-                        zeroOutArraysInternal(ParallelOps.threadRowCounts[threadIdx], a[threadIdx]);
-                    }));
+                    (threadIdx) -> zeroOutArraysInternal(ParallelOps.threadRowCounts[threadIdx], a[threadIdx])));
         }
         else {
             zeroOutArraysInternal(ParallelOps.threadRowCounts[0], a[0]);
