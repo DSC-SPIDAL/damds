@@ -209,6 +209,11 @@ public class Program {
                     // a single mmap file
                     ParallelOps.worldProcsComm.barrier();
 
+                    // TODO - test - trying to see if BC works OK with threads
+                    double tmpBCStress = calculateStress(
+                        BC, config.targetDimension, tCur, distances, weights, INV_SUM_OF_SQUARE, partialSigmas);
+                    Utils.printMessage("\nTmp BC stress=" + tmpBCStress);
+
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
