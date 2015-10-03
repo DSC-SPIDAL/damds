@@ -1155,7 +1155,6 @@ public class Program {
         double[][] preX, int targetDimension, double tCur, short[][] distances,
         WeightsWrap weights, double invSumOfSquare, double[] partialSigmas)
         throws MPIException {
-        zeroOutArray(partialSigmas);
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
