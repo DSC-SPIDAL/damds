@@ -366,6 +366,11 @@ public class Program {
         partialSigmas = new double[threadCount];
     }
 
+    private static void zeroOutArray(double[] a){
+        Arrays.fill(a, 0.0d);
+    }
+
+
     private static void zeroOutArray(double[][][] a) {
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
@@ -1150,7 +1155,7 @@ public class Program {
         double[][] preX, int targetDimension, double tCur, short[][] distances,
         WeightsWrap weights, double invSumOfSquare, double[] partialSigmas)
         throws MPIException {
-
+        zeroOutArray(partialSigmas);
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
