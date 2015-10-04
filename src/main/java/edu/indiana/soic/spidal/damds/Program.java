@@ -1019,10 +1019,7 @@ public class Program {
 
         if (ParallelOps.worldProcsCount > 1) {
             BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
-            //TODO - test - this is the correct one. remove the next line after testing and uncomment this
-            /*mergePartials(threadPartialMM, targetDimension,
-                          ParallelOps.mmapXWriteBytes);*/
-            mergePartials(threadPartialBofZ, targetDimension,
+            mergePartials(threadPartialMM, targetDimension,
                           ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
@@ -1053,7 +1050,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcRank == 0){
-            try (BufferedWriter bw = Files.newBufferedWriter(Paths.get(ParallelOps.threadCount + "x" + ParallelOps.worldProcsPerNode + "x" + ParallelOps.nodeCount + "bofz.txt"))){
+            try (BufferedWriter bw = Files.newBufferedWriter(Paths.get(ParallelOps.threadCount + "x" + ParallelOps.worldProcsPerNode + "x" + ParallelOps.nodeCount + "bcinternalmm.txt"))){
                 PrintWriter writer = new PrintWriter(bw, true);
                 for (int j = 0; j < ParallelOps.globalColCount; ++j){
                     for (int k = 0; k < targetDimension; ++k){
@@ -1076,17 +1073,18 @@ public class Program {
         short[][] distances, WeightsWrap weights, int blockSize,
         float[][] outBofZ, double[][] outMM) {
 
-        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        // TODO - test - no BofZ before MM just to check, so BofZ should be all zero in the very first iteration
+        /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
                                         distances, weights, outBofZ);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);*/
 
-        // TODO - test - no MM after BofZ just to check
-       /* // Next we can calculate the BofZ * preX.
+
+        // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
         MatrixUtils.matrixMultiply(outBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
                                                   targetDimension, ParallelOps.globalColCount, blockSize, outMM);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);*/
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
     }
 
     private static void calculateBofZ(
