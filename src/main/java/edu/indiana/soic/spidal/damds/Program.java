@@ -1014,6 +1014,26 @@ public class Program {
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
 
+        try (BufferedWriter bw = Files.newBufferedWriter(Paths.get(ParallelOps.threadCount + "x" + ParallelOps.worldProcsPerNode + "x" + ParallelOps.nodeCount + "bofz.txt"))){
+            PrintWriter writer = new PrintWriter(bw, true);
+            for (int i = 0; i < ParallelOps.threadCount; ++i){
+                float[][] tmp = threadPartialBofZ[i];
+                for (int j = 0; j < ParallelOps.threadRowCounts[i]; ++j){
+                    for (int k = 0; k < targetDimension; ++k){
+                        writer.print(tmp[j][k] +"\t");
+                    }
+                    writer.println();
+                }
+            }
+            if (Files.exists(Paths.get("stop"))){
+                System.exit(0);
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
         if (ParallelOps.worldProcsCount > 1) {
             BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
             mergePartials(threadPartialMM, targetDimension,
