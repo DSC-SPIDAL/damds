@@ -214,6 +214,9 @@ public class Program {
                     double tmpBCStress = calculateStress(
                         BC, config.targetDimension, tCur, distances, weights, INV_SUM_OF_SQUARE, partialSigmas);
                     Utils.printMessage("\nTmp BC stress=" + tmpBCStress);
+                    if (tmpBCStress > 0){
+                        System.exit(-1);
+                    }
 
 
                     StressLoopTimings.startTiming(
@@ -1025,9 +1028,9 @@ public class Program {
                     writer.println();
                 }
             }
-            if (Files.exists(Paths.get("stop"))){
-                System.exit(0);
-            }
+            writer.flush();
+            writer.close();
+            bw.close();
         }
         catch (IOException e) {
             e.printStackTrace();
