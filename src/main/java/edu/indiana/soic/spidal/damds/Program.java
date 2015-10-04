@@ -989,7 +989,6 @@ public class Program {
         double[][][] threadPartialMM)
         throws MPIException, InterruptedException {
 
-        final CountDownLatch latch = new CountDownLatch(ParallelOps.threadCount);
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
@@ -997,17 +996,20 @@ public class Program {
                     (threadIdx) -> {
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
                         calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBofZ[threadIdx], threadPartialMM[threadIdx]);
-                        latch.countDown();
+                            threadIdx, preX, targetDimension, tCur, distances,
+                            weights, blockSize,
+                            threadPartialBofZ[threadIdx],
+                            threadPartialMM[threadIdx]);
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
-            latch.await();
         }
         else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
             calculateBCInternal(
-                0, preX, targetDimension, tCur, distances, weights, blockSize,threadPartialBofZ[0], threadPartialMM[0]);
+                0, preX, targetDimension, tCur, distances, weights, blockSize,
+                threadPartialBofZ[0],
+                threadPartialMM[0]);
             BCTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
