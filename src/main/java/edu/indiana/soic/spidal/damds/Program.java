@@ -210,6 +210,9 @@ public class Program {
                     // a single mmap file
                     ParallelOps.worldProcsComm.barrier();
 
+                    // TODO - testing
+                    writeTempOutput(config.targetDimension, BC, "BC");
+
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
                     calculateConjugateGradient(preX, config.targetDimension,
@@ -1052,9 +1055,6 @@ public class Program {
         } else {
             mergePartials(threadPartialMM, targetDimension, BC);
         }
-
-        // TODO - testing
-        writeTempOutput(targetDimension, BC, "BC");
     }
 
     private static void writeTempOutput(int targetDimension, double[][] array, String name) {
