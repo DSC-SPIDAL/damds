@@ -210,15 +210,6 @@ public class Program {
                     // a single mmap file
                     ParallelOps.worldProcsComm.barrier();
 
-                    // TODO - test - trying to see if BC works OK with threads
-                    double tmpBCStress = calculateStress(
-                        BC, config.targetDimension, tCur, distances, weights, INV_SUM_OF_SQUARE, partialSigmas);
-                    Utils.printMessage("\nTmp BC stress=" + tmpBCStress);
-                    if (tmpBCStress > 0){
-                        System.exit(-1);
-                    }
-
-
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
                     calculateConjugateGradient(preX, config.targetDimension,
@@ -255,6 +246,8 @@ public class Program {
                     }
                     ++itrNum;
                     ++smacofRealIterations;
+                    // TODO - testing
+                    break;
                 }
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
@@ -283,6 +276,8 @@ public class Program {
                 if (tCur < tMin)
                     tCur = 0;
                 ++loopNum;
+                // TODO - testing
+                break;
             }
             loopTimer.stop();
 
@@ -818,6 +813,9 @@ public class Program {
         // a single mmap file
         ParallelOps.worldProcsComm.barrier();
 
+        // TODO - testing
+        writeTempOutput(targetDimension, MMr, "MMr");
+
         double[] tmpLHSRow, tmpRHSRow;
 
         for(int i = 0; i < numPoints; ++i) {
@@ -847,6 +845,9 @@ public class Program {
             calculateMM(BC, targetDimension, numPoints,weights, blockSize, vArray, MMAp, threadPartialMM);
             ParallelOps.worldProcsComm.barrier();
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
+
+            // TODO - testing
+            writeTempOutput(targetDimension, MMAp, "MMAp");
 
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr
@@ -894,6 +895,9 @@ public class Program {
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
+
+        // TODO - testing
+        writeTempOutput(targetDimension, preX, "PrexAfterCG");
     }
 
     private static void calculateMM(
@@ -1049,12 +1053,19 @@ public class Program {
             mergePartials(threadPartialMM, targetDimension, BC);
         }
 
+        // TODO - testing
+        writeTempOutput(targetDimension, BC, "BC");
+    }
+
+    private static void writeTempOutput(int targetDimension, double[][] array, String name) {
         if (ParallelOps.worldProcRank == 0){
-            try (BufferedWriter bw = Files.newBufferedWriter(Paths.get(ParallelOps.threadCount + "x" + ParallelOps.worldProcsPerNode + "x" + ParallelOps.nodeCount + "bcinternalmm.txt"))){
+            try (BufferedWriter bw = Files.newBufferedWriter(Paths.get(
+                ParallelOps.threadCount + "x" + ParallelOps.worldProcsPerNode
+                + "x" + ParallelOps.nodeCount + name+".txt"))){
                 PrintWriter writer = new PrintWriter(bw, true);
                 for (int j = 0; j < ParallelOps.globalColCount; ++j){
                     for (int k = 0; k < targetDimension; ++k){
-                        writer.print(BC[j][k] +"\t");
+                        writer.print(array[j][k] +"\t");
                     }
                     writer.println();
                 }
@@ -1073,12 +1084,10 @@ public class Program {
         short[][] distances, WeightsWrap weights, int blockSize,
         float[][] outBofZ, double[][] outMM) {
 
-        // TODO - test - no BofZ before MM just to check, so BofZ should be all zero in the very first iteration
-        /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
                                         distances, weights, outBofZ);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);*/
-
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
 
         // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
