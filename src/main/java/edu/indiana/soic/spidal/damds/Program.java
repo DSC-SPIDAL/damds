@@ -367,7 +367,7 @@ public class Program {
         for (int i = 0; i < threadCount; ++i){
             threadRowCount = ParallelOps.threadRowCounts[i];
             threadPartialBofZ[i] = new float[threadRowCount][ParallelOps.globalColCount];
-            threadPartialMM[i] = new double[threadRowCount][ParallelOps.globalColCount];
+            threadPartialMM[i] = new double[threadRowCount][config.targetDimension];
             vArray[i] = new double[threadRowCount];
         }
         partialSigmas = new double[threadCount];
