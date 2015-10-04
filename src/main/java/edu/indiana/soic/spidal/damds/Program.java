@@ -1017,29 +1017,12 @@ public class Program {
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
 
-        try (BufferedWriter bw = Files.newBufferedWriter(Paths.get(ParallelOps.threadCount + "x" + ParallelOps.worldProcsPerNode + "x" + ParallelOps.nodeCount + "bofz.txt"))){
-            PrintWriter writer = new PrintWriter(bw, true);
-            for (int i = 0; i < ParallelOps.threadCount; ++i){
-                float[][] tmp = threadPartialBofZ[i];
-                for (int j = 0; j < ParallelOps.threadRowCounts[i]; ++j){
-                    for (int k = 0; k < targetDimension; ++k){
-                        writer.print(tmp[j][k] +"\t");
-                    }
-                    writer.println();
-                }
-            }
-            writer.flush();
-            writer.close();
-            bw.close();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
         if (ParallelOps.worldProcsCount > 1) {
             BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
-            mergePartials(threadPartialMM, targetDimension,
+            //TODO - test - this is the correct one. remove the next line after testing and uncomment this
+            /*mergePartials(threadPartialMM, targetDimension,
+                          ParallelOps.mmapXWriteBytes);*/
+            mergePartials(threadPartialBofZ, targetDimension,
                           ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
@@ -1068,6 +1051,24 @@ public class Program {
         } else {
             mergePartials(threadPartialMM, targetDimension, BC);
         }
+
+        if (ParallelOps.worldProcRank == 0){
+            try (BufferedWriter bw = Files.newBufferedWriter(Paths.get(ParallelOps.threadCount + "x" + ParallelOps.worldProcsPerNode + "x" + ParallelOps.nodeCount + "bofz.txt"))){
+                PrintWriter writer = new PrintWriter(bw, true);
+                for (int j = 0; j < ParallelOps.globalColCount; ++j){
+                    for (int k = 0; k < targetDimension; ++k){
+                        writer.print(BC[j][k] +"\t");
+                    }
+                    writer.println();
+                }
+                writer.flush();
+                writer.close();
+                bw.close();
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private static void calculateBCInternal(
@@ -1080,11 +1081,12 @@ public class Program {
                                         distances, weights, outBofZ);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
 
-        // Next we can calculate the BofZ * preX.
+        // TODO - test - no MM after BofZ just to check
+       /* // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
         MatrixUtils.matrixMultiply(outBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
                                                   targetDimension, ParallelOps.globalColCount, blockSize, outMM);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);*/
     }
 
     private static void calculateBofZ(
@@ -1180,6 +1182,19 @@ public class Program {
         result.position(0);
         for (double [][] partial : partials){
             for (double [] point : partial){
+                for (int i = 0; i < targetDimension; ++i){
+                    result.writeDouble(point[i]);
+                }
+            }
+        }
+    }
+
+    // TODO - test - remove this after testing
+    private static void mergePartials(
+        float[][][] partials, int targetDimension, Bytes result){
+        result.position(0);
+        for (float [][] partial : partials){
+            for (float [] point : partial){
                 for (int i = 0; i < targetDimension; ++i){
                     result.writeDouble(point[i]);
                 }
