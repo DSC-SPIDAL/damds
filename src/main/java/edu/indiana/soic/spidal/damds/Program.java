@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -988,6 +989,7 @@ public class Program {
         double[][][] threadPartialMM)
         throws MPIException, InterruptedException {
 
+        final CountDownLatch latch = new CountDownLatch(ParallelOps.threadCount);
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
@@ -996,9 +998,11 @@ public class Program {
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
                         calculateBCInternal(
                             threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBofZ[threadIdx], threadPartialMM[threadIdx]);
+                        latch.countDown();
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
+            latch.await();
         }
         else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
