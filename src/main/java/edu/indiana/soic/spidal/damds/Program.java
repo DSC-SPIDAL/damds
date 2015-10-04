@@ -1084,7 +1084,14 @@ public class Program {
         short[][] distances, WeightsWrap weights, int blockSize,
         float[][] outBofZ, double[][] outMM) {
 
-        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        // TODO - testing
+        for (int i = 0; i < ParallelOps.threadRowCounts[i]; ++i){
+            outMM[i][0] = ParallelOps.worldProcRank;
+            outMM[i][1] = threadIdx;
+            outMM[i][2] = 0.1375;
+        }
+
+        /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
                                         distances, weights, outBofZ);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
@@ -1093,7 +1100,7 @@ public class Program {
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
         MatrixUtils.matrixMultiply(outBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
                                                   targetDimension, ParallelOps.globalColCount, blockSize, outMM);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);*/
     }
 
     private static void calculateBofZ(
