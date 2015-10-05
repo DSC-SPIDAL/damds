@@ -1095,7 +1095,7 @@ public class Program {
         // TODO - testing - what if no BofZ and just constant values to outBofZ.
         // Then will MM output be the same
         for (int i = 0; i < ParallelOps.threadRowCounts[threadIdx]; ++i){
-            Arrays.fill(outBofZ[i], 0.234f);
+            Arrays.fill(outBofZ[i], 0.234f * (ParallelOps.worldProcRank*ParallelOps.threadCount + threadIdx));
         }
 
 
