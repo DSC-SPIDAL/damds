@@ -1094,8 +1094,15 @@ public class Program {
         outBofZ = new float[ParallelOps.threadRowCounts[threadIdx]][ParallelOps.globalColCount];
         // TODO - testing - what if no BofZ and just constant values to outBofZ.
         // Then will MM output be the same
+        final int
+            globalRowOffset =
+            ParallelOps.threadRowStartOffsets[threadIdx]
+            + ParallelOps.procRowStartOffset;
         for (int i = 0; i < ParallelOps.threadRowCounts[threadIdx]; ++i){
-            Arrays.fill(outBofZ[i], 0.234f * (ParallelOps.worldProcRank*ParallelOps.threadCount + threadIdx));
+            int globalRow = i + globalRowOffset;
+            for (int j = 0; j < ParallelOps.globalColCount; ++j) {
+                outBofZ[i][j] = distances[globalRow][j];
+            }
         }
 
 
