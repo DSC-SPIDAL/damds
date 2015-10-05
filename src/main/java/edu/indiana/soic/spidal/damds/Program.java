@@ -1085,7 +1085,7 @@ public class Program {
         float[][] outBofZ, double[][] outMM) {
 
         // TODO - testing
-        for (int i = 0; i < ParallelOps.threadRowCounts[i]; ++i){
+        for (int i = 0; i < ParallelOps.threadRowCounts[threadIdx]; ++i){
             outMM[i][0] = ParallelOps.worldProcRank;
             outMM[i][1] = threadIdx;
             outMM[i][2] = 0.1375;
