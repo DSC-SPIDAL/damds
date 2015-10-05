@@ -1000,6 +1000,19 @@ public class Program {
         throws MPIException, InterruptedException {
 
         if (ParallelOps.threadCount > 1) {
+            // TODO - testing - check if a serial for loop will work
+
+            for (int threadIdx = 0; threadIdx < ParallelOps.threadCount; ++threadIdx){
+                BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
+                calculateBCInternal(
+                    threadIdx, preX, targetDimension, tCur, distances,
+                    weights, blockSize,
+                    threadPartialBofZ[threadIdx],
+                    threadPartialMM[threadIdx]);
+                BCTimings.endTiming(
+                    BCTimings.TimingTask.BC_INTERNAL, threadIdx);
+            }
+/*
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
@@ -1013,6 +1026,7 @@ public class Program {
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
+*/
         }
         else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
