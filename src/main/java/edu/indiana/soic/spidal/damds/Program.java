@@ -1002,9 +1002,10 @@ public class Program {
         if (ParallelOps.threadCount > 1) {
             // TODO - testing - check if a serial for loop will work
 
+            threadPartialMM = new double[ParallelOps.threadCount][][];
             for (int threadIdx = 0; threadIdx < ParallelOps.threadCount; ++threadIdx){
                 BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
-                calculateBCInternal(
+                threadPartialMM[threadIdx] = calculateBCInternal(
                     threadIdx, preX, targetDimension, tCur, distances,
                     weights, blockSize,
                     threadPartialBofZ[threadIdx],
@@ -1030,7 +1031,7 @@ public class Program {
         }
         else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
-            calculateBCInternal(
+            threadPartialMM[0] = calculateBCInternal(
                 0, preX, targetDimension, tCur, distances, weights, blockSize,
                 threadPartialBofZ[0],
                 threadPartialMM[0]);
@@ -1093,7 +1094,7 @@ public class Program {
         }
     }
 
-    private static void calculateBCInternal(
+    private static double[][] calculateBCInternal(
         Integer threadIdx, double[][] preX, int targetDimension, double tCur,
         short[][] distances, WeightsWrap weights, int blockSize,
         float[][] outBofZ, double[][] outMM) {
@@ -1114,17 +1115,26 @@ public class Program {
             }
         }
 
+        // TODO - testing - giving a fresh array to MM
+        double[][] tmp = new double[ParallelOps.threadRowCounts[threadIdx]][targetDimension];
+        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        MatrixUtils.matrixMultiply(outBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
+                                   targetDimension, ParallelOps.globalColCount, blockSize, tmp);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        return tmp;
 
+
+        // TODO - uncomment after testing
         /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
                                         distances, weights, outBofZ);
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);*/
 
         // Next we can calculate the BofZ * preX.
-        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
         MatrixUtils.matrixMultiply(outBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
                                                   targetDimension, ParallelOps.globalColCount, blockSize, outMM);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);*/
     }
 
     private static void calculateBofZ(
