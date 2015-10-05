@@ -1092,11 +1092,17 @@ public class Program {
         }*/
 
         outBofZ = new float[ParallelOps.threadRowCounts[threadIdx]][ParallelOps.globalColCount];
+        // TODO - testing - what if no BofZ and just constant values to outBofZ.
+        // Then will MM output be the same
+        for (int i = 0; i < ParallelOps.threadRowCounts[threadIdx]; ++i){
+            Arrays.fill(outBofZ[i], 0.234f);
+        }
 
-        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+
+        /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
                                         distances, weights, outBofZ);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);*/
 
         // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
