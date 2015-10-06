@@ -12,7 +12,9 @@ import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.DoubleBuffer;
 import java.nio.LongBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -20,7 +22,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -66,7 +67,7 @@ public class Program {
     public static float[][][] threadPartialBofZ;
     public static double[][][] threadPartialMM;
 
-    public static double[] partialSigmas;
+    public static double[] partialSigma;
     public static double[][] vArray;
 
     //Config Settings
@@ -141,7 +142,7 @@ public class Program {
             weights.setAvgDistForSammon(distanceSummary.getAverage());
             changeZeroDistancesToPostiveMin(distances, distanceSummary.getPositiveMin());
 
-            // Allocate required arrays once for all
+            // Allocating point arrays once for all
             allocateArrays();
 
             if (Strings.isNullOrEmpty(config.initialPointsFile)){
@@ -156,7 +157,8 @@ public class Program {
 
             generateVArray(distances, weights, vArray);
             double preStress = calculateStress(
-                preX, config.targetDimension, tCur, distances, weights, INV_SUM_OF_SQUARE, partialSigmas);
+                preX, config.targetDimension, tCur, distances, weights,
+                INV_SUM_OF_SQUARE, partialSigma);
             Utils.printMessage("\nInitial stress=" + preStress);
 
             tCur = config.alpha * tMax;
@@ -180,7 +182,8 @@ public class Program {
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
                 preStress = calculateStress(
-                    preX, config.targetDimension, tCur, distances, weights, INV_SUM_OF_SQUARE, partialSigmas);
+                    preX, config.targetDimension, tCur, distances, weights,
+                    INV_SUM_OF_SQUARE, partialSigma);
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
@@ -197,7 +200,7 @@ public class Program {
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
 
-                    zeroOutArray(threadPartialMM, threadPartialBofZ);
+                    zeroOutArray(threadPartialMM);
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
@@ -210,8 +213,6 @@ public class Program {
                     // a single mmap file
                     ParallelOps.worldProcsComm.barrier();
 
-                    // TODO - testing
-                    writeTempOutput(config.targetDimension, BC, "BC");
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
@@ -229,8 +230,8 @@ public class Program {
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
-                        preX, config.targetDimension, tCur, distances,
-                        weights, INV_SUM_OF_SQUARE, partialSigmas);
+                        preX, config.targetDimension, tCur, distances, weights,
+                        INV_SUM_OF_SQUARE, partialSigma);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.STRESS);
 
@@ -249,8 +250,6 @@ public class Program {
                     }
                     ++itrNum;
                     ++smacofRealIterations;
-                    // TODO - testing
-                    break;
                 }
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
@@ -279,8 +278,6 @@ public class Program {
                 if (tCur < tMin)
                     tCur = 0;
                 ++loopNum;
-                // TODO - testing
-                break;
             }
             loopTimer.stop();
 
@@ -296,11 +293,28 @@ public class Program {
                     distanceSummary.getAverage()));
 
 
-            writePoints();
+            // TODO - switched off points writing to save time
+             /*// TODO Fix error handling here
+            if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
+                "NOLABEL")) {
+                try {
+                    writeOuput(X, config.pointsFile);
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                try {
+                    writeOuput(X, config.labelFile, config.pointsFile);
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }*/
 
             Double finalStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
-                INV_SUM_OF_SQUARE, partialSigmas);
+                INV_SUM_OF_SQUARE, partialSigma);
 
             mainTimer.stop();
 
@@ -332,25 +346,6 @@ public class Program {
         }
     }
 
-    private static void writePoints() {
-        if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
-            "NOLABEL")) {
-            try {
-                writeOuput(preX, config.pointsFile);
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        } else {
-            try {
-                writeOuput(preX, config.labelFile, config.pointsFile);
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     private static void allocateArrays() {
         // Allocating point arrays once for all
         final int numberDataPoints = config.numberDataPoints;
@@ -370,31 +365,38 @@ public class Program {
             threadPartialMM[i] = new double[threadRowCount][config.targetDimension];
             vArray[i] = new double[threadRowCount];
         }
-        partialSigmas = new double[threadCount];
+        partialSigma = new double[threadCount];
     }
 
-    private static void zeroOutArray(double[] a){
-        Arrays.fill(a, 0.0d);
-    }
-
-
-    private static void zeroOutArray(double[][][] a, float[][][] b) {
+    private static void zeroOutArray(double[][] a){
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> zeroOutArraysInternal(ParallelOps.threadRowCounts[threadIdx], a[threadIdx], b!=null? b[threadIdx] : null)));
+                    (threadIdx) -> Arrays.fill(a[threadIdx], 0.0d)));
         }
         else {
-            zeroOutArraysInternal(ParallelOps.threadRowCounts[0], a[0], b!=null?b[0]:null);
+            Arrays.fill(a[0],0.0d);
         }
     }
 
-    private static void zeroOutArraysInternal(int threadRowCount, double[][] a, float[][] b){
+    private static void zeroOutArray(double[][][] a) {
+        if (ParallelOps.threadCount > 1) {
+            launchHabaneroApp(
+                () -> forallChunked(
+                    0, ParallelOps.threadCount - 1,
+                    (threadIdx) -> zeroOutArrayInternal(
+                        ParallelOps.threadRowCounts[threadIdx],
+                        a[threadIdx])));
+        }
+        else {
+            zeroOutArrayInternal(ParallelOps.threadRowCounts[0], a[0]);
+        }
+    }
+
+    private static void zeroOutArrayInternal(int threadRowCount, double[][] a){
         for (int j = 0; j < threadRowCount; ++j){
             Arrays.fill(a[j], 0.0d);
-            if (b == null) continue;
-            Arrays.fill(b[j], 0.0f);
         }
     }
 
@@ -755,49 +757,45 @@ public class Program {
         writer.close();
     }
 
-    private static double[][] generateVArray(
+    private static void generateVArray(
         short[][] distances, WeightsWrap weights, double[][] vArray) {
 
+        zeroOutArray(vArray);
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) ->
-                        generateVArrayInternal(threadIdx, distances,weights, vArray[threadIdx])));
+                    (threadIdx) -> generateVArrayInternal(
+                        threadIdx, distances, weights, vArray[threadIdx])));
         }
         else {
             generateVArrayInternal(0, distances, weights, vArray[0]);
         }
-        return vArray;
     }
 
-    private static double[] generateVArrayInternal(
-        Integer threadIdx, short[][] distances, WeightsWrap weights,
-        double[] outV) {
+    private static void generateVArrayInternal(
+        Integer threadIdx, short[][] distances, WeightsWrap weights, double[] v) {
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
 
         int rowOffset = ParallelOps.threadRowStartOffsets[threadIdx] +
                      ParallelOps.procRowStartOffset;
-        int globalRow, procLocalRow;
-        double origD, weight;
         for (int i = 0; i < threadRowCount; ++i) {
-            globalRow = i + rowOffset;
-            procLocalRow = globalRow - ParallelOps.procRowStartOffset;
+            int globalRow = i + rowOffset;
+            int procLocalRow = globalRow - ParallelOps.procRowStartOffset;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; ++globalCol) {
                 if (globalRow == globalCol) continue;
 
-                origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
-                weight = weights.getWeight(procLocalRow, globalCol);
+                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
+                double weight = weights.getWeight(procLocalRow, globalCol);
 
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
 
-                outV[i] += weight;
+                v[i] += weight;
             }
-            outV[i] += 1;
+            v[i] += 1;
         }
-        return outV;
     }
 
     private static void calculateConjugateGradient(
@@ -807,17 +805,16 @@ public class Program {
 
         throws MPIException {
 
-        zeroOutArray(threadPartialMM, null);
+
+        zeroOutArray(threadPartialMM);
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         calculateMM(preX, targetDimension, numPoints, weights, blockSize,
-                        vArray, MMr, threadPartialMM);
+                    vArray, MMr, threadPartialMM);
+
         CGTimings.endTiming(CGTimings.TimingTask.MM);
         // This barrier was necessary for correctness when using
         // a single mmap file
         ParallelOps.worldProcsComm.barrier();
-
-        // TODO - testing
-        writeTempOutput(targetDimension, MMr, "MMr");
 
         double[] tmpLHSRow, tmpRHSRow;
 
@@ -842,15 +839,13 @@ public class Program {
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
 
-            zeroOutArray(threadPartialMM,null);
             //calculate alpha
+            zeroOutArray(threadPartialMM);
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
-            calculateMM(BC, targetDimension, numPoints,weights, blockSize, vArray, MMAp, threadPartialMM);
+            calculateMM(BC, targetDimension, numPoints, weights, blockSize,
+                        vArray, MMAp, threadPartialMM);
             ParallelOps.worldProcsComm.barrier();
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
-
-            // TODO - testing
-            writeTempOutput(targetDimension, MMAp, "MMAp");
 
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr
@@ -898,14 +893,12 @@ public class Program {
         }
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
-
-        // TODO - testing
-        writeTempOutput(targetDimension, preX, "PrexAfterCG");
     }
 
     private static void calculateMM(
         double[][] x, int targetDimension, int numPoints, WeightsWrap weights,
-        int blockSize, double[][] vArray, double[][] outMM, double[][][] threadPartialMM) throws MPIException {
+        int blockSize, double[][] vArray, double[][] outMM,
+        double[][][] internalPartialMM) throws MPIException {
 
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
@@ -913,22 +906,24 @@ public class Program {
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
                         MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadIdx);
-                        calculateMMInternal(
-                            threadIdx, x, targetDimension, numPoints, weights, blockSize, vArray, threadPartialMM[threadIdx]);
+                        calculateMMInternal(threadIdx, x, targetDimension,
+                                            numPoints, weights, blockSize,
+                                            vArray,
+                                            internalPartialMM[threadIdx]);
                         MMTimings.endTiming(
                             MMTimings.TimingTask.MM_INTERNAL, threadIdx);
                     }));
         }
         else {
             MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
-            calculateMMInternal(
-                0,x, targetDimension, numPoints, weights, blockSize, vArray, threadPartialMM[0]);
+            calculateMMInternal(0, x, targetDimension, numPoints, weights,
+                                blockSize, vArray, internalPartialMM[0]);
             MMTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
             MMTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
-            mergePartials(threadPartialMM, targetDimension,
+            mergePartials(internalPartialMM, targetDimension,
                           ParallelOps.mmapXWriteBytes);
             MMTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
 
@@ -950,11 +945,11 @@ public class Program {
             ParallelOps.worldProcsComm.barrier();
             MMTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
             extractPoints(ParallelOps.fullXBytes,
-                                                     ParallelOps.globalColCount,
-                                                     targetDimension, outMM);
+                                                    ParallelOps.globalColCount,
+                                                    targetDimension, outMM);
             MMTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
         } else {
-            mergePartials(threadPartialMM, targetDimension, outMM);
+            mergePartials(internalPartialMM, targetDimension, outMM);
         }
     }
 
@@ -962,11 +957,15 @@ public class Program {
         Integer threadIdx, double[][] x, int targetDimension, int numPoints,
         WeightsWrap weights, int blockSize, double[][] vArray, double[][] outMM) {
 
-        MatrixUtils.matrixMultiplyWithThreadOffset(weights,vArray[threadIdx], x, ParallelOps.threadRowCounts[threadIdx],
-            targetDimension, numPoints, blockSize, ParallelOps.threadRowStartOffsets[threadIdx],
-            ParallelOps.threadRowStartOffsets[threadIdx] +
-            ParallelOps.procRowStartOffset, outMM);
+        MatrixUtils
+            .matrixMultiplyWithThreadOffset(weights, vArray[threadIdx], x,
+                ParallelOps.threadRowCounts[threadIdx], targetDimension,
+                numPoints, blockSize,
+                ParallelOps.threadRowStartOffsets[threadIdx],
+                ParallelOps.threadRowStartOffsets[threadIdx]
+                + ParallelOps.procRowStartOffset, outMM);
     }
+
 
     private static double innerProductCalculation(double[][] a, double[][] b) {
         double sum = 0;
@@ -995,53 +994,33 @@ public class Program {
     private static void calculateBC(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
         WeightsWrap weights, int blockSize, double[][] BC,
-        float[][][] threadPartialBofZ,
-        double[][][] threadPartialMM)
+        float[][][] threadPartialBCInternalBofZ,
+        double[][][] threadPartialBCInternalMM)
         throws MPIException, InterruptedException {
 
         if (ParallelOps.threadCount > 1) {
-            // TODO - testing - check if a serial for loop will work
-
-            threadPartialMM = new double[ParallelOps.threadCount][][];
-            for (int threadIdx = 0; threadIdx < ParallelOps.threadCount; ++threadIdx){
-                BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
-                threadPartialMM[threadIdx] = calculateBCInternal(
-                    threadIdx, preX, targetDimension, tCur, distances,
-                    weights, blockSize,
-                    threadPartialBofZ[threadIdx],
-                    threadPartialMM[threadIdx]);
-                BCTimings.endTiming(
-                    BCTimings.TimingTask.BC_INTERNAL, threadIdx);
-            }
-/*
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
                         calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances,
-                            weights, blockSize,
-                            threadPartialBofZ[threadIdx],
-                            threadPartialMM[threadIdx]);
+                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
-*/
         }
         else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
-            threadPartialMM[0] = calculateBCInternal(
-                0, preX, targetDimension, tCur, distances, weights, blockSize,
-                threadPartialBofZ[0],
-                threadPartialMM[0]);
+            calculateBCInternal(
+                0, preX, targetDimension, tCur, distances, weights, blockSize,threadPartialBCInternalBofZ[0], threadPartialBCInternalMM[0]);
             BCTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
             BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
-            mergePartials(threadPartialMM, targetDimension,
+            mergePartials(threadPartialBCInternalMM, targetDimension,
                           ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
@@ -1068,80 +1047,33 @@ public class Program {
                                                      targetDimension, BC);
             BCTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
         } else {
-            mergePartials(threadPartialMM, targetDimension, BC);
+            mergePartials(threadPartialBCInternalMM, targetDimension, BC);
         }
     }
 
-    private static void writeTempOutput(int targetDimension, double[][] array, String name) {
-        if (ParallelOps.worldProcRank == 0){
-            try (BufferedWriter bw = Files.newBufferedWriter(Paths.get(
-                ParallelOps.threadCount + "x" + ParallelOps.worldProcsPerNode
-                + "x" + ParallelOps.nodeCount + name+".txt"))){
-                PrintWriter writer = new PrintWriter(bw, true);
-                for (int j = 0; j < ParallelOps.globalColCount; ++j){
-                    for (int k = 0; k < targetDimension; ++k){
-                        writer.print(array[j][k] +"\t");
-                    }
-                    writer.println();
-                }
-                writer.flush();
-                writer.close();
-                bw.close();
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private static double[][] calculateBCInternal(
+    private static void calculateBCInternal(
         Integer threadIdx, double[][] preX, int targetDimension, double tCur,
         short[][] distances, WeightsWrap weights, int blockSize,
-        float[][] outBofZ, double[][] outMM) {
+        float[][] internalBofZ, double[][] outMM) {
 
-        /*// TODO - testing
-        for (int i = 0; i < ParallelOps.threadRowCounts[threadIdx]; ++i){
-            outMM[i][0] = ParallelOps.worldProcRank;
-            outMM[i][1] = threadIdx;
-            outMM[i][2] = 0.1375;
-        }*/
-
-        outBofZ = new float[ParallelOps.threadRowCounts[threadIdx]][ParallelOps.globalColCount];
-        // TODO - testing - what if no BofZ and just constant values to outBofZ.
-        // Then will MM output be the same
-        for (int i = 0; i < ParallelOps.threadRowCounts[threadIdx]; ++i){
-            for (int j = 0; j < ParallelOps.globalColCount; ++j) {
-                outBofZ[i][j] = distances[i][j];
-            }
-        }
-
-        // TODO - testing - giving a fresh array to MM
-        double[][] tmp = new double[ParallelOps.threadRowCounts[threadIdx]][targetDimension];
-        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        MatrixUtils.matrixMultiply(outBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
-                                   targetDimension, ParallelOps.globalColCount, blockSize, tmp);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        return tmp;
-
-
-        // TODO - uncomment after testing
-        /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
-                                        distances, weights, outBofZ);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);*/
+                                        distances, weights, internalBofZ);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
 
         // Next we can calculate the BofZ * preX.
-        /*BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        MatrixUtils.matrixMultiply(outBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
+        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        MatrixUtils.matrixMultiply(internalBofZ, preX, ParallelOps.threadRowCounts[threadIdx],
                                                   targetDimension, ParallelOps.globalColCount, blockSize, outMM);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);*/
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
     }
 
     private static void calculateBofZ(
-        int threadIdx, double[][] preX, int targetDimension, double tCur,
-        short[][] distances, WeightsWrap weights, float[][] outBofZ) {
+        int threadIdx, double[][] preX, int targetDimension, double tCur, short[][] distances, WeightsWrap weights,
+        float[][] outBofZ) {
 
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
+
         double vBlockValue = -1;
 
         double diff = 0.0;
@@ -1149,25 +1081,18 @@ public class Program {
             diff = Math.sqrt(2.0 * targetDimension)  * tCur;
         }
 
-        final int
-            globalRowOffset =
-            ParallelOps.threadRowStartOffsets[threadIdx]
-            + ParallelOps.procRowStartOffset;
-
+        short[] distancesProcLocalRow;
         float[] outBofZLocalRow;
-        short[] distancesLocalRow;
-
         double origD, weight, dist;
+        final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
+                                    + ParallelOps.procRowStartOffset;
         int globalRow, procLocalRow;
-
         for (int localRow = 0; localRow < threadRowCount; ++localRow) {
             globalRow = localRow + globalRowOffset;
             procLocalRow = globalRow - ParallelOps.procRowStartOffset;
-
             outBofZLocalRow = outBofZ[localRow];
-            distancesLocalRow = distances[localRow];
-
             outBofZLocalRow[globalRow] = 0;
+            distancesProcLocalRow = distances[procLocalRow];
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
 				/*
 				 * B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
@@ -1182,7 +1107,8 @@ public class Program {
                 // separately (see above).
                 if (globalRow == globalCol) continue;
 
-                origD = distancesLocalRow[globalCol] * INV_SHORT_MAX;
+
+                origD = distancesProcLocalRow[globalCol] * INV_SHORT_MAX;
                 weight = weights.getWeight(procLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
@@ -1237,44 +1163,34 @@ public class Program {
         }
     }
 
-    // TODO - test - remove this after testing
-    private static void mergePartials(
-        float[][][] partials, int targetDimension, Bytes result){
-        result.position(0);
-        for (float [][] partial : partials){
-            for (float [] point : partial){
-                for (int i = 0; i < targetDimension; ++i){
-                    result.writeDouble(point[i]);
-                }
-            }
-        }
-    }
-
     private static double calculateStress(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
-        WeightsWrap weights, double invSumOfSquare, double[] partialSigmas)
+        WeightsWrap weights, double invSumOfSquareDist, double[] internalPartialSigma)
         throws MPIException {
+
+        IntStream.range(0, ParallelOps.threadCount).forEach(i -> internalPartialSigma[i] = 0.0);
+
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> partialSigmas[threadIdx] =
+                    (threadIdx) -> internalPartialSigma[threadIdx] =
                         calculateStressInternal(threadIdx, preX, targetDimension, tCur,
 
                                                 distances, weights)));
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
-                i -> partialSigmas[0] += partialSigmas[i]);
+                i -> internalPartialSigma[0] += internalPartialSigma[i]);
         }
         else {
-            partialSigmas[0] = calculateStressInternal(0, preX, targetDimension, tCur,
+            internalPartialSigma[0] = calculateStressInternal(0, preX, targetDimension, tCur,
                                                      distances, weights);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            partialSigmas[0] = ParallelOps.allReduce(partialSigmas[0]);
+            internalPartialSigma[0] = ParallelOps.allReduce(internalPartialSigma[0]);
         }
-        return partialSigmas[0] * invSumOfSquare;
+        return internalPartialSigma[0] * invSumOfSquareDist;
     }
 
     private static double calculateStressInternal(
@@ -1320,8 +1236,16 @@ public class Program {
         double[] v, double[] w, int targetDim) {
         double dist = 0.0;
         for (int k = 0; k < targetDim; k++) {
-            double diff = v[k] - w[k];
-            dist += diff * diff;
+            try {
+                double diff = v[k] - w[k];
+                dist += diff * diff;
+            } catch (IndexOutOfBoundsException e){
+                // Usually this should not happen, also this is not
+                // necessary to catch, but it was found that some parent block
+                // in HJ hides this error if/when it happens, so explicitly
+                // printing it here.
+                e.printStackTrace();
+            }
         }
 
         dist = Math.sqrt(dist);
