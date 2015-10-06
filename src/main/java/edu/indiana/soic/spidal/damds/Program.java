@@ -293,7 +293,6 @@ public class Program {
                     distanceSummary.getAverage()));
 
 
-            // TODO - switched off points writing to save time
              // TODO Fix error handling here
             if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
                 "NOLABEL")) {
