@@ -48,7 +48,9 @@ public class Program {
             Constants.CMD_OPTION_DESCRIPTION_T);
 
         programOptions.addOption(Constants.CMD_OPTION_SHORT_MMAPS, true, Constants.CMD_OPTION_DESCRIPTION_MMAPS);
-        programOptions.addOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR, true, Constants.CMD_OPTION_DESCRIPTION_MMAP_SCRATCH_DIR);
+        programOptions.addOption(
+            Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR, true,
+            Constants.CMD_OPTION_DESCRIPTION_MMAP_SCRATCH_DIR);
     }
 
     // Constants
