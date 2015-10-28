@@ -1203,32 +1203,33 @@ public class Program {
             diff = Math.sqrt(2.0 * targetDim) * tCur;
         }
 
-        int pointCount =
-            ParallelOps.threadRowCounts[threadIdx] * ParallelOps.globalColCount;
+        int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
+        final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
+                                    + ParallelOps.procRowStartOffset;
 
-        for (int i = 0; i < pointCount; ++i) {
-            int procLocalPnum =
-                i + ParallelOps.threadPointStartOffsets[threadIdx];
-            int procLocalRow = procLocalPnum / ParallelOps.globalColCount;
-            int globalCol = procLocalPnum % ParallelOps.globalColCount;
+        int globalRow, procLocalRow;
+        short[] distancesProcLocalRow;
+        double origD, weight, euclideanD;
+        double heatD, tmpD;
+        for (int localRow = 0; localRow < threadRowCount; ++localRow){
+            globalRow = localRow + globalRowOffset;
+            procLocalRow = globalRow - ParallelOps.procRowStartOffset;
+            distancesProcLocalRow = distances[procLocalRow];
+            for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
+                origD = distancesProcLocalRow[globalCol] * INV_SHORT_MAX;
+                weight = weights.getWeight(procLocalRow,globalCol);
 
-            double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
-            double weight = weights.getWeight(procLocalRow, globalCol);
+                if (origD < 0 || weight == 0) {
+                    continue;
+                }
 
-            if (origD < 0 || weight == 0) {
-                continue;
+                euclideanD = globalRow != globalCol ? calculateEuclideanDist(
+                    preX[globalRow], preX[globalCol], targetDim) : 0.0;
+
+                heatD = origD - diff;
+                tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
+                sigma += weight * tmpD * tmpD;
             }
-
-            long globalPointStart =
-                procLocalPnum + ParallelOps.procPointStartOffset;
-            int globalRow = (int)(globalPointStart / ParallelOps.globalColCount);
-
-            double euclideanD = globalRow != globalCol ? calculateEuclideanDist(
-                preX[globalRow], preX[globalCol], targetDim) : 0.0;
-
-            double heatD = origD - diff;
-            double tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
-            sigma += weight * tmpD * tmpD;
         }
         return sigma;
     }
@@ -1294,6 +1295,7 @@ public class Program {
                     (threadIdx) -> threadDistanceSummaries[threadIdx] =
                         calculateStatisticsInternal(
                             threadIdx, distances, weights, missingDistCounts)));
+
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
                 i -> {
@@ -1364,24 +1366,30 @@ public class Program {
         int threadIdx, short[][] distances, WeightsWrap weights, int[] missingDistCounts) {
 
         DoubleStatistics stat = new DoubleStatistics();
-        int pointCount =  ParallelOps.threadRowCounts[threadIdx] *
-                          ParallelOps.globalColCount;
-        for (int i = 0; i < pointCount; ++i){
-            int procLocalPnum =
-                i + ParallelOps.threadPointStartOffsets[threadIdx];
-            int procLocalRow = procLocalPnum / ParallelOps.globalColCount;
-            int globalCol = procLocalPnum % ParallelOps.globalColCount;
-            double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
-            double weight = weights.getWeight(procLocalRow,globalCol);
-            if (origD < 0) {
-                // Missing distance
-                ++missingDistCounts[threadIdx];
-                continue;
-            }
-            if (weight == 0) continue; // Ignore zero weights
 
-            stat.accept(origD);
+        int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
+        final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadIdx];
+
+        int procLocalRow;
+        short[] distancesProcLocalRow;
+        double origD, weight;
+        for (int localRow = 0; localRow < threadRowCount; ++localRow){
+            procLocalRow = localRow + threadRowStartOffset;
+            distancesProcLocalRow = distances[procLocalRow];
+            for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
+                origD = distancesProcLocalRow[globalCol] * INV_SHORT_MAX;
+                weight = weights.getWeight(procLocalRow,globalCol);
+                if (origD < 0) {
+                    // Missing distance
+                    ++missingDistCounts[threadIdx];
+                    continue;
+                }
+                if (weight == 0) continue; // Ignore zero weights
+
+                stat.accept(origD);
+            }
         }
+
         return stat;
     }
 
