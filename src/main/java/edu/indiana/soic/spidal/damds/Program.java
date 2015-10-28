@@ -1288,14 +1288,23 @@ public class Program {
         IntStream.range(0, ParallelOps.threadCount).forEach(i -> missingDistCounts[i] = 0);
 
         if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
+            /*launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> threadDistanceSummaries[threadIdx] =
                         calculateStatisticsInternal(
-                            threadIdx, distances, weights, missingDistCounts)));
+                            threadIdx, distances, weights, missingDistCounts)));*/
 
             // TODO - Test
+            for (int i = 0; i < ParallelOps.threadCount; ++i){
+                final int threadIdx = i;
+                new Thread(
+                    () -> {
+                        threadDistanceSummaries[threadIdx]
+                            = calculateStatisticsInternal(
+                            threadIdx, distances, weights, missingDistCounts);
+                    }).start();
+            }
             for (int i = 0; i < ParallelOps.threadCount; ++i){
                 if (threadDistanceSummaries[i] == null){
                     System.out.println("***ERROR: Rank=" + ParallelOps.worldProcRank + " threadIdx=" + i + " is null");
