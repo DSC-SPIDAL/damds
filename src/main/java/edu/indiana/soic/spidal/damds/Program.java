@@ -1294,6 +1294,14 @@ public class Program {
                     (threadIdx) -> threadDistanceSummaries[threadIdx] =
                         calculateStatisticsInternal(
                             threadIdx, distances, weights, missingDistCounts)));
+
+            // TODO - Test
+            for (int i = 0; i < ParallelOps.threadCount; ++i){
+                if (threadDistanceSummaries[i] == null){
+                    System.out.println("***ERROR: Rank=" + ParallelOps.worldProcRank + " threadIdx=" + i + " is null");
+                }
+            }
+
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
                 i -> {
