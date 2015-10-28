@@ -1289,28 +1289,12 @@ public class Program {
         IntStream.range(0, ParallelOps.threadCount).forEach(i -> missingDistCounts[i] = 0);
 
         if (ParallelOps.threadCount > 1) {
-            /*launchHabaneroApp(
+            launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> threadDistanceSummaries[threadIdx] =
                         calculateStatisticsInternal(
-                            threadIdx, distances, weights, missingDistCounts)));*/
-
-            // TODO - Test
-            for (int i = 0; i < ParallelOps.threadCount; ++i){
-                final int threadIdx = i;
-                new Thread(
-                    () -> {
-                        threadDistanceSummaries[threadIdx]
-                            = calculateStatisticsInternal(
-                            threadIdx, distances, weights, missingDistCounts);
-                    }).start();
-            }
-            for (int i = 0; i < ParallelOps.threadCount; ++i){
-                if (threadDistanceSummaries[i] == null){
-                    System.out.println("***ERROR: Rank=" + ParallelOps.worldProcRank + " threadIdx=" + i + " is null");
-                }
-            }
+                            threadIdx, distances, weights, missingDistCounts)));
 
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
@@ -1406,24 +1390,6 @@ public class Program {
             }
         }
 
-        /*int pointCount =  ParallelOps.threadRowCounts[threadIdx] *
-                          ParallelOps.globalColCount;
-        for (int i = 0; i < pointCount; ++i){
-            int procLocalPnum =
-                i + ParallelOps.threadPointStartOffsets[threadIdx];
-            int procLocalRow = procLocalPnum / ParallelOps.globalColCount;
-            int globalCol = procLocalPnum % ParallelOps.globalColCount;
-            double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
-            double weight = weights.getWeight(procLocalRow,globalCol);
-            if (origD < 0) {
-                // Missing distance
-                ++missingDistCounts[threadIdx];
-                continue;
-            }
-            if (weight == 0) continue; // Ignore zero weights
-
-            stat.accept(origD);
-        }*/
         return stat;
     }
 
