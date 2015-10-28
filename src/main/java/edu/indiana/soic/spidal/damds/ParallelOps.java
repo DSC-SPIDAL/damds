@@ -60,13 +60,9 @@ public class ParallelOps {
     public static int procRowStartOffset;
     public static int procRowCount;
 
-    public static long procPointStartOffset;
     public static Range[] threadRowRanges;
     public static int[] threadRowStartOffsets;
     public static int[] threadRowCounts;
-
-
-    public static int[] threadPointStartOffsets;
 
     public static int globalColCount;
 
@@ -163,13 +159,11 @@ public class ParallelOps {
         procRowStartOffset = rowRange.getStartIndex();
         procRowCount = rowRange.getLength();
         globalColCount = globalRowCount;
-        procPointStartOffset = ((long)procRowStartOffset) * globalColCount;
 
         // Next partition points per process among threads
         threadRowRanges = RangePartitioner.partition(procRowCount, threadCount);
         threadRowCounts = new int[threadCount];
         threadRowStartOffsets = new int[threadCount];
-        threadPointStartOffsets = new int[threadCount];
         IntStream.range(0, threadCount)
             .parallel()
             .forEach(threadIdx -> {
@@ -178,8 +172,6 @@ public class ParallelOps {
                              threadRowRange.getLength();
                          threadRowStartOffsets[threadIdx] =
                              threadRowRange.getStartIndex();
-                         threadPointStartOffsets[threadIdx] =
-                             threadRowStartOffsets[threadIdx] * globalColCount;
                      });
 
         // Allocate timing buffers
