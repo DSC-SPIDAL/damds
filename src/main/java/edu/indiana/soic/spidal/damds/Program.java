@@ -66,7 +66,7 @@ public class Program {
     public static double[][] MMr;
     public static double[][] MMAp;
 
-    public static float[][][] threadPartialBofZ;
+    public static double[][][] threadPartialBofZ;
     public static double[][][] threadPartialMM;
 
     public static double[] partialSigma;
@@ -356,13 +356,13 @@ public class Program {
         MMr = new double[numberDataPoints][targetDimension];
         MMAp = new double[numberDataPoints][targetDimension];
         final int threadCount = ParallelOps.threadCount;
-        threadPartialBofZ = new float[threadCount][][];
+        threadPartialBofZ = new double[threadCount][][];
         threadPartialMM = new double[threadCount][][];
         vArray = new double[threadCount][];
         int threadRowCount;
         for (int i = 0; i < threadCount; ++i){
             threadRowCount = ParallelOps.threadRowCounts[i];
-            threadPartialBofZ[i] = new float[threadRowCount][ParallelOps.globalColCount];
+            threadPartialBofZ[i] = new double[threadRowCount][ParallelOps.globalColCount];
             threadPartialMM[i] = new double[threadRowCount][config.targetDimension];
             vArray[i] = new double[threadRowCount];
         }
@@ -995,7 +995,7 @@ public class Program {
     private static void calculateBC(
         double[][] preX, int targetDimension, double tCur, short[][] distances,
         WeightsWrap weights, int blockSize, double[][] BC,
-        float[][][] threadPartialBCInternalBofZ,
+        double[][][] threadPartialBCInternalBofZ,
         double[][][] threadPartialBCInternalMM)
         throws MPIException, InterruptedException {
 
@@ -1055,7 +1055,7 @@ public class Program {
     private static void calculateBCInternal(
         Integer threadIdx, double[][] preX, int targetDimension, double tCur,
         short[][] distances, WeightsWrap weights, int blockSize,
-        float[][] internalBofZ, double[][] outMM) {
+        double[][] internalBofZ, double[][] outMM) {
 
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
@@ -1071,7 +1071,7 @@ public class Program {
 
     private static void calculateBofZ(
         int threadIdx, double[][] preX, int targetDimension, double tCur, short[][] distances, WeightsWrap weights,
-        float[][] outBofZ) {
+        double[][] outBofZ) {
 
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
 
@@ -1083,7 +1083,7 @@ public class Program {
         }
 
         short[] distancesProcLocalRow;
-        float[] outBofZLocalRow;
+        double[] outBofZLocalRow;
         double origD, weight, dist;
         final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
                                     + ParallelOps.procRowStartOffset;
@@ -1119,7 +1119,7 @@ public class Program {
                 dist = calculateEuclideanDist(
                     preX[globalRow], preX[globalCol], targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZLocalRow[globalCol] = (float) (weight * vBlockValue * (origD - diff) / dist);
+                    outBofZLocalRow[globalCol] = (weight * vBlockValue * (origD - diff) / dist);
                 } else {
                     outBofZLocalRow[globalCol] = 0;
                 }
