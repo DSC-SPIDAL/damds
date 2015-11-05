@@ -1406,6 +1406,8 @@ public class Program {
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
         BlockSize = config.blockSize;
+
+        ParallelOps.computingSteps = config.computingSteps;
     }
 
     /**

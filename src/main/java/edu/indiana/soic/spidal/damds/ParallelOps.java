@@ -79,13 +79,13 @@ public class ParallelOps {
     public static Bytes fullXBytes;
     public static ByteBuffer fullXByteBuffer;
 
+    public static int computingSteps;
+
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
         worldProcsComm = MPI.COMM_WORLD; //initializing MPI world communicator
         worldProcRank = worldProcsComm.getRank();
         worldProcsCount = worldProcsComm.getSize();
-
-
 
         /* Create communicating groups */
         worldProcsPerNode = worldProcsCount / nodeCount;
