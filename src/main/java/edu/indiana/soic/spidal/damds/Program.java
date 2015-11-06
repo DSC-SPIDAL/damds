@@ -60,6 +60,8 @@ public class Program {
     // Calculated Constants
     public static double INV_SUM_OF_SQUARE;
 
+    // TODO - thread performance fixes
+    public static double[][][] preXCopies;
     // Arrays
     public static double[][] preX;
     public static double[][] BC;
@@ -351,6 +353,7 @@ public class Program {
         // Allocating point arrays once for all
         final int numberDataPoints = config.numberDataPoints;
         final int targetDimension = config.targetDimension;
+
         preX = new double[numberDataPoints][targetDimension];
         BC = new double[numberDataPoints][targetDimension];
         MMr = new double[numberDataPoints][targetDimension];
@@ -359,6 +362,8 @@ public class Program {
         threadPartialBofZ = new double[threadCount][][];
         threadPartialMM = new double[threadCount][][];
         vArray = new double[threadCount][];
+        // TODO - thread performance fixes
+        preXCopies = new double[threadCount][numberDataPoints][targetDimension];
         int threadRowCount;
         for (int i = 0; i < threadCount; ++i){
             threadRowCount = ParallelOps.threadRowCounts[i];
@@ -1000,13 +1005,22 @@ public class Program {
         throws MPIException, InterruptedException {
 
         if (ParallelOps.threadCount > 1) {
+            // TODO - thread performance fixes
+            for (int j = 0; j < ParallelOps.threadCount; ++j){
+                final double[][] preXCopy = preXCopies[j];
+                for (int i = 0; i < preX.length; ++i){
+                    System.arraycopy(preX[i], 0, preXCopy[i], 0, targetDimension);
+                }
+            }
+
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
+                        // TODO - thread performance fixes
                         calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
+                            threadIdx, preXCopies[threadIdx], targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
