@@ -43,6 +43,7 @@ public class DAMDSSection {
             weightTransformationFunction = getProperty(p, "WeightTransformationFunction", null);
 
             repetitions = Integer.parseInt(getProperty(p, "Repetitions", "1"));
+            bind = Boolean.parseBoolean(getProperty(p, "Bind", "true"));
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
@@ -86,6 +87,7 @@ public class DAMDSSection {
     public String weightTransformationFunction;
 
     public int repetitions;
+    public boolean bind;
 
     private String getPadding(int count, String prefix){
         StringBuilder sb = new StringBuilder(prefix);
@@ -116,7 +118,8 @@ public class DAMDSSection {
                                        "Memory mapped (boolean)",
                                        "TransformationFunction",
                                        "WeightTransformationFunction",
-                                       "Repetitions"};
+                                       "Repetitions",
+                                       "Bind"};
         Object[] args =
             new Object[]{distanceMatrixFile,
                          weightMatrixFile,
@@ -138,7 +141,7 @@ public class DAMDSSection {
                          isBigEndian,
                          isMemoryMapped,
                          transformationFunction,
-                         weightTransformationFunction, repetitions};
+                         weightTransformationFunction, repetitions, bind};
 
         java.util.Optional<Integer> maxLength =
             Arrays.stream(params).map(String::length).reduce(Math::max);

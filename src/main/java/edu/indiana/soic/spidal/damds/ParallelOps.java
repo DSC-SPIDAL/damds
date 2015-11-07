@@ -25,6 +25,8 @@ public class ParallelOps {
     public static int nodeCount=1;
     public static int threadCount=1;
 
+    public static boolean bind;
+
     public static int nodeId;
 
     public static Intracomm worldProcsComm;
