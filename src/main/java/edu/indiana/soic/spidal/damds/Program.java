@@ -1345,21 +1345,29 @@ public class Program {
                 config.distanceMatrixFile, ParallelOps.procRowRange,
                 ParallelOps.globalColCount, byteOrder, true, function, config.repetitions);
 
-        short[][] w = null;
-        if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
-            function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
-                ? loadFunction(config.weightTransformationFunction)
-                : null;
-            w = config.repetitions == 1 ? BinaryReader2D
-                .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
-                              ParallelOps.globalColCount, byteOrder, true,
-                              function)
-            : BinaryReader2D
-                .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
-                    ParallelOps.globalColCount, byteOrder, true,
-                    function, config.repetitions);
+        if (!config.simpleWeihgts) {
+            short[][] w = null;
+            if (!Strings.isNullOrEmpty(config.weightMatrixFile)) {
+                function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
+                        ? loadFunction(config.weightTransformationFunction)
+                        : null;
+                w = config.repetitions == 1 ? BinaryReader2D
+                        .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
+                                ParallelOps.globalColCount, byteOrder, true,
+                                function)
+                        : BinaryReader2D
+                        .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
+                                ParallelOps.globalColCount, byteOrder, true,
+                                function, config.repetitions);
+            }
+            weights = new WeightsWrap(w, distances, isSammon);
+        } else {
+            double[] w = null;
+            if (!Strings.isNullOrEmpty(config.weightMatrixFile)) {
+                w = BinaryReader2D.readSimpleFile(config.weightMatrixFile, config.numberDataPoints);
+            }
+            weights = new WeightsWrap(w, ParallelOps.procRowRange, distances, isSammon);
         }
-        weights = new WeightsWrap(w, distances, isSammon);
     }
 
     private static DoubleStatistics calculateStatisticsInternal(

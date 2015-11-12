@@ -43,6 +43,7 @@ public class DAMDSSection {
             weightTransformationFunction = getProperty(p, "WeightTransformationFunction", null);
 
             repetitions = Integer.parseInt(getProperty(p, "Repetitions", "1"));
+            simpleWeihgts = Boolean.parseBoolean(getProperty(p, "SimpleWeights", "false"));
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
@@ -84,6 +85,7 @@ public class DAMDSSection {
     public boolean isMemoryMapped;
     public String transformationFunction;
     public String weightTransformationFunction;
+    public boolean simpleWeihgts;
 
     public int repetitions;
 
