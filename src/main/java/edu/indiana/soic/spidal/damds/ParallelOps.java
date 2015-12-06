@@ -15,6 +15,7 @@ import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
@@ -197,6 +198,7 @@ public class ParallelOps {
             Arrays.parallelPrefix(cgProcsMmapXDisplas, (m, n) -> m + n);
         }
 
+        Files.createDirectories(Paths.get(mmapScratchDir));
         final String mmapXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapX.bin";
         final String fullXFname = machineName + ".mmapId." + mmapIdLocalToNode +".fullX.bin";
         try (FileChannel mmapXFc = FileChannel.open(Paths.get(mmapScratchDir,
