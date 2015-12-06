@@ -9,6 +9,7 @@ import mpi.MPIException;
 import net.openhft.lang.io.ByteBufferBytes;
 import net.openhft.lang.io.Bytes;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
@@ -198,7 +199,7 @@ public class ParallelOps {
             Arrays.parallelPrefix(cgProcsMmapXDisplas, (m, n) -> m + n);
         }
 
-        Files.createDirectories(Paths.get(mmapScratchDir));
+        boolean status = new File(mmapScratchDir).mkdirs();
         final String mmapXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapX.bin";
         final String fullXFname = machineName + ".mmapId." + mmapIdLocalToNode +".fullX.bin";
         try (FileChannel mmapXFc = FileChannel.open(Paths.get(mmapScratchDir,
