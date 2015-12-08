@@ -6,13 +6,13 @@
 
     <groupId>edu.indiana.soic.spidal</groupId>
     <artifactId>damds</artifactId>
-    <version>1.0-ompi1.8.1</version>
+    <version>1.0-ompi1.8.1-beforemmaps</version>
 
     <dependencies>
         <dependency>
             <groupId>edu.indiana.soic.spidal</groupId>
             <artifactId>common</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.0-SNAPSHOT-beforemmaps</version>
         </dependency>
 
         <dependency>
