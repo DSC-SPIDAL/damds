@@ -822,6 +822,8 @@ public class Program {
         if (ParallelOps.procCount > 1) {
             mergePartials(partialMMs, targetDimension, ParallelOps.partialPointBuffer);
 
+            // Barrier for cleaner timings
+            ParallelOps.procComm.barrier();
             MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
             DoubleBuffer result = ParallelOps.allGather(
                 ParallelOps.partialPointBuffer, targetDimension);
@@ -899,6 +901,8 @@ public class Program {
         if (ParallelOps.procCount > 1) {
             mergePartials(partialBCs, targetDimension, ParallelOps.partialPointBuffer);
 
+            // Barrier for cleaner timings
+            ParallelOps.procComm.barrier();
             BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
             DoubleBuffer result = ParallelOps.allGather(
                 ParallelOps.partialPointBuffer, targetDimension);
