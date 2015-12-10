@@ -421,7 +421,7 @@ public class Program {
             "  Total\tTempLoop\tPreStress\tStressLoop\tBC\tCG\tStress" +
             "\tBCInternal\tBComm\tBCInternalBofZ\tBCInternalMM\tCGMM" +
             "\tCGInnerProd\tCGLoop\tCGLoopMM\tCGLoopInnerProdPAP" +
-            "\tCGLoopInnerProdR\tMMInternal\tMMComm\tBCMerge\tBCExtract\tMMMerge\tMMExtract";
+            "\tCGLoopInnerProdR\tMMInternal\tMMComm\tBCMerge\tBCExtract\tMMMerge\tMMExtract\tStressInternal\tStressComm\tStressInternalComp";
         Utils.printMessage(
             mainHeader);
         String mainTimings = "  " + totalTime + '\t' + temperatureLoopTime +
@@ -463,7 +463,14 @@ public class Program {
                      BCTimings.getAverageTime(BCTimings.TimingTask.BC_MERGE) + '\t' +
                      BCTimings.getAverageTime(BCTimings.TimingTask.BC_EXTRACT) + '\t' +
                      MMTimings.getAverageTime(MMTimings.TimingTask.MM_MERGE) + '\t' +
-                     MMTimings.getAverageTime(MMTimings.TimingTask.MM_EXTRACT);
+                     MMTimings.getAverageTime(MMTimings.TimingTask.MM_EXTRACT) + '\t' +
+                     StressTimings.getAverageTime(
+                         StressTimings.TimingTask.STRESS_INTERNAL) + '\t' +
+                     StressTimings.getAverageTime(
+                           StressTimings.TimingTask.COMM) + '\t' +
+                     StressInternalTimings.getAverageTime(
+                           StressInternalTimings.TimingTask.COMP);
+
         Utils.printMessage(
             mainTimings);
 
@@ -519,7 +526,13 @@ public class Program {
             BCTimings.getTotalTime(BCTimings.TimingTask.BC_MERGE) * 1.0 / totalTime + '\t' +
             BCTimings.getTotalTime(BCTimings.TimingTask.BC_EXTRACT) * 1.0 / totalTime + '\t' +
             MMTimings.getTotalTime(MMTimings.TimingTask.MM_MERGE) * 1.0 / totalTime + '\t' +
-            MMTimings.getTotalTime(MMTimings.TimingTask.MM_EXTRACT) * 1.0 / totalTime;
+            MMTimings.getTotalTime(MMTimings.TimingTask.MM_EXTRACT) * 1.0 / totalTime + '\t' +
+            StressTimings.getTotalTime(
+                StressTimings.TimingTask.STRESS_INTERNAL) * 1.0 / totalTime + '\t' +
+            StressTimings.getTotalTime(
+                StressTimings.TimingTask.COMM) * 1.0 / totalTime + '\t' +
+            StressInternalTimings.getTotalTime(
+                StressInternalTimings.TimingTask.COMP) * 1.0 / totalTime;
         Utils.printMessage(
             percentTimings);
 
@@ -556,6 +569,11 @@ public class Program {
             MMTimings.TimingTask.MM_MERGE);
         long[] mmExtractTimeDistribution = MMTimings.getTotalTimeDistribution(
             MMTimings.TimingTask.MM_EXTRACT);
+        long[] stressCommTimeDistribution = StressTimings.getTotalTimeDistribution(
+            StressTimings.TimingTask.COMM);
+        long[] stressInternalCompTimeDistribution =
+            StressInternalTimings.getTotalTimeDistribution(
+                StressInternalTimings.TimingTask.COMP);
 
         // Count distributions
         long[] temperatureLoopCountDistribution =
@@ -588,12 +606,16 @@ public class Program {
                                  bcCommTimeDistribution, printWriter);
                 prettyPrintArray("MMComm Timing Distribution",
                                  mmCommTimeDistribution, printWriter);
+                prettyPrintArray("StressComm Timing Distribution",
+                    stressCommTimeDistribution, printWriter);
                 prettyPrintArray("BCInternalBofZ Timing Distribution",
                                  bcInternalBofZTimeDistribution, printWriter);
                 prettyPrintArray("BCInternalMM Timing Distribution",
                                  bcInternalMMTimeDistribution, printWriter);
                 prettyPrintArray("MMInternal Timing Distribution",
                                  mmInternalTimeDistribution, printWriter);
+                prettyPrintArray("StressInternalComp Timing Distribution",
+                    stressInternalCompTimeDistribution, printWriter);
                 prettyPrintArray("BC Merge Timing Distribution",
                                  bcMergeTimeDistribution, printWriter);
                 prettyPrintArray("BC Extract Timing Distribution",
@@ -653,6 +675,7 @@ public class Program {
     }
 
     private static void initializeTimers() {
+        StressTimings.init(ParallelOps.threadCount);
         BCInternalTimings.init(ParallelOps.threadCount);
         BCTimings.init(ParallelOps.threadCount);
         MMTimings.init(ParallelOps.threadCount);
@@ -1175,10 +1198,14 @@ public class Program {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> internalPartialSigma[threadIdx] =
+                    (threadIdx) -> {
+                        StressTimings.startTiming(StressTimings.TimingTask.STRESS_INTERNAL, threadIdx);
+                        internalPartialSigma[threadIdx] =
                         calculateStressInternal(threadIdx, preX, targetDimension, tCur,
 
-                                                distances, weights)));
+                                                distances, weights);
+                        StressTimings.endTiming(StressTimings.TimingTask.STRESS_INTERNAL, threadIdx);
+                    }));
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
                 i -> internalPartialSigma[0] += internalPartialSigma[i]);
@@ -1189,7 +1216,11 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
+            // Barrier for cleaner timings
+            ParallelOps.worldProcsComm.barrier();
+            StressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
             internalPartialSigma[0] = ParallelOps.allReduce(internalPartialSigma[0]);
+            StressTimings.endTiming(StressTimings.TimingTask.COMM, 0);
         }
         return internalPartialSigma[0] * invSumOfSquareDist;
     }
@@ -1197,6 +1228,7 @@ public class Program {
     private static double calculateStressInternal(
         int threadIdx, double[][] preX, int targetDim, double tCur, short[][] distances, WeightsWrap weights) {
 
+        StressInternalTimings.startTiming(StressInternalTimings.TimingTask.COMP, threadIdx);
         double sigma = 0.0;
         double diff = 0.0;
         if (tCur > 10E-10) {
@@ -1231,6 +1263,7 @@ public class Program {
                 sigma += weight * tmpD * tmpD;
             }
         }
+        StressInternalTimings.endTiming(StressInternalTimings.TimingTask.COMP, threadIdx);
         return sigma;
     }
 
