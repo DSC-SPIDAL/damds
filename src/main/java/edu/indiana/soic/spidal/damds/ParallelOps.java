@@ -16,7 +16,6 @@ import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
@@ -40,6 +39,7 @@ public class ParallelOps {
     public static String mmapScratchDir;
     public static int worldProcRankLocalToNode;
     public static int mmapIdLocalToNode;
+    public static int mmapProcRank;
     public static int mmapProcsCount;
     public static boolean isMmapLead;
     public static int[] mmapProcsWorldRanks;
@@ -131,6 +131,7 @@ public class ParallelOps {
 
         // Communicator for processes within a  memory map group
         mmapProcComm = worldProcsComm.split((nodeId*mmapsPerNode)+mmapIdLocalToNode, worldProcRank);
+        mmapProcRank = mmapProcComm.getRank();
 
         /* Allocate basic buffers for communication */
         statBuffer = MPI.newByteBuffer(DoubleStatistics.extent);
@@ -200,6 +201,7 @@ public class ParallelOps {
         }
 
         boolean status = new File(mmapScratchDir).mkdirs();
+
         final String mmapXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapX.bin";
         final String fullXFname = machineName + ".mmapId." + mmapIdLocalToNode +".fullX.bin";
         try (FileChannel mmapXFc = FileChannel.open(Paths.get(mmapScratchDir,
@@ -238,6 +240,41 @@ public class ParallelOps {
                                                               .READ_WRITE,
                                                           fullXByteOffset,
                                                           fullXByteExtent));
+            fullXByteBuffer = fullXBytes.sliceAsByteBuffer(fullXByteBuffer);
+        }
+
+        /* Allocate memory maps for single double valued communications like AllReduce */
+        final String mmapSFname = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapS.bin";
+        try (FileChannel mmapSFc = FileChannel
+            .open(Paths.get(mmapScratchDir, mmapSFname),
+                StandardOpenOption.CREATE, StandardOpenOption.READ,
+                StandardOpenOption.WRITE)) {
+
+            int mmapSReadByteExtent = mmapProcsCount * Double.BYTES;
+            long mmapSReadByteOffset = 0L;
+            int mmapSWriteByteExtent = Double.BYTES;
+            long
+                mmapSWriteByteOffset = mmapProcRank * Double.BYTES;
+
+            // TODO - Continue from here
+
+            int fullXByteExtent = globalRowCount * targetDimension * Double.BYTES;
+            long fullXByteOffset = 0L;
+
+            mmapXReadBytes = ByteBufferBytes.wrap(mmapXFc.map(
+                FileChannel.MapMode.READ_WRITE, mmapXReadByteOffset,
+                mmapXReadByteExtent));
+            mmapXReadByteBuffer = mmapXReadBytes.sliceAsByteBuffer(
+                mmapXReadByteBuffer);
+
+            mmapXReadBytes.position(0);
+            mmapXWriteBytes = mmapXReadBytes.slice(mmapXWriteByteOffset,
+                mmapXWriteByteExtent);
+
+            fullXBytes = ByteBufferBytes.wrap(fullXFc.map(FileChannel.MapMode
+                    .READ_WRITE,
+                fullXByteOffset,
+                fullXByteExtent));
             fullXByteBuffer = fullXBytes.sliceAsByteBuffer(fullXByteBuffer);
         }
     }
