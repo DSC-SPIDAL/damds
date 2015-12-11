@@ -92,8 +92,6 @@ public class Program {
      *             --configFile, --threadCount, and --nodeCount respectively
      */
     public static void  main(String[] args) {
-        System.out.println("WTF: " +Arrays.toString(args));
-
         Optional<CommandLine> parserResult =
             parseCommandLineArguments(args, programOptions);
 
@@ -1476,9 +1474,6 @@ public class Program {
             Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_T));
         ParallelOps.mmapsPerNode = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAPS) ? Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAPS)) : 1;
         ParallelOps.mmapScratchDir = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) ? cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) : ".";
-
-//        TODO - remove after testing
-        System.out.println("********* hasMmapsOp?" +cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAPS) + " mmaps=" + Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAPS)) + " mmapdir=" +cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR));
 
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
