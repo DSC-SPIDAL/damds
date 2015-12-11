@@ -1476,6 +1476,16 @@ public class Program {
         ParallelOps.mmapsPerNode = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAPS) ? Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAPS)) : 1;
         ParallelOps.mmapScratchDir = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) ? cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) : ".";
 
+//        TODO - remove after testing
+        try {
+            if (MPI.COMM_WORLD.getRank() == 0){
+                System.out.println("********* mmaps=" + Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAPS) + " mmapdir=" +cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR)));
+            }
+        }
+        catch (MPIException e) {
+            e.printStackTrace();
+        }
+
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
         BlockSize = config.blockSize;
