@@ -1114,6 +1114,7 @@ public class Program {
 
         short[] distancesProcLocalRow;
         double[] outBofZLocalRow;
+        double[] preXGlobalRow;
         double origD, weight, dist;
         final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
                                     + ParallelOps.procRowStartOffset;
@@ -1122,6 +1123,7 @@ public class Program {
             globalRow = localRow + globalRowOffset;
             procLocalRow = globalRow - ParallelOps.procRowStartOffset;
             outBofZLocalRow = outBofZ[localRow];
+            preXGlobalRow = preX[globalRow];
             outBofZLocalRow[globalRow] = 0;
             distancesProcLocalRow = distances[procLocalRow];
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
@@ -1147,7 +1149,7 @@ public class Program {
                 }
 
                 dist = calculateEuclideanDist(
-                    preX[globalRow], preX[globalCol], targetDimension);
+                    preXGlobalRow, preX[globalCol], targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
                     outBofZLocalRow[globalCol] = (weight * vBlockValue * (origD - diff) / dist);
                 } else {
