@@ -114,6 +114,7 @@ public class ParallelOps {
                 : (worldProcRankLocalToNode - r) / q;
         mmapProcsCount = worldProcRankLocalToNode < r*(q+1) ? q+1 : q;
         isMmapLead = worldProcRankLocalToNode % mmapProcsCount == 0;
+        System.out.println("****PossibleBUG: wr=" + worldProcRank + " wrln=" + worldProcRankLocalToNode + " lead=" + isMmapLead);
         mmapProcsWorldRanks = new int[mmapProcsCount];
         mmapLeadWorldRankLocalToNode =
             isMmapLead
@@ -266,8 +267,10 @@ public class ParallelOps {
                 mmapSReadByteExtent));
             // Read buffer is only needed for the first element, which will
             // act as the accumulator for local mmap values
-            mmapSReadByteBuffer = mmapSReadBytes.slice(0, mmapSWriteByteExtent)
+            /*mmapSReadByteBuffer = mmapSReadBytes.slice(0, mmapSWriteByteExtent)
                                                 .sliceAsByteBuffer(
+                                                    mmapSReadByteBuffer);*/
+            mmapSReadByteBuffer = mmapSReadBytes.sliceAsByteBuffer(
                                                     mmapSReadByteBuffer);
 
             mmapSReadBytes.position(0);
