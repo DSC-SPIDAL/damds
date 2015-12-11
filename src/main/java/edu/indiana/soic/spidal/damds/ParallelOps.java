@@ -119,7 +119,7 @@ public class ParallelOps {
         mmapProcRank = mmapProcComm.getRank();
 
         isMmapLead = mmapProcRank == 0;
-        System.out.println("****FixedBUG?: wr=" + worldProcRank + " wrln=" + worldProcRankLocalToNode + " lead=" + isMmapLead);
+        System.out.println("****FixedBUG?: mmaps=" + mmapsPerNode + " wr=" + worldProcRank + " wrln=" + worldProcRankLocalToNode + " lead=" + isMmapLead + "mmapRank: " + mmapProcRank);
         mmapProcsWorldRanks = new int[mmapProcsCount];
         mmapLeadWorldRankLocalToNode =
             isMmapLead
