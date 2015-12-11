@@ -7,6 +7,7 @@ import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.timing.*;
+import mpi.MPI;
 import mpi.MPIException;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
@@ -296,7 +297,7 @@ public class Program {
 
 
              // TODO Fix error handling here
-            if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
+            /*if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
                 "NOLABEL")) {
                 try {
                     writeOuput(preX, config.pointsFile);
@@ -311,7 +312,7 @@ public class Program {
                 catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
+            }*/
 
             Double finalStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
@@ -1192,9 +1193,10 @@ public class Program {
         WeightsWrap weights, double invSumOfSquareDist, double[] internalPartialSigma)
         throws MPIException {
 
-        IntStream.range(0, ParallelOps.threadCount).forEach(i -> internalPartialSigma[i] = 0.0);
+        double stress = 0.0;
 
         if (ParallelOps.threadCount > 1) {
+            IntStream.range(0, ParallelOps.threadCount).forEach(i -> internalPartialSigma[i] = 0.0);
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
@@ -1206,23 +1208,52 @@ public class Program {
                                                 distances, weights);
                         StressTimings.endTiming(StressTimings.TimingTask.STRESS_INTERNAL, threadIdx);
                     }));
-            // Sum across threads and accumulate to zeroth entry
-            IntStream.range(1, ParallelOps.threadCount).forEach(
-                i -> internalPartialSigma[0] += internalPartialSigma[i]);
+            // Sum across threads and accumulate to stress
+            for (int i = 0; i < ParallelOps.threadCount; ++i){
+                stress += internalPartialSigma[i];
+            }
         }
         else {
-            internalPartialSigma[0] = calculateStressInternal(0, preX, targetDimension, tCur,
+            stress = calculateStressInternal(0, preX, targetDimension, tCur,
                                                      distances, weights);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            // Barrier for cleaner timings
+            /* Write thread local reduction to shared memory map*/
+            ParallelOps.mmapSWriteBytes.position(0);
+            ParallelOps.mmapSWriteBytes.writeDouble(stress);
+
+            // Important barrier here - as we need to make sure writes are done
+            // to the mmap file.
+            // It's sufficient to wait on ParallelOps.mmapProcComm,
+            // but it's cleaner for timings if we wait on the whole world
             ParallelOps.worldProcsComm.barrier();
-            StressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
-            internalPartialSigma[0] = ParallelOps.allReduce(internalPartialSigma[0]);
-            StressTimings.endTiming(StressTimings.TimingTask.COMM, 0);
+            if (ParallelOps.isMmapLead) {
+                /* Node local reduction using shared memory maps*/
+                ParallelOps.mmapSReadBytes.position(0);
+                stress = 0.0;
+                for (int i = 0; i < ParallelOps.mmapProcsCount; ++i){
+                    stress += ParallelOps.mmapSReadBytes.readDouble();
+                }
+                ParallelOps.mmapSWriteBytes.position(0);
+                ParallelOps.mmapSWriteBytes.writeDouble(stress);
+
+                /* Leaders participate in MPI AllReduce*/
+                StressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
+                ParallelOps.partialSAllReduce(MPI.SUM);
+                StressTimings.endTiming(StressTimings.TimingTask.COMM, 0);
+            }
+
+            // Each process in a memory group waits here.
+            // It's not necessary to wait for a process
+            // in another memory map group, hence the use of mmapProcComm.
+            // However it's cleaner for any timings to have everyone sync here,
+            // so will use worldProcsComm instead.
+            ParallelOps.worldProcsComm.barrier();
+            ParallelOps.mmapSReadBytes.position(0);
+            stress = ParallelOps.mmapSReadBytes.readDouble();
         }
-        return internalPartialSigma[0] * invSumOfSquareDist;
+        return stress * invSumOfSquareDist;
     }
 
     private static double calculateStressInternal(

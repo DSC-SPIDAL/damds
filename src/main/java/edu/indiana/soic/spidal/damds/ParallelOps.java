@@ -6,6 +6,7 @@ import edu.indiana.soic.spidal.common.RangePartitioner;
 import mpi.Intracomm;
 import mpi.MPI;
 import mpi.MPIException;
+import mpi.Op;
 import net.openhft.lang.io.ByteBufferBytes;
 import net.openhft.lang.io.Bytes;
 
@@ -80,6 +81,10 @@ public class ParallelOps {
     public static Bytes mmapXWriteBytes;
     public static Bytes fullXBytes;
     public static ByteBuffer fullXByteBuffer;
+
+    public static Bytes mmapSReadBytes;
+    public static ByteBuffer mmapSReadByteBuffer;
+    public static Bytes mmapSWriteBytes;
 
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
@@ -253,29 +258,21 @@ public class ParallelOps {
             int mmapSReadByteExtent = mmapProcsCount * Double.BYTES;
             long mmapSReadByteOffset = 0L;
             int mmapSWriteByteExtent = Double.BYTES;
-            long
-                mmapSWriteByteOffset = mmapProcRank * Double.BYTES;
+            long mmapSWriteByteOffset = mmapProcRank * Double.BYTES;
 
-            // TODO - Continue from here
 
-            int fullXByteExtent = globalRowCount * targetDimension * Double.BYTES;
-            long fullXByteOffset = 0L;
+            mmapSReadBytes = ByteBufferBytes.wrap(mmapSFc.map(
+                FileChannel.MapMode.READ_WRITE, mmapSReadByteOffset,
+                mmapSReadByteExtent));
+            // Read buffer is only needed for the first element, which will
+            // act as the accumulator for local mmap values
+            mmapSReadByteBuffer = mmapSReadBytes.slice(0, mmapSWriteByteExtent)
+                                                .sliceAsByteBuffer(
+                                                    mmapSReadByteBuffer);
 
-            mmapXReadBytes = ByteBufferBytes.wrap(mmapXFc.map(
-                FileChannel.MapMode.READ_WRITE, mmapXReadByteOffset,
-                mmapXReadByteExtent));
-            mmapXReadByteBuffer = mmapXReadBytes.sliceAsByteBuffer(
-                mmapXReadByteBuffer);
-
-            mmapXReadBytes.position(0);
-            mmapXWriteBytes = mmapXReadBytes.slice(mmapXWriteByteOffset,
-                mmapXWriteByteExtent);
-
-            fullXBytes = ByteBufferBytes.wrap(fullXFc.map(FileChannel.MapMode
-                    .READ_WRITE,
-                fullXByteOffset,
-                fullXByteExtent));
-            fullXByteBuffer = fullXBytes.sliceAsByteBuffer(fullXByteBuffer);
+            mmapSReadBytes.position(0);
+            mmapSWriteBytes = mmapSReadBytes.slice(mmapSWriteByteOffset,
+                mmapSWriteByteExtent);
         }
     }
 
@@ -304,6 +301,10 @@ public class ParallelOps {
                               cgProcsMmapXByteExtents[cgProcRank], MPI.BYTE,
                               fullXByteBuffer, cgProcsMmapXByteExtents,
                               cgProcsMmapXDisplas, MPI.BYTE);
+    }
+
+    public static void partialSAllReduce(Op op) throws MPIException{
+        cgProcComm.allReduce(mmapSReadByteBuffer, 1, MPI.BYTE,op);
     }
 
     public static void broadcast(ByteBuffer buffer, int extent, int root)
