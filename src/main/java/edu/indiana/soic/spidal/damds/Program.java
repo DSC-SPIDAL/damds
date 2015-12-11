@@ -1214,8 +1214,10 @@ public class Program {
             }
         }
         else {
+            StressTimings.startTiming(StressTimings.TimingTask.STRESS_INTERNAL, 0);
             stress = calculateStressInternal(0, preX, targetDimension, tCur,
                                                      distances, weights);
+            StressTimings.endTiming(StressTimings.TimingTask.STRESS_INTERNAL, 0);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
