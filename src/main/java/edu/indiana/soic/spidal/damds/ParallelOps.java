@@ -309,7 +309,7 @@ public class ParallelOps {
     }
 
     public static void partialSAllReduce(Op op) throws MPIException{
-        cgProcComm.allReduce(mmapSReadByteBuffer, 1, MPI.BYTE,op);
+        cgProcComm.allReduce(mmapSReadByteBuffer, 1, MPI.DOUBLE,op);
     }
 
     public static void broadcast(ByteBuffer buffer, int extent, int root)
