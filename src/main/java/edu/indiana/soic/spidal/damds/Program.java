@@ -62,7 +62,7 @@ public class Program {
     public static double INV_SUM_OF_SQUARE;
 
     // Arrays
-    public static double[][] preX;
+    public static double[] preX;
     public static double[][] BC;
     public static double[][] MMr;
     public static double[][] MMAp;
@@ -357,7 +357,10 @@ public class Program {
         // Allocating point arrays once for all
         final int numberDataPoints = config.numberDataPoints;
         final int targetDimension = config.targetDimension;
-        preX = new double[numberDataPoints][targetDimension];
+        // TODO - prex[][] to prex[]
+//        preX = new double[numberDataPoints][targetDimension];
+        preX = new double[numberDataPoints*targetDimension];
+
         BC = new double[numberDataPoints][targetDimension];
         MMr = new double[numberDataPoints][targetDimension];
         MMAp = new double[numberDataPoints][targetDimension];
@@ -1162,13 +1165,14 @@ public class Program {
     }
 
     private static void extractPoints(
-        Bytes bytes, int numPoints, int dimension, double[][] to) {
+        Bytes bytes, int numPoints, int dimension, double[] to) {
         int pos = 0;
+        int offset;
         for (int i = 0; i < numPoints; ++i){
-            double[] pointsRow = to[i];
+            offset = i*dimension;
             for (int j = 0; j < dimension; ++j) {
                 bytes.position(pos);
-                pointsRow[j] = bytes.readDouble(pos);
+                to[offset+j] = bytes.readDouble(pos);
                 pos += Double.BYTES;
             }
         }
@@ -1330,8 +1334,18 @@ public class Program {
         return dist;
     }
 
+    public static double calculateEuclideanDist(double[] v, int i, int j, int d){
+        double t = 0.0; double e;
+        i = d*i; j=d*j;
+        for (int k = 0; k < d; ++k){
+            e = v[i+k] - v[j+k];
+            t += e*e;
+        }
+        return t;
+    }
+
     private static void generateInitMapping(
-        int numPoints, int targetDim, double[][] preX) throws MPIException {
+        int numPoints, int targetDim, double[] preX) throws MPIException {
 
         Bytes fullBytes = ParallelOps.fullXBytes;
         if (ParallelOps.worldProcRank == 0) {
