@@ -92,6 +92,7 @@ public class Program {
      *             --configFile, --threadCount, and --nodeCount respectively
      */
     public static void  main(String[] args) {
+        System.out.println("WTF: " +Arrays.toString(args));
 
         Optional<CommandLine> parserResult =
             parseCommandLineArguments(args, programOptions);
