@@ -113,8 +113,13 @@ public class ParallelOps {
                 ? worldProcRankLocalToNode / (q + 1)
                 : (worldProcRankLocalToNode - r) / q;
         mmapProcsCount = worldProcRankLocalToNode < r*(q+1) ? q+1 : q;
-        isMmapLead = worldProcRankLocalToNode % mmapProcsCount == 0;
-        System.out.println("****PossibleBUG: wr=" + worldProcRank + " wrln=" + worldProcRankLocalToNode + " lead=" + isMmapLead);
+
+        // Communicator for processes within a  memory map group
+        mmapProcComm = worldProcsComm.split((nodeId*mmapsPerNode)+mmapIdLocalToNode, worldProcRank);
+        mmapProcRank = mmapProcComm.getRank();
+
+        isMmapLead = mmapProcRank == 0;
+        System.out.println("****FixedBUG?: wr=" + worldProcRank + " wrln=" + worldProcRankLocalToNode + " lead=" + isMmapLead);
         mmapProcsWorldRanks = new int[mmapProcsCount];
         mmapLeadWorldRankLocalToNode =
             isMmapLead
@@ -135,9 +140,7 @@ public class ParallelOps {
         cgProcRank = cgProcComm.getRank();
         cgProcsCount = cgProcComm.getSize();
 
-        // Communicator for processes within a  memory map group
-        mmapProcComm = worldProcsComm.split((nodeId*mmapsPerNode)+mmapIdLocalToNode, worldProcRank);
-        mmapProcRank = mmapProcComm.getRank();
+
 
         /* Allocate basic buffers for communication */
         statBuffer = MPI.newByteBuffer(DoubleStatistics.extent);
