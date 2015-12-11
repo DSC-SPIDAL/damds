@@ -677,6 +677,7 @@ public class Program {
 
     private static void initializeTimers() {
         StressTimings.init(ParallelOps.threadCount);
+        StressInternalTimings.init(ParallelOps.threadCount);
         BCInternalTimings.init(ParallelOps.threadCount);
         BCTimings.init(ParallelOps.threadCount);
         MMTimings.init(ParallelOps.threadCount);
