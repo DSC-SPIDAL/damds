@@ -1220,7 +1220,7 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            /* Write thread local reduction to shared memory map*/
+            /* Write thread local reduction to shared memory map*//*
             ParallelOps.mmapSWriteBytes.position(0);
             ParallelOps.mmapSWriteBytes.writeDouble(stress);
 
@@ -1230,7 +1230,7 @@ public class Program {
             // but it's cleaner for timings if we wait on the whole world
             ParallelOps.worldProcsComm.barrier();
             if (ParallelOps.isMmapLead) {
-                /* Node local reduction using shared memory maps*/
+                *//* Node local reduction using shared memory maps*//*
                 ParallelOps.mmapSReadBytes.position(0);
                 stress = 0.0;
                 for (int i = 0; i < ParallelOps.mmapProcsCount; ++i){
@@ -1239,7 +1239,7 @@ public class Program {
                 ParallelOps.mmapSWriteBytes.position(0);
                 ParallelOps.mmapSWriteBytes.writeDouble(stress);
 
-                /* Leaders participate in MPI AllReduce*/
+                *//* Leaders participate in MPI AllReduce*//*
                 StressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
                 ParallelOps.partialSAllReduce(MPI.SUM);
                 StressTimings.endTiming(StressTimings.TimingTask.COMM, 0);
@@ -1252,7 +1252,13 @@ public class Program {
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
             ParallelOps.mmapSReadBytes.position(0);
-            stress = ParallelOps.mmapSReadBytes.readDouble();
+            stress = ParallelOps.mmapSReadBytes.readDouble();*/
+
+            // Barrier for cleaner timings
+            ParallelOps.worldProcsComm.barrier();
+            StressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
+            stress = ParallelOps.allReduce(stress);
+            StressTimings.endTiming(StressTimings.TimingTask.COMM, 0);
         }
         return stress * invSumOfSquareDist;
     }
