@@ -1280,12 +1280,14 @@ public class Program {
 
         int globalRow, procLocalRow;
         short[] distancesProcLocalRow;
+        double[] preXGlobalRow;
         double origD, weight, euclideanD;
         double heatD, tmpD;
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
             globalRow = localRow + globalRowOffset;
             procLocalRow = globalRow - ParallelOps.procRowStartOffset;
             distancesProcLocalRow = distances[procLocalRow];
+            preXGlobalRow = preX[globalRow];
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
                 origD = distancesProcLocalRow[globalCol] * INV_SHORT_MAX;
                 weight = weights.getWeight(procLocalRow,globalCol);
@@ -1295,7 +1297,7 @@ public class Program {
                 }
 
                 euclideanD = globalRow != globalCol ? calculateEuclideanDist(
-                    preX[globalRow], preX[globalCol], targetDim) : 0.0;
+                   preXGlobalRow , preX[globalCol], targetDim) : 0.0;
 
                 heatD = origD - diff;
                 tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
