@@ -1477,7 +1477,7 @@ public class Program {
         ParallelOps.mmapScratchDir = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) ? cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) : ".";
 
 //        TODO - remove after testing
-        System.out.println("********* mmaps=" + Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAPS) + " mmapdir=" +cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR)));
+        System.out.println("********* mmaps=" + Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAPS)) + " mmapdir=" +cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR));
 
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
