@@ -267,11 +267,6 @@ public class ParallelOps {
             mmapSReadBytes = ByteBufferBytes.wrap(mmapSFc.map(
                 FileChannel.MapMode.READ_WRITE, mmapSReadByteOffset,
                 mmapSReadByteExtent));
-            // Read buffer is only needed for the first element, which will
-            // act as the accumulator for local mmap values
-            /*mmapSReadByteBuffer = mmapSReadBytes.slice(0, mmapSWriteByteExtent)
-                                                .sliceAsByteBuffer(
-                                                    mmapSReadByteBuffer);*/
             mmapSReadByteBuffer = mmapSReadBytes.sliceAsByteBuffer(
                                                     mmapSReadByteBuffer);
 

@@ -1254,12 +1254,6 @@ public class Program {
             ParallelOps.worldProcsComm.barrier();
             ParallelOps.mmapSReadBytes.position(0);
             stress = ParallelOps.mmapSReadBytes.readDouble();
-            /* Note - This works!, so have to see why mmap version failed*/
-            // Barrier for cleaner timings
-            /*ParallelOps.worldProcsComm.barrier();
-            StressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
-            stress = ParallelOps.allReduce(stress);
-            StressTimings.endTiming(StressTimings.TimingTask.COMM, 0);*/
         }
         return stress * invSumOfSquareDist;
     }
