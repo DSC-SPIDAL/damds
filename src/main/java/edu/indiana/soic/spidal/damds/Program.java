@@ -1305,7 +1305,7 @@ public class Program {
         return sigma;
     }
 
-    private static double calculateEuclideanDist(
+    /*private static double calculateEuclideanDist(
         double[] v, double[] w, int targetDim) {
         double dist = 0.0;
         for (int k = 0; k < targetDim; k++) {
@@ -1323,7 +1323,7 @@ public class Program {
 
         dist = Math.sqrt(dist);
         return dist;
-    }
+    }*/
 
     public static double calculateEuclideanDist(double[] v, int i, int j, int d){
         double t = 0.0; double e;
@@ -1332,7 +1332,7 @@ public class Program {
             e = v[i+k] - v[j+k];
             t += e*e;
         }
-        return t;
+        return Math.sqrt(t);
     }
 
     private static void generateInitMapping(
