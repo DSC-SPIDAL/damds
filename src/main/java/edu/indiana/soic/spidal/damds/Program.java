@@ -300,22 +300,22 @@ public class Program {
 
 
              // TODO Fix error handling here
-            /*if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
+            if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
                 "NOLABEL")) {
                 try {
-                    writeOuput(preX, config.pointsFile);
+                    writeOuput(preX, config.targetDimension, config.pointsFile);
                 }
                 catch (IOException e) {
                     e.printStackTrace();
                 }
             } else {
                 try {
-                    writeOuput(preX, config.labelFile, config.pointsFile);
+                    writeOuput(preX, config.targetDimension, config.labelFile, config.pointsFile);
                 }
                 catch (IOException e) {
                     e.printStackTrace();
                 }
-            }*/
+            }
 
             Double finalStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
@@ -734,17 +734,17 @@ public class Program {
         return String.format(format, days, hours, minutes,  seconds, millis);
     }
 
-    private static void writeOuput(double[][] x, String outputFile)
+    private static void writeOuput(double[] x, int vecLen, String outputFile)
         throws IOException {
         PrintWriter writer = new PrintWriter(new FileWriter(outputFile));
-        int N = x.length;
-        int vecLen = x[0].length;
+        int N = x.length / vecLen;
 
         DecimalFormat format = new DecimalFormat("#.##########");
         for (int i = 0; i < N; i++) {
+            int index = i * vecLen;
             writer.print(String.valueOf(i) + '\t'); // print ID.
             for (int j = 0; j < vecLen; j++) {
-                writer.print(format.format(x[i][j]) + '\t'); // print
+                writer.print(format.format(x[index] + j) + '\t'); // print
                 // configuration
                 // of each axis.
             }
@@ -756,7 +756,7 @@ public class Program {
 
     }
 
-    private static void writeOuput(double[][] X, String labelFile,
+    private static void writeOuput(double[] X, int vecLen, String labelFile,
                                    String outputFile) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(labelFile));
         String line;
@@ -776,14 +776,14 @@ public class Program {
         File file = new File(outputFile);
         PrintWriter writer = new PrintWriter(new FileWriter(file));
 
-        int N = X.length;
-        int vecLen = X[0].length;
+        int N = X.length / 3;
 
         DecimalFormat format = new DecimalFormat("#.##########");
         for (int i = 0; i < N; i++) {
+            int index = i * vecLen;
             writer.print(String.valueOf(i) + '\t'); // print ID.
             for (int j = 0; j < vecLen; j++) {
-                writer.print(format.format(X[i][j]) + '\t'); // print
+                writer.print(format.format(X[index + j]) + '\t'); // print
                 // configuration
                 // of each axis.
             }
