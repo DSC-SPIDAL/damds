@@ -171,6 +171,7 @@ public class ParallelOps {
                 : (worldProcRankLocalToNode - r) / q;
         mmapProcsCount = worldProcRankLocalToNode < r*(q+1) ? q+1 : q;
 
+
         // Communicator for processes within a  memory map group
         mmapProcComm = worldProcsComm.split((nodeId*mmapsPerNode)+mmapIdLocalToNode, worldProcRank);
         mmapProcRank = mmapProcComm.getRank();
@@ -184,7 +185,7 @@ public class ParallelOps {
                                                 ? mmapIdLocalToNode
                                                 : r));
         // TODO - remove after testing
-        System.out.println("wr: " + worldProcRank + " wrln: " + worldProcRankLocalToNode + " mmleadwrln: " + mmapLeadWorldRankLocalToNode + " ismmaplead: " + isMmapLead);
+        System.out.println("wr: " + worldProcRank + " wrln: " + worldProcRankLocalToNode + " mmleadwrln: " + mmapLeadWorldRankLocalToNode + " ismmaplead: " + isMmapLead  +" mmapIdLocalToNode: " + mmapIdLocalToNode);
         tempBreak();
 
         mmapLeadWorldRank = worldProcRank - (worldProcRankLocalToNode
