@@ -136,8 +136,8 @@ public class ParallelOps {
             String[] splits;
             for(String s: nodeSplits){
                 splits = nameSep.split(s);
-                rank = Integer.parseInt(splits[0]);
-                node = splits[1];
+                rank = Integer.parseInt(splits[0].trim());
+                node = splits[1].trim();
                 if (nodeToProcCount.containsKey(node)){
                     nodeToProcCount.put(node, nodeToProcCount.get(node)+1);
                 } else {
