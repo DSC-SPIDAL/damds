@@ -203,6 +203,16 @@ public class ParallelOps {
         Utils.printMessage(parallelPattern);
     }
 
+    public static void tempBreak() throws MPIException {
+        if (worldProcRank ==0){
+            MPI.Finalize();
+            System.exit(0);
+        } else {
+            MPI.Finalize();
+            System.exit(0);
+        }
+    }
+
     public static void tearDownParallelism() throws MPIException {
         // End MPI
         MPI.Finalize();
@@ -241,6 +251,13 @@ public class ParallelOps {
         cgProcsMmapRowCounts = new int[cgProcsCount];
         cgProcsMmapXByteExtents = new int[cgProcsCount];
         cgProcsMmapXDisplas = new int[cgProcsCount];
+
+        // TODO - remove after testing
+        int tmp = mmapLeadWorldRank+mmapProcsCount - 1;
+        if (procRowRanges.length <= tmp){
+            System.out.println("Can't be @WR: " + worldProcRank + " mmapLeadWR: " + mmapLeadWorldRank + " mmapProcsCount: " + mmapProcsCount);
+            tempBreak();
+        }
         mmapProcsRowCount = IntStream.range(mmapLeadWorldRank,
                                             mmapLeadWorldRank + mmapProcsCount)
             .map(i -> procRowRanges[i].getLength())
