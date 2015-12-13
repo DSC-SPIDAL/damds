@@ -146,16 +146,16 @@ public class ParallelOps {
                 rankToNode.put(rank, node);
             }
 
-            String myNode = rankToNode.get(worldProcRank);
+            String myNode = rankToNode.get(worldProcRank).trim();
             HashSet<String> visited = new HashSet<>();
             int rankOffset=0;
             nodeId = 0;
             for (int i = 0; i < worldProcRank; ++i){
-                node = rankToNode.get(i);
+                node = rankToNode.get(i).trim();
                 if (visited.contains(node)) continue;
                 visited.add(node);
                 ++nodeId;
-                if (node.equals(myNode)) break;
+                if (node.equalsIgnoreCase(myNode)) break;
                 rankOffset += nodeToProcCount.get(node);
             }
             worldProcRankLocalToNode = worldProcRank - rankOffset;
