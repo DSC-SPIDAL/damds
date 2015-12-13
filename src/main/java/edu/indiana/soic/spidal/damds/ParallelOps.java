@@ -12,14 +12,14 @@ import net.openhft.lang.io.Bytes;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
+import java.nio.*;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 public class ParallelOps {
@@ -88,24 +88,79 @@ public class ParallelOps {
 
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
+        machineName = MPI.getProcessorName();
+
+        /* Allocate basic buffers for communication */
+        statBuffer = MPI.newByteBuffer(DoubleStatistics.extent);
+        doubleBuffer = MPI.newDoubleBuffer(1);
+        intBuffer = MPI.newIntBuffer(1);
+
         worldProcsComm = MPI.COMM_WORLD; //initializing MPI world communicator
         worldProcRank = worldProcsComm.getRank();
         worldProcsCount = worldProcsComm.getSize();
 
-
-
         /* Create communicating groups */
         worldProcsPerNode = worldProcsCount / nodeCount;
-        if ((worldProcsPerNode * nodeCount) != worldProcsCount) {
-            Utils.printAndThrowRuntimeException(
-                "Inconsistent MPI counts Nodes " + nodeCount + " Size "
-                + worldProcsCount);
+        boolean heterogeneous = (worldProcsPerNode * nodeCount) != worldProcsCount;
+        if (heterogeneous) {
+            Utils.printMessage("Running in heterogeneous mode");
         }
 
-        worldProcRankLocalToNode = worldProcRank % worldProcsPerNode;
-        nodeId = worldProcRank / worldProcsPerNode;
-        int q = worldProcsPerNode / mmapsPerNode;
-        int r = worldProcsPerNode % mmapsPerNode;
+        int q,r;
+        if (!heterogeneous) {
+            worldProcRankLocalToNode = worldProcRank % worldProcsPerNode;
+            nodeId = worldProcRank / worldProcsPerNode;
+            q = worldProcsPerNode / mmapsPerNode;
+            r = worldProcsPerNode % mmapsPerNode;
+        } else {
+            String str = worldProcRank+'@'+machineName +'#';
+            intBuffer.put(0, str.length());
+            worldProcsComm.allReduce(intBuffer, 1, MPI.INT, MPI.MAX);
+            int maxLength = intBuffer.get(0);
+            CharBuffer buffer = MPI.newCharBuffer(maxLength*worldProcsCount);
+            buffer.put(str);
+            for (int i = str.length(); i < maxLength; ++i){
+                buffer.put(i, '~');
+            }
+            worldProcsComm.allGather(buffer, maxLength, MPI.CHAR);
+            buffer.position(0);
+            Pattern nodeSep = Pattern.compile("#~*");
+            Pattern nameSep = Pattern.compile("@");
+            String[] nodeSplits = nodeSep.split(buffer.toString());
+            HashMap<String, Integer> nodeToProcCount = new HashMap<>();
+            HashMap<Integer, String> rankToNode = new HashMap<>();
+            String node;
+            int rank;
+            String[] splits;
+            for(String s: nodeSplits){
+                splits = nameSep.split(s);
+                rank = Integer.parseInt(splits[0]);
+                node = splits[1];
+                if (nodeToProcCount.containsKey(node)){
+                    nodeToProcCount.put(node, nodeToProcCount.get(node)+1);
+                } else {
+                    nodeToProcCount.put(node, 1);
+                }
+                rankToNode.put(rank, node);
+            }
+
+            String myNode = rankToNode.get(worldProcRank);
+            HashSet<String> visited = new HashSet<>();
+            int rankOffset=0;
+            nodeId = 0;
+            for (int i = 0; i < worldProcRank; ++i){
+                node = rankToNode.get(i);
+                if (visited.contains(node)) continue;
+                visited.add(node);
+                ++nodeId;
+                if (node.equals(myNode)) break;
+                rankOffset += nodeToProcCount.get(node);
+            }
+            worldProcRankLocalToNode = worldProcRank - rankOffset;
+            final int procCountOnMyNode = nodeToProcCount.get(myNode);
+            q = procCountOnMyNode / mmapsPerNode;
+            r = procCountOnMyNode % mmapsPerNode;
+        }
 
         // Memory mapped groups and communicating groups
         mmapIdLocalToNode =
@@ -139,14 +194,6 @@ public class ParallelOps {
         cgProcRank = cgProcComm.getRank();
         cgProcsCount = cgProcComm.getSize();
 
-
-
-        /* Allocate basic buffers for communication */
-        statBuffer = MPI.newByteBuffer(DoubleStatistics.extent);
-        doubleBuffer = MPI.newDoubleBuffer(1);
-        intBuffer = MPI.newIntBuffer(1);
-
-        machineName = MPI.getProcessorName();
         parallelPattern =
             "---------------------------------------------------------\n"
             + "Machine:" + machineName + ' ' + threadCount + 'x'
