@@ -113,15 +113,17 @@ public class ParallelOps {
             q = worldProcsPerNode / mmapsPerNode;
             r = worldProcsPerNode % mmapsPerNode;
         } else {
-            String str = worldProcRank+'@'+machineName +'#';
+            String str = worldProcRank+ "@" +machineName +'#';
             intBuffer.put(0, str.length());
             worldProcsComm.allReduce(intBuffer, 1, MPI.INT, MPI.MAX);
             int maxLength = intBuffer.get(0);
             CharBuffer buffer = MPI.newCharBuffer(maxLength*worldProcsCount);
+            buffer.position(maxLength*worldProcRank);
             buffer.put(str);
             for (int i = str.length(); i < maxLength; ++i){
                 buffer.put(i, '~');
             }
+
             worldProcsComm.allGather(buffer, maxLength, MPI.CHAR);
             buffer.position(0);
             Pattern nodeSep = Pattern.compile("#~*");
