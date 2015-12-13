@@ -300,7 +300,7 @@ public class Program {
 
 
              // TODO Fix error handling here
-            if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
+            /*if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
                 "NOLABEL")) {
                 try {
                     writeOuput(preX, config.targetDimension, config.pointsFile);
@@ -315,7 +315,7 @@ public class Program {
                 catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
+            }*/
 
             Double finalStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
