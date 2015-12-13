@@ -184,10 +184,6 @@ public class ParallelOps {
                 : (q * mmapIdLocalToNode + (mmapIdLocalToNode < r
                                                 ? mmapIdLocalToNode
                                                 : r));
-        // TODO - remove after testing
-        System.out.println("wr: " + worldProcRank + " wrln: " + worldProcRankLocalToNode + " mmleadwrln: " + mmapLeadWorldRankLocalToNode + " ismmaplead: " + isMmapLead  +" mmapIdLocalToNode: " + mmapIdLocalToNode + " nodeId: " + nodeId);
-        tempBreak();
-
         mmapLeadWorldRank = worldProcRank - (worldProcRankLocalToNode
                                              - mmapLeadWorldRankLocalToNode);
         for (int i = 0; i < mmapProcsCount; ++i){
