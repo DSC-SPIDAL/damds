@@ -1169,17 +1169,47 @@ public class Program {
     }
 
     private static void readDistancesAndWeights(boolean isSammon) {
-        distances = BinaryReader2D.readRowRange(
+        TransformationFunction function;
+        if (!Strings.isNullOrEmpty(config.transformationFunction)) {
+            function = loadFunction(config.transformationFunction);
+        } else {
+            function = (config.distanceTransform != 1.0
+                            ? (d -> Math.pow(d, config.distanceTransform))
+                            : null);
+        }
+
+        distances = config.repetitions == 1 ? BinaryReader2D.readRowRange(
             config.distanceMatrixFile, ParallelOps.procRowRange,
-            ParallelOps.globalColCount, byteOrder, true, config.distanceTransform);
+            ParallelOps.globalColCount, byteOrder, true, function)
+            : BinaryReader2D.readRowRange(
+                config.distanceMatrixFile, ParallelOps.procRowRange,
+                ParallelOps.globalColCount, byteOrder, true, function, config.repetitions);
+
         short[][] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
-            w = BinaryReader2D
-                .readRowRange(
-                    config.weightMatrixFile, ParallelOps.procRowRange,
-                    ParallelOps.globalColCount, byteOrder, true, 1.0);
+            function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
+                ? loadFunction(config.weightTransformationFunction)
+                : null;
+            w = config.repetitions == 1 ? BinaryReader2D
+                .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
+                    ParallelOps.globalColCount, byteOrder, true,
+                    function)
+                : BinaryReader2D
+                    .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
+                        ParallelOps.globalColCount, byteOrder, true,
+                        function, config.repetitions);
         }
         weights = new WeightsWrap(w, distances, isSammon);
+    }
+
+    private static TransformationFunction loadFunction(String classFile) {
+        ClassLoader classLoader = Program.class.getClassLoader();
+        try {
+            Class aClass = classLoader.loadClass(classFile);
+            return (TransformationFunction) aClass.newInstance();
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to load class: " + classFile, e);
+        }
     }
 
     private static DoubleStatistics calculateStatisticsInternal(
