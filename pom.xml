@@ -6,7 +6,7 @@
 
     <groupId>edu.indiana.soic.spidal</groupId>
     <artifactId>damds</artifactId>
-    <version>1.0-ompi1.8.1-beforemmaps</version>
+    <version>1.0-ompi1.10.1-beforemmaps</version>
 
     <dependencies>
         <dependency>
@@ -36,7 +36,7 @@
         <dependency>
             <groupId>ompi</groupId>
             <artifactId>ompijavabinding</artifactId>
-            <version>1.8.1</version>
+            <version>1.10.1</version>
         </dependency>
     </dependencies>
 
