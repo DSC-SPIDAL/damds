@@ -42,7 +42,8 @@ public class DAMDSSection {
             transformationFunction = getProperty(p, "TransformationFunction", null);
             weightTransformationFunction = getProperty(p, "WeightTransformationFunction", null);
 
-            duplicateCount = Integer.parseInt(getProperty(p, "DuplicateCount", "1"));
+            repetitions = Integer.parseInt(getProperty(p, "Repetitions", "1"));
+            maxtemploops = Integer.parseInt(getProperty(p, "MaxTempLoops", "0"));
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
@@ -85,7 +86,8 @@ public class DAMDSSection {
     public String transformationFunction;
     public String weightTransformationFunction;
 
-    public int duplicateCount;
+    public int repetitions;
+    public int maxtemploops;
 
     private String getPadding(int count, String prefix){
         StringBuilder sb = new StringBuilder(prefix);
@@ -116,7 +118,8 @@ public class DAMDSSection {
                                        "Memory mapped (boolean)",
                                        "TransformationFunction",
                                        "WeightTransformationFunction",
-                                       "DuplicateCount"};
+                                       "Repetitions",
+                                       "MaxTempLoops"};
         Object[] args =
             new Object[]{distanceMatrixFile,
                          weightMatrixFile,
@@ -139,7 +142,7 @@ public class DAMDSSection {
                          isMemoryMapped,
                          transformationFunction,
                          weightTransformationFunction,
-                         duplicateCount};
+                         repetitions, maxtemploops};
 
         java.util.Optional<Integer> maxLength =
             Arrays.stream(params).map(String::length).reduce(Math::max);

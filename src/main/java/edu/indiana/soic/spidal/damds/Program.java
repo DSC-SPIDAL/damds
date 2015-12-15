@@ -251,6 +251,12 @@ public class Program {
                 if (tCur < tMin)
                     tCur = 0;
                 ++loopNum;
+
+                /* Note - quick way to test programs without running full
+                * number of temperature loops */
+                if (config.maxtemploops > 0 && loopNum == config.maxtemploops){
+                    break;
+                }
             }
             loopTimer.stop();
 
@@ -1269,20 +1275,26 @@ public class Program {
                             : null);
         }
 
-        distances = BinaryReader2D.readRowRange(
+        distances = config.repetitions == 1 ? BinaryReader2D.readRowRange(
             config.distanceMatrixFile, ParallelOps.procRowRange,
-            ParallelOps.globalColCount, byteOrder, true, function);
+            ParallelOps.globalColCount, byteOrder, true, function)
+            : BinaryReader2D.readRowRange(
+                config.distanceMatrixFile, ParallelOps.procRowRange,
+                ParallelOps.globalColCount, byteOrder, true, function, config.repetitions);
 
         short[][] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
             function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
                 ? loadFunction(config.weightTransformationFunction)
                 : null;
-            w = BinaryReader2D
-                .readRowRange(config.weightMatrixFile,
-                              ParallelOps.procRowRange,
-                              ParallelOps.globalColCount, byteOrder,
-                              true, function);
+            w = config.repetitions == 1 ? BinaryReader2D
+                .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
+                    ParallelOps.globalColCount, byteOrder, true,
+                    function)
+                : BinaryReader2D
+                    .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
+                        ParallelOps.globalColCount, byteOrder, true,
+                        function, config.repetitions);
         }
         weights = new WeightsWrap(w, distances, isSammon);
     }
