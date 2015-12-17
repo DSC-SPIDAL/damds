@@ -74,8 +74,8 @@ public class Program {
     //Config Settings
     public static DAMDSSection config;
     public static ByteOrder byteOrder;
-    public static short[][] distances;
-    public static WeightsWrap weights;
+    public static short[] distances;
+    public static WeightsWrap1D weights;
 
     public static int BlockSize;
 
@@ -418,14 +418,12 @@ public class Program {
 
 
     private static void changeZeroDistancesToPostiveMin(
-        short[][] distances, double positiveMin) {
+        short[] distances, double positiveMin) {
         double tmpD;
-        for (short[] distanceRow : distances){
-            for (int j = 0; j < distanceRow.length; ++j){
-                tmpD = distanceRow[j] * INV_SHORT_MAX;
-                if (tmpD < positiveMin && tmpD >= 0.0){
-                    distanceRow[j] = (short)(positiveMin * SHORT_MAX);
-                }
+        for (int i = 0; i < distances.length; ++i){
+            tmpD = distances[i] * INV_SHORT_MAX;
+            if (tmpD < positiveMin && tmpD >= 0.0){
+                distances[i] = (short)(positiveMin * SHORT_MAX);
             }
         }
     }
@@ -798,7 +796,7 @@ public class Program {
     }
 
     private static void generateVArray(
-        short[][] distances, WeightsWrap weights, double[][] vArray) {
+        short[] distances, WeightsWrap1D weights, double[][] vArray) {
 
         zeroOutArray(vArray);
         if (ParallelOps.threadCount > 1) {
@@ -814,7 +812,7 @@ public class Program {
     }
 
     private static void generateVArrayInternal(
-        Integer threadIdx, short[][] distances, WeightsWrap weights, double[] v) {
+        Integer threadIdx, short[] distances, WeightsWrap1D weights, double[] v) {
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
 
         int rowOffset = ParallelOps.threadRowStartOffsets[threadIdx] +
@@ -825,7 +823,7 @@ public class Program {
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; ++globalCol) {
                 if (globalRow == globalCol) continue;
 
-                double origD = distances[procLocalRow][globalCol] * INV_SHORT_MAX;
+                double origD = distances[procLocalRow*ParallelOps.globalColCount+globalCol] * INV_SHORT_MAX;
                 double weight = weights.getWeight(procLocalRow, globalCol);
 
                 if (origD < 0 || weight == 0) {
@@ -841,7 +839,7 @@ public class Program {
     private static void calculateConjugateGradient(
         double[] preX, int targetDimension, int numPoints, double[] BC, int cgIter, double cgThreshold,
         RefObj<Integer> outCgCount, RefObj<Integer> outRealCGIterations,
-        WeightsWrap weights, int blockSize, double[][] vArray, double[] MMr, double[] MMAp, double[][] threadPartialMM)
+        WeightsWrap1D weights, int blockSize, double[][] vArray, double[] MMr, double[] MMAp, double[][] threadPartialMM)
 
         throws MPIException {
 
@@ -933,7 +931,7 @@ public class Program {
     }
 
     private static void calculateMM(
-        double[] x, int targetDimension, int numPoints, WeightsWrap weights,
+        double[] x, int targetDimension, int numPoints, WeightsWrap1D weights,
         int blockSize, double[][] vArray, double[] outMM,
         double[][] internalPartialMM) throws MPIException {
 
@@ -991,7 +989,7 @@ public class Program {
 
     private static void calculateMMInternal(
         Integer threadIdx, double[] x, int targetDimension, int numPoints,
-        WeightsWrap weights, int blockSize, double[][] vArray, double[] outMM) {
+        WeightsWrap1D weights, int blockSize, double[][] vArray, double[] outMM) {
 
         MatrixUtils
             .matrixMultiplyWithThreadOffset(weights, vArray[threadIdx], x,
@@ -1024,8 +1022,8 @@ public class Program {
     }
 
     private static void calculateBC(
-        double[] preX, int targetDimension, double tCur, short[][] distances,
-        WeightsWrap weights, int blockSize, double[] BC,
+        double[] preX, int targetDimension, double tCur, short[] distances,
+        WeightsWrap1D weights, int blockSize, double[] BC,
         double[][][] threadPartialBCInternalBofZ,
         double[][] threadPartialBCInternalMM)
         throws MPIException, InterruptedException {
@@ -1085,7 +1083,7 @@ public class Program {
 
     private static void calculateBCInternal(
         Integer threadIdx, double[] preX, int targetDimension, double tCur,
-        short[][] distances, WeightsWrap weights, int blockSize,
+        short[] distances, WeightsWrap1D weights, int blockSize,
         double[][] internalBofZ, double[] outMM) {
 
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
@@ -1102,7 +1100,7 @@ public class Program {
     }
 
     private static void calculateBofZ(
-        int threadIdx, double[] preX, int targetDimension, double tCur, short[][] distances, WeightsWrap weights,
+        int threadIdx, double[] preX, int targetDimension, double tCur, short[] distances, WeightsWrap1D weights,
         double[][] outBofZ) {
 
         int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
@@ -1118,6 +1116,8 @@ public class Program {
         double[] outBofZLocalRow;
         double[] preXGlobalRow;
         double origD, weight, dist;
+
+        final int globalColCount = ParallelOps.globalColCount;
         final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
                                     + ParallelOps.procRowStartOffset;
         int globalRow, procLocalRow;
@@ -1126,7 +1126,6 @@ public class Program {
             procLocalRow = globalRow - ParallelOps.procRowStartOffset;
             outBofZLocalRow = outBofZ[localRow];
             outBofZLocalRow[globalRow] = 0;
-            distancesProcLocalRow = distances[procLocalRow];
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
 				/*
 				 * B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
@@ -1142,7 +1141,7 @@ public class Program {
                 if (globalRow == globalCol) continue;
 
 
-                origD = distancesProcLocalRow[globalCol] * INV_SHORT_MAX;
+                origD = distances[procLocalRow*globalColCount+globalCol] * INV_SHORT_MAX;
                 weight = weights.getWeight(procLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
@@ -1194,8 +1193,8 @@ public class Program {
     }
 
     private static double calculateStress(
-        double[] preX, int targetDimension, double tCur, short[][] distances,
-        WeightsWrap weights, double invSumOfSquareDist, double[] internalPartialSigma)
+        double[] preX, int targetDimension, double tCur, short[] distances,
+        WeightsWrap1D weights, double invSumOfSquareDist, double[] internalPartialSigma)
         throws MPIException {
 
         double stress = 0.0;
@@ -1264,7 +1263,7 @@ public class Program {
     }
 
     private static double calculateStressInternal(
-        int threadIdx, double[] preX, int targetDim, double tCur, short[][] distances, WeightsWrap weights) {
+        int threadIdx, double[] preX, int targetDim, double tCur, short[] distances, WeightsWrap1D weights) {
 
         StressInternalTimings.startTiming(StressInternalTimings.TimingTask.COMP, threadIdx);
         double sigma = 0.0;
@@ -1277,16 +1276,16 @@ public class Program {
         final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
                                     + ParallelOps.procRowStartOffset;
 
+        int globalColCount = ParallelOps.globalColCount;
         int globalRow, procLocalRow;
-        short[] distancesProcLocalRow;
         double origD, weight, euclideanD;
         double heatD, tmpD;
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
             globalRow = localRow + globalRowOffset;
             procLocalRow = globalRow - ParallelOps.procRowStartOffset;
-            distancesProcLocalRow = distances[procLocalRow];
-            for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
-                origD = distancesProcLocalRow[globalCol] * INV_SHORT_MAX;
+            for (int globalCol = 0; globalCol < globalColCount; globalCol++) {
+                origD = distances[localRow * globalColCount + globalCol]
+                        * INV_SHORT_MAX;
                 weight = weights.getWeight(procLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
@@ -1362,7 +1361,7 @@ public class Program {
     }
 
     private static DoubleStatistics calculateStatistics(
-        short[][] distances, WeightsWrap weights, RefObj<Integer> missingDistCount) throws MPIException {
+        short[] distances, WeightsWrap1D weights, RefObj<Integer> missingDistCount) throws MPIException {
 
         final DoubleStatistics[] threadDistanceSummaries =
             new DoubleStatistics[ParallelOps.threadCount];
@@ -1419,32 +1418,40 @@ public class Program {
                             : null);
         }
 
-        distances = config.repetitions == 1 ? BinaryReader2D.readRowRange(
-            config.distanceMatrixFile, ParallelOps.procRowRange,
-            ParallelOps.globalColCount, byteOrder, true, function)
-            : BinaryReader2D.readRowRange(
-                config.distanceMatrixFile, ParallelOps.procRowRange,
-                ParallelOps.globalColCount, byteOrder, true, function, config.repetitions);
+        int elementCount = ParallelOps.procRowRange.getLength() * ParallelOps.globalColCount;
+        distances = new short[elementCount];
+        if (config.repetitions == 1){
+            BinaryReader1D.readRowRange(config.distanceMatrixFile,
+                ParallelOps.procRowRange, ParallelOps.globalColCount, byteOrder,
+                true, function, distances);
+        }else{
+            BinaryReader1D.readRowRange(config.distanceMatrixFile,
+                ParallelOps.procRowRange, ParallelOps.globalColCount, byteOrder,
+                true, function, config.repetitions, distances);
+        }
 
-        short[][] w = null;
+        short[] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
             function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
                 ? loadFunction(config.weightTransformationFunction)
                 : null;
-            w = config.repetitions == 1 ? BinaryReader2D
-                .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
-                              ParallelOps.globalColCount, byteOrder, true,
-                              function)
-            : BinaryReader2D
-                .readRowRange(config.weightMatrixFile, ParallelOps.procRowRange,
-                    ParallelOps.globalColCount, byteOrder, true,
-                    function, config.repetitions);
+            w = new short[elementCount];
+            if (config.repetitions == 1){
+                BinaryReader1D.readRowRange(config.weightMatrixFile,
+                    ParallelOps.procRowRange, ParallelOps.globalColCount,
+                    byteOrder, true, function, w);
+            } else {
+                BinaryReader1D.readRowRange(config.weightMatrixFile,
+                    ParallelOps.procRowRange, ParallelOps.globalColCount,
+                    byteOrder, true, function, config.repetitions, w);
+            }
         }
-        weights = new WeightsWrap(w, distances, isSammon);
+        weights = new WeightsWrap1D(
+            w, distances, isSammon, ParallelOps.globalColCount);
     }
 
     private static DoubleStatistics calculateStatisticsInternal(
-        int threadIdx, short[][] distances, WeightsWrap weights, int[] missingDistCounts) {
+        int threadIdx, short[] distances, WeightsWrap1D weights, int[] missingDistCounts) {
 
         DoubleStatistics stat = new DoubleStatistics();
 
@@ -1452,13 +1459,11 @@ public class Program {
         final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadIdx];
 
         int procLocalRow;
-        short[] distancesProcLocalRow;
         double origD, weight;
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
             procLocalRow = localRow + threadRowStartOffset;
-            distancesProcLocalRow = distances[procLocalRow];
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
-                origD = distancesProcLocalRow[globalCol] * INV_SHORT_MAX;
+                origD = distances[localRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
                 weight = weights.getWeight(procLocalRow,globalCol);
                 if (origD < 0) {
                     // Missing distance
