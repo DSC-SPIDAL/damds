@@ -189,10 +189,10 @@ public class Program {
 
                 diffStress = config.threshold + 1.0;
 
-                Utils.printMessage(
+                /*Utils.printMessage(
                     String.format(
                         "\nStart of loop %d Temperature (T_Cur) %.5g",
-                        loopNum, tCur));
+                        loopNum, tCur));*/
 
                 int itrNum = 0;
                 cgCount.setValue(0);
@@ -239,7 +239,7 @@ public class Program {
                     diffStress = preStress - stress;
                     preStress = stress;
 
-                    if ((itrNum % 10 == 0) || (itrNum >= config.stressIter)) {
+                    /*if ((itrNum % 10 == 0) || (itrNum >= config.stressIter)) {
                         Utils.printMessage(
                             String.format(
                                 "  Loop %d Iteration %d Avg CG count %.5g " +
@@ -247,7 +247,7 @@ public class Program {
                                 "%.5g", loopNum, itrNum,
                                 (cgCount.getValue() * 1.0 / (itrNum + 1)),
                                 stress));
-                    }
+                    }*/
                     ++itrNum;
                     ++smacofRealIterations;
                 }
@@ -255,7 +255,7 @@ public class Program {
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
 
                 --itrNum;
-                if (itrNum >=0 && !(itrNum % 10 == 0) && !(itrNum >=
+                /*if (itrNum >=0 && !(itrNum % 10 == 0) && !(itrNum >=
                                                            config.stressIter)) {
                     Utils.printMessage(
                         String.format(
@@ -270,7 +270,7 @@ public class Program {
                         "End of loop %d Total Iterations %d Avg CG count %.5g" +
                         " Stress %.5g",
                         loopNum, (itrNum + 1),
-                        (cgCount.getValue() * 1.0 / (itrNum + 1)), stress));
+                        (cgCount.getValue() * 1.0 / (itrNum + 1)), stress));*/
 
                 if (tCur == 0)
                     break;
