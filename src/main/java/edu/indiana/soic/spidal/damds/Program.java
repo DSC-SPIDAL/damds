@@ -1430,8 +1430,8 @@ public class Program {
                 true, function, config.repetitions, distances);
         }
 
-        short[] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
+            short[] w = null;
             function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
                 ? loadFunction(config.weightTransformationFunction)
                 : null;
@@ -1454,6 +1454,9 @@ public class Program {
                 sw = BinaryReader2D.readSimpleFile(config.weightMatrixFile, config.numberDataPoints);
                 weights = new WeightsWrap1D(sw, ParallelOps.procRowRange, distances, isSammon, ParallelOps.globalColCount, function);
             }
+        } else {
+            weights = new WeightsWrap1D(
+                null, distances, isSammon, ParallelOps.globalColCount);
         }
 
     }
