@@ -1474,7 +1474,7 @@ public class Program {
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
             procLocalRow = localRow + threadRowStartOffset;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
-                origD = distances[localRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
+                origD = distances[procLocalRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
                 weight = weights.getWeight(procLocalRow,globalCol);
                 if (origD < 0) {
                     // Missing distance
