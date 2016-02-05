@@ -1430,24 +1430,35 @@ public class Program {
                 true, function, config.repetitions, distances);
         }
 
-        short[] w = null;
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
+            short[] w = null;
             function = !Strings.isNullOrEmpty(config.weightTransformationFunction)
                 ? loadFunction(config.weightTransformationFunction)
                 : null;
-            w = new short[elementCount];
-            if (config.repetitions == 1){
-                BinaryReader1D.readRowRange(config.weightMatrixFile,
-                    ParallelOps.procRowRange, ParallelOps.globalColCount,
-                    byteOrder, true, function, w);
+            if (!config.isSimpleWeights) {
+                w = new short[elementCount];
+                if (config.repetitions == 1) {
+                    BinaryReader1D.readRowRange(config.weightMatrixFile,
+                        ParallelOps.procRowRange, ParallelOps.globalColCount,
+                        byteOrder, true, function, w);
+                }
+                else {
+                    BinaryReader1D.readRowRange(config.weightMatrixFile,
+                        ParallelOps.procRowRange, ParallelOps.globalColCount,
+                        byteOrder, true, function, config.repetitions, w);
+                }
+                weights = new WeightsWrap1D(
+                    w, distances, isSammon, ParallelOps.globalColCount);
             } else {
-                BinaryReader1D.readRowRange(config.weightMatrixFile,
-                    ParallelOps.procRowRange, ParallelOps.globalColCount,
-                    byteOrder, true, function, config.repetitions, w);
+                double[] sw = null;
+                sw = BinaryReader2D.readSimpleFile(config.weightMatrixFile, config.numberDataPoints);
+                weights = new WeightsWrap1D(sw, ParallelOps.procRowRange, distances, isSammon, ParallelOps.globalColCount, function);
             }
+        } else {
+            weights = new WeightsWrap1D(
+                null, distances, isSammon, ParallelOps.globalColCount);
         }
-        weights = new WeightsWrap1D(
-            w, distances, isSammon, ParallelOps.globalColCount);
+
     }
 
     private static DoubleStatistics calculateStatisticsInternal(

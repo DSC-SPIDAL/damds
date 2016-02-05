@@ -44,6 +44,7 @@ public class DAMDSSection {
 
             repetitions = Integer.parseInt(getProperty(p, "Repetitions", "1"));
             maxtemploops = Integer.parseInt(getProperty(p, "MaxTempLoops", "0"));
+            isSimpleWeights = Boolean.parseBoolean(getProperty(p, "IsSimpleWeights", "false"));
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
@@ -85,6 +86,7 @@ public class DAMDSSection {
     public boolean isMemoryMapped;
     public String transformationFunction;
     public String weightTransformationFunction;
+    public boolean isSimpleWeights;
 
     public int repetitions;
     public int maxtemploops;
@@ -97,13 +99,13 @@ public class DAMDSSection {
 
     public String toString(boolean centerAligned) {
         String[] params = {"DistanceMatrixFile",
-                                       "WeightMatrixFile",
+                                       "Weight Matrix File",
                                        "Label Data File",
                                        "Initial Points File",
-                                       "PointsFile",
-                                       "TimingFile",
-                                       "SummaryFile",
-                                       "NumberDataPoints",
+                                       "Points File",
+                                       "Timing File",
+                                       "Summary File",
+                                       "Number Data Points",
                                        "The Target Dimension",
                                        "Distance Transform (double)",
                                        "Threshold value",
@@ -114,12 +116,13 @@ public class DAMDSSection {
                                        "CG Threshold",
                                        "Sammon mapping (boolean) ",
                                        "Block Size",
-                                       "BigEndian (boolean)",
-                                       "Memory mapped (boolean)",
-                                       "TransformationFunction",
-                                       "WeightTransformationFunction",
+                                       "Is BigEndian (boolean)",
+                                       "Is Memory mapped (boolean)",
+                                       "Transformation Function",
+                                       "Weight Transformation Function",
                                        "Repetitions",
-                                       "MaxTempLoops"};
+                                       "Max Temp Loops",
+                                       "Is Simple Weights"};
         Object[] args =
             new Object[]{distanceMatrixFile,
                          weightMatrixFile,
@@ -142,7 +145,7 @@ public class DAMDSSection {
                          isMemoryMapped,
                          transformationFunction,
                          weightTransformationFunction,
-                         repetitions, maxtemploops};
+                         repetitions, maxtemploops, isSimpleWeights};
 
         java.util.Optional<Integer> maxLength =
             Arrays.stream(params).map(String::length).reduce(Math::max);
