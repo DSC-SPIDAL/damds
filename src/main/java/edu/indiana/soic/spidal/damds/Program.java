@@ -10,6 +10,7 @@ import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPI;
 import mpi.MPIException;
 import net.openhft.lang.io.Bytes;
+import net.openhft.ticker.impl.SystemClock;
 import org.apache.commons.cli.*;
 
 import java.io.*;
@@ -1428,6 +1429,19 @@ public class Program {
             BinaryReader1D.readRowRange(config.distanceMatrixFile,
                 ParallelOps.procRowRange, ParallelOps.globalColCount, byteOrder,
                 true, function, config.repetitions, distances);
+
+            // TODO - test method to see if BinaryReader2D would give the same reading
+            short[][] twoDDistances = BinaryReader2D.readRowRange(config.distanceMatrixFile, ParallelOps.procRowRange,
+                ParallelOps.globalColCount, byteOrder, true, function, config.repetitions);
+            long count = 0;
+            for (int i = 0; i < ParallelOps.procRowRange.getLength(); ++i){
+                for (int j = 0; j < ParallelOps.globalColCount; ++j){
+                    if (twoDDistances[i][j] != distances[i*ParallelOps.globalColCount+j]){
+                        System.out.println("Rank: " + ParallelOps.worldProcRank + " row: " + i + " col: " + j + " 2D!=1D");
+                        System.exit(-1);
+                    }
+                }
+            }
         }
 
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)){
