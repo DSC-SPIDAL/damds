@@ -1285,7 +1285,7 @@ public class Program {
             globalRow = localRow + globalRowOffset;
             procLocalRow = globalRow - ParallelOps.procRowStartOffset;
             for (int globalCol = 0; globalCol < globalColCount; globalCol++) {
-                origD = distances[localRow * globalColCount + globalCol]
+                origD = distances[procLocalRow * globalColCount + globalCol]
                         * INV_SHORT_MAX;
                 weight = weights.getWeight(procLocalRow,globalCol);
 
