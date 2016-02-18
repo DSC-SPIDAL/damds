@@ -743,7 +743,7 @@ public class Program {
             int index = i * vecLen;
             writer.print(String.valueOf(i) + '\t'); // print ID.
             for (int j = 0; j < vecLen; j++) {
-                writer.print(format.format(x[index] + j) + '\t'); // print
+                writer.print(format.format(x[index + j]) + '\t'); // print
                 // configuration
                 // of each axis.
             }
