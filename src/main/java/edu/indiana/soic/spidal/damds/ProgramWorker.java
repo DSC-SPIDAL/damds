@@ -1115,7 +1115,7 @@ public class ProgramWorker {
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
         final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadId];
 
-        System.out.println("In calcstatinternal " + threadId + " threadRowCount=" + threadRowCount);
+
         double origD, weight;
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
@@ -1132,6 +1132,7 @@ public class ProgramWorker {
             }
         }
         refMissingDistCount.setValue(missingDistCount);
+        System.out.println("In calcstatinternal " + threadId + " threadRowCount=" + threadRowCount);
         return stat;
     }
 
