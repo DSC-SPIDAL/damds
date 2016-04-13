@@ -1026,9 +1026,9 @@ public class ProgramWorker {
 
         DoubleStatistics distanceSummary =
             calculateStatisticsInternal(distances, weights, refInt);
+        System.out.println("In calc statistics " + threadId);
         comm.sumOverThreads(threadId, distanceSummary);
         comm.sumOverThreads(threadId, refInt);
-        System.out.println("In calc statistics " + threadId);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             distanceSummary = ParallelOps.allReduce(distanceSummary);
