@@ -81,10 +81,10 @@ public class ProgramWorker {
 
             readDistancesAndWeights(config.isSammon);
 
-            System.out.println("*****CAME HERE****");
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(
                 distances, weights, missingDistCount);
+            System.out.println("*****CAME HERE****");
             double missingDistPercent = missingDistCount.getValue() /
                                         (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0/distanceSummary.getSumOfSquare();
@@ -1028,12 +1028,13 @@ public class ProgramWorker {
             calculateStatisticsInternal(distances, weights, refInt);
         comm.sumOverThreads(threadId, distanceSummary);
         comm.sumOverThreads(threadId, refInt);
-
+        System.out.println("In calc statistics " + threadId);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             distanceSummary = ParallelOps.allReduce(distanceSummary);
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
         }
+        System.out.println("Came after mpi allreduce " + threadId);
         comm.threadBarrier();
         comm.bcastOverThreads(threadId, distanceSummary, 0);
         comm.bcastOverThreads(threadId, refInt, 0);
