@@ -7,6 +7,7 @@ import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.timing.*;
+import edu.indiana.soic.spidal.threads.SpidalThreads;
 import mpi.MPI;
 import mpi.MPIException;
 import net.openhft.lang.io.Bytes;
@@ -21,6 +22,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -31,6 +34,7 @@ import static edu.rice.hj.Module1.forallChunked;
 
 public class Program {
     private static Options programOptions = new Options();
+    private static SpidalThreads threads;
 
     static {
         programOptions.addOption(
@@ -113,9 +117,10 @@ public class Program {
         try {
             //  Read Metadata using this as source of other metadata
             readConfiguration(cmd);
-
             //  Set up MPI and threads parallelism
             ParallelOps.setupParallelism(args);
+            threads = new SpidalThreads(ParallelOps.threadCount, true, false, 48, 1);
+
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
             Stopwatch mainTimer = Stopwatch.createStarted();
@@ -386,10 +391,9 @@ public class Program {
 
     private static void zeroOutArray(double[][] a){
         if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> Arrays.fill(a[threadIdx], 0.0d)));
+            threads.forall(
+                    (threadIdx) ->
+                            Arrays.fill(a[threadIdx], 0.0d));
         }
         else {
             Arrays.fill(a[0],0.0d);
@@ -398,12 +402,10 @@ public class Program {
 
     private static void zeroOutArray(double[][][] a) {
         if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
+            threads.forall(
                     (threadIdx) -> zeroOutArrayInternal(
-                        ParallelOps.threadRowCounts[threadIdx],
-                        a[threadIdx])));
+                            ParallelOps.threadRowCounts[threadIdx],
+                            a[threadIdx]));
         }
         else {
             zeroOutArrayInternal(ParallelOps.threadRowCounts[0], a[0]);
@@ -800,11 +802,9 @@ public class Program {
 
         zeroOutArray(vArray);
         if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
+            threads.forall(
                     (threadIdx) -> generateVArrayInternal(
-                        threadIdx, distances, weights, vArray[threadIdx])));
+                            threadIdx, distances, weights, vArray[threadIdx]));
         }
         else {
             generateVArrayInternal(0, distances, weights, vArray[0]);
@@ -936,9 +936,7 @@ public class Program {
         double[][] internalPartialMM) throws MPIException {
 
         if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
+            threads.forall(
                     (threadIdx) -> {
                         MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadIdx);
                         calculateMMInternal(threadIdx, x, targetDimension,
@@ -947,7 +945,7 @@ public class Program {
                                             internalPartialMM[threadIdx]);
                         MMTimings.endTiming(
                             MMTimings.TimingTask.MM_INTERNAL, threadIdx);
-                    }));
+                    });
         }
         else {
             MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
@@ -1029,18 +1027,15 @@ public class Program {
         throws MPIException, InterruptedException {
 
         if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
+            threads.forall(
                     (threadIdx) -> {
-                        BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
+                        BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                         calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
+                                threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
                         BCTimings.endTiming(
-                            BCTimings.TimingTask.BC_INTERNAL, threadIdx);
-                    }));
-        }
-        else {
+                                BCTimings.TimingTask.BC_INTERNAL, threadIdx);
+                    });
+        } else {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
             calculateBCInternal(
                 0, preX, targetDimension, tCur, distances, weights, blockSize,
@@ -1201,17 +1196,15 @@ public class Program {
 
         if (ParallelOps.threadCount > 1) {
             IntStream.range(0, ParallelOps.threadCount).forEach(i -> internalPartialSigma[i] = 0.0);
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
+            threads.forall(
                     (threadIdx) -> {
                         StressTimings.startTiming(StressTimings.TimingTask.STRESS_INTERNAL, threadIdx);
                         internalPartialSigma[threadIdx] =
-                        calculateStressInternal(threadIdx, preX, targetDimension, tCur,
+                                calculateStressInternal(threadIdx, preX, targetDimension, tCur,
 
-                                                distances, weights);
+                                        distances, weights);
                         StressTimings.endTiming(StressTimings.TimingTask.STRESS_INTERNAL, threadIdx);
-                    }));
+                    });
             // Sum across threads and accumulate to stress
             for (int i = 0; i < ParallelOps.threadCount; ++i){
                 stress += internalPartialSigma[i];
@@ -1369,12 +1362,10 @@ public class Program {
         IntStream.range(0, ParallelOps.threadCount).forEach(i -> missingDistCounts[i] = 0);
 
         if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
+            threads.forall(
                     (threadIdx) -> threadDistanceSummaries[threadIdx] =
-                        calculateStatisticsInternal(
-                            threadIdx, distances, weights, missingDistCounts)));
+                            calculateStatisticsInternal(
+                                    threadIdx, distances, weights, missingDistCounts));
 
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
