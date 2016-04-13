@@ -131,6 +131,17 @@ public class ProgramLRT {
 
             /* TODO - Fork - join starts here */
 
+            if (ParallelOps.threadCount > 1) {
+                launchHabaneroApp(
+                    () -> forallChunked(
+                        0, ParallelOps.threadCount - 1,
+                        (threadIdx) -> {
+                            new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize).run();
+                        }));
+            }
+            else {
+                new ProgramWorker(0, ParallelOps.threadComm, config, byteOrder, BlockSize).run();
+            }
 
 
             /* TODO - Fork-join should end here */

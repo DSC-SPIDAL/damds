@@ -3,6 +3,7 @@ package edu.indiana.soic.spidal.damds;
 import edu.indiana.soic.spidal.common.DoubleStatistics;
 import edu.indiana.soic.spidal.common.Range;
 import edu.indiana.soic.spidal.common.RangePartitioner;
+import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import mpi.Intracomm;
 import mpi.MPI;
 import mpi.MPIException;
@@ -86,9 +87,13 @@ public class ParallelOps {
     public static ByteBuffer mmapSReadByteBuffer;
     public static Bytes mmapSWriteBytes;
 
+    public static ThreadCommunicator threadComm;
+
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
         machineName = MPI.getProcessorName();
+
+        threadComm = new ThreadCommunicator(threadCount);
 
         /* Allocate basic buffers for communication */
         statBuffer = MPI.newByteBuffer(DoubleStatistics.extent);

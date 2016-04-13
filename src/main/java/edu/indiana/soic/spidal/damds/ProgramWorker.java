@@ -1,11 +1,10 @@
 package edu.indiana.soic.spidal.damds;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import edu.indiana.soic.spidal.common.*;
-import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
+import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPI;
 import mpi.MPIException;
@@ -18,10 +17,11 @@ import java.nio.LongBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
@@ -57,11 +57,15 @@ public class ProgramWorker {
     private int BlockSize;
 
     private int threadId;
-
     private Range threadRowRange;
 
-    public ProgramWorker(int threadId, DAMDSSection config, ByteOrder byteOrder, int blockSize){
+    final private RefObj<Integer> refInt = new RefObj<>();
+
+    private ThreadCommunicator comm;
+
+    public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection config, ByteOrder byteOrder, int blockSize){
         this.threadId = threadId;
+        this.comm = comm;
         this.config = config;
         this.byteOrder = byteOrder;
         this.BlockSize = blockSize;
@@ -238,6 +242,12 @@ public class ProgramWorker {
         }
         catch (MPIException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        catch (BrokenBarrierException e) {
+            e.printStackTrace();
         }
     }
 
@@ -1009,41 +1019,24 @@ public class ProgramWorker {
     }
 
     private DoubleStatistics calculateStatistics(
-        short[] distances, WeightsWrap1D weights, RefObj<Integer> missingDistCount) throws MPIException {
+        short[] distances, WeightsWrap1D weights, RefObj<Integer> missingDistCount)
+        throws MPIException, BrokenBarrierException, InterruptedException {
 
-        final DoubleStatistics[] threadDistanceSummaries =
-            new DoubleStatistics[ParallelOps.threadCount];
-        final int [] missingDistCounts = new int[ParallelOps.threadCount];
-        IntStream.range(0, ParallelOps.threadCount).forEach(i -> missingDistCounts[i] = 0);
+        DoubleStatistics distanceSummary =
+            calculateStatisticsInternal(distances, weights, refInt);
+        comm.sumOverThreads(threadId, distanceSummary);
+        comm.sumOverThreads(threadId, refInt);
 
-        if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> threadDistanceSummaries[threadIdx] =
-                        calculateStatisticsInternal(
-                            threadIdx, distances, weights, missingDistCounts)));
 
-            // Sum across threads and accumulate to zeroth entry
-            IntStream.range(1, ParallelOps.threadCount).forEach(
-                i -> {
-                    threadDistanceSummaries[0]
-                        .combine(threadDistanceSummaries[i]);
-                    missingDistCounts[0] += missingDistCounts[i];
-                });
+        if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+            distanceSummary = ParallelOps.allReduce(distanceSummary);
+            refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
         }
-        else {
-            threadDistanceSummaries[0] = calculateStatisticsInternal(
-                0, distances, weights, missingDistCounts);
-        }
-
-        if (ParallelOps.worldProcsCount > 1) {
-            threadDistanceSummaries[0] =
-                ParallelOps.allReduce(threadDistanceSummaries[0]);
-            missingDistCounts[0] = ParallelOps.allReduce(missingDistCounts[0]);
-        }
-        missingDistCount.setValue(missingDistCounts[0]);
-        return threadDistanceSummaries[0];
+        comm.threadBarrier();
+        comm.bcastOverThreads(threadId, distanceSummary, 0);
+        comm.bcastOverThreads(threadId, refInt, 0);
+        missingDistCount.setValue(refInt.getValue());
+        return distanceSummary;
     }
 
     private static TransformationFunction loadFunction(String classFile) {
@@ -1111,23 +1104,22 @@ public class ProgramWorker {
     }
 
     private DoubleStatistics calculateStatisticsInternal(
-        int threadIdx, short[] distances, WeightsWrap1D weights, int[] missingDistCounts) {
+        short[] distances, WeightsWrap1D weights, RefObj<Integer> refMissingDistCount) {
 
+        int missingDistCount = 0;
         DoubleStatistics stat = new DoubleStatistics();
 
-        int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
-        final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadIdx];
+        int threadRowCount = ParallelOps.threadRowCounts[threadId];
+        final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadId];
 
-        int procLocalRow;
         double origD, weight;
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
-            procLocalRow = localRow + threadRowStartOffset;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
-                origD = distances[procLocalRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
-                weight = weights.getWeight(procLocalRow,globalCol);
+                origD = distances[localRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
+                weight = weights.getWeight(localRow,globalCol);
                 if (origD < 0) {
                     // Missing distance
-                    ++missingDistCounts[threadIdx];
+                    ++missingDistCount;
                     continue;
                 }
                 if (weight == 0) continue; // Ignore zero weights
@@ -1135,7 +1127,7 @@ public class ProgramWorker {
                 stat.accept(origD);
             }
         }
-
+        refMissingDistCount.setValue(missingDistCount);
         return stat;
     }
 
