@@ -64,6 +64,7 @@ public class ProgramWorker {
     private ThreadCommunicator comm;
 
     public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection config, ByteOrder byteOrder, int blockSize){
+        System.out.println("In ProgramWorker Constructor " + threadId);
         this.threadId = threadId;
         this.comm = comm;
         this.config = config;
