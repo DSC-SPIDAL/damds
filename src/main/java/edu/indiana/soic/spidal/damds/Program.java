@@ -119,7 +119,7 @@ public class Program {
             readConfiguration(cmd);
             //  Set up MPI and threads parallelism
             ParallelOps.setupParallelism(args);
-            threads = new SpidalThreads(ParallelOps.threadCount, false, false, 48, ParallelOps.worldProcRank * 12 + 1);
+            threads = new SpidalThreads(ParallelOps.threadCount, false, true, 48, ParallelOps.worldProcRank * 12 + 1);
 
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
