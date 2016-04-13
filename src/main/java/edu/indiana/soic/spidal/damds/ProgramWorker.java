@@ -1115,6 +1115,7 @@ public class ProgramWorker {
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
         final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadId];
 
+        System.out.println("In calcstatinternal " + threadId);
         double origD, weight;
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
