@@ -80,7 +80,6 @@ public class SpidalThreads {
         }
 
         try {
-            System.out.println("Wait");
             latch.await();
         } catch (InterruptedException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
