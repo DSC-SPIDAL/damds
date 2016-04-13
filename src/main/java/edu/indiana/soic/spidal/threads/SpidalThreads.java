@@ -44,7 +44,7 @@ public class SpidalThreads {
                 worker = new BlockingQueueWorker(i, queue);
             }
             if (this.bind) {
-                worker.setBind(bind, totalCores, startingCore + i);
+                worker.setBind(bind, totalCores, startingCore);
             }
             workers.add(worker);
             executor.submit(worker);
