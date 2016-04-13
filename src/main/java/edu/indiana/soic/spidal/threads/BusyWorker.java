@@ -17,10 +17,9 @@ public class BusyWorker extends AbstractWorker {
             bind(totalCores, core);
         }
 
-        while (true) {
+        while (this.run) {
             TaskFuture t = taskQueue.poll();
             if (t != null) {
-                System.out.println("Exec");
                 Task<Integer> task = t.getTask();
                 task.run(t.getThreadId());
 

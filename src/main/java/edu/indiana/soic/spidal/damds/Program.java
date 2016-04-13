@@ -350,6 +350,7 @@ public class Program {
             Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
             ParallelOps.tearDownParallelism();
+            threads.shutDown();
         }
         catch (MPIException | IOException | InterruptedException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));

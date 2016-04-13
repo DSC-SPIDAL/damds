@@ -13,6 +13,8 @@ public abstract class AbstractWorker implements Runnable{
 
     protected int core;
 
+    protected boolean run = true;
+
     public AbstractWorker(int threadIdx) {
         this.threadIdx = threadIdx;
     }
@@ -27,5 +29,9 @@ public abstract class AbstractWorker implements Runnable{
         BitSet bitSet = new BitSet(totalCores);
         bitSet.set(core);
         Affinity.setAffinity(bitSet);
+    }
+
+    public void stop() {
+        this.run = false;
     }
 }

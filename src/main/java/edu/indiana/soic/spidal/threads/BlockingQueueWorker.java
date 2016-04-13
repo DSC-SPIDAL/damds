@@ -16,14 +16,16 @@ public class BlockingQueueWorker extends AbstractWorker {
     @Override
     public void run() {
         try {
-            TaskFuture t = blockingQueue.take();
-            if (t != null) {
-                Task<Integer> task = t.getTask();
-                task.run(t.getThreadId());
+            while (this.run) {
+                TaskFuture t = blockingQueue.take();
+                if (t != null) {
+                    Task<Integer> task = t.getTask();
+                    task.run(t.getThreadId());
 
-                CountDownLatch latch = t.getLatch();
-                if (latch != null) {
-                    latch.countDown();
+                    CountDownLatch latch = t.getLatch();
+                    if (latch != null) {
+                        latch.countDown();
+                    }
                 }
             }
         } catch (InterruptedException e) {

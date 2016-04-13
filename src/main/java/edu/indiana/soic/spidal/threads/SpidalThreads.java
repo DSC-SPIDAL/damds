@@ -51,6 +51,13 @@ public class SpidalThreads {
         }
     }
 
+    public void shutDown() {
+        for (AbstractWorker w : workers) {
+            w.stop();
+        }
+        executor.shutdown();
+    }
+
     public void execTask(int threadIdx, Task<Integer> task) {
         if (busy) {
             submitTaskToBusyQueue(task, null, threadIdx);
