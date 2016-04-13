@@ -81,10 +81,10 @@ public class ProgramWorker {
 
             readDistancesAndWeights(config.isSammon);
 
+            System.out.println("*****CAME HERE****");
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(
                 distances, weights, missingDistCount);
-            System.out.println("*****CAME HERE****");
             double missingDistPercent = missingDistCount.getValue() /
                                         (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0/distanceSummary.getSumOfSquare();
