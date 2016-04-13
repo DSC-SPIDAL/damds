@@ -41,8 +41,8 @@ public class ThreadCommunicator {
 
     public void sumOverThreads(int threadIdx, DoubleStatistics val)
         throws BrokenBarrierException, InterruptedException {
-        System.out.println("In sumoverthreads");
         doubleStatisticsBuffer[threadIdx].copyFrom(val);
+        System.out.println("In sumoverthreads");
         barrier.await();
         System.out.println("Came here after barrier.await in sumerOthreads for DoubleStatis");
         DoubleStatistics sum = doubleStatisticsBuffer[0];
