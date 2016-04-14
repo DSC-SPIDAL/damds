@@ -95,8 +95,6 @@ public class ParallelOps {
         MPI.Init(args);
         machineName = MPI.getProcessorName();
 
-        threadComm = new ThreadCommunicator(threadCount);
-
         /* Allocate basic buffers for communication */
         statBuffer = MPI.newByteBuffer(DoubleStatistics.extent);
         doubleBuffer = MPI.newDoubleBuffer(1);
@@ -228,6 +226,8 @@ public class ParallelOps {
 
     public static void setParallelDecomposition(int globalRowCount, int targetDimension)
         throws IOException, MPIException {
+
+        threadComm = new ThreadCommunicator(threadCount, globalRowCount, targetDimension);
         //	First divide points among processes
         procRowRanges = RangePartitioner.partition(globalRowCount,
                                                        worldProcsCount);
