@@ -1026,18 +1026,16 @@ public class ProgramWorker {
 
         DoubleStatistics distanceSummary =
             calculateStatisticsInternal(distances, weights, refInt);
-        comm.sumOverThreads(threadId, distanceSummary);
-        System.out.println("In calc statistics " + threadId);
-        comm.sumOverThreads(threadId, refInt);
+        /*comm.sumOverThreads(threadId, distanceSummary);
+        comm.sumOverThreads(threadId, refInt);*/
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             distanceSummary = ParallelOps.allReduce(distanceSummary);
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
         }
-        System.out.println("Came after mpi allreduce " + threadId);
-        comm.threadBarrier();
+        /*comm.threadBarrier();
         comm.bcastOverThreads(threadId, distanceSummary, 0);
-        comm.bcastOverThreads(threadId, refInt, 0);
+        comm.bcastOverThreads(threadId, refInt, 0);*/
         missingDistCount.setValue(refInt.getValue());
         return distanceSummary;
     }
