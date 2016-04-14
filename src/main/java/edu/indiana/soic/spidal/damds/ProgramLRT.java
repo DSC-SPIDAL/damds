@@ -78,6 +78,8 @@ public class ProgramLRT {
     public static WeightsWrap1D weights;
 
     public static int BlockSize;
+    
+    private static Utils utils = new Utils(0);
 
     /**
      * Weighted SMACOF based on Deterministic Annealing algorithm
@@ -122,8 +124,8 @@ public class ProgramLRT {
                 config.numberDataPoints, config.targetDimension);
             initializeTimers();
 
-            Utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
-            Utils.printMessage(config.toString(false));
+            utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
+            utils.printMessage(config.toString(false));
 
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
@@ -150,10 +152,10 @@ public class ProgramLRT {
             /*double QoR1 = stress / (config.numberDataPoints * (config.numberDataPoints - 1) / 2);
             double QoR2 = QoR1 / (distanceSummary.getAverage() * distanceSummary.getAverage());
 
-            Utils.printMessage(
+            utils.printMessage(
                 String.format(
                     "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
-            Utils.printMessage(
+            utils.printMessage(
                 String.format(
                     "Average of Delta(original distance) = %.5g",
                     distanceSummary.getAverage()));
@@ -184,30 +186,30 @@ public class ProgramLRT {
             mainTimer.stop();
 
 
-            Utils.printMessage("Finishing DAMDS run ...");
+            utils.printMessage("Finishing DAMDS run ...");
             long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
             long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
-            Utils.printMessage(
+            utils.printMessage(
                 String.format(
                     "  Total Time: %s (%d ms) Loop Time: %s (%d ms)",
                     formatElapsedMillis(totalTime), totalTime,
                     formatElapsedMillis(temperatureLoopTime), temperatureLoopTime));
-            Utils.printMessage("  Total Loops: " + loopNum);
-            Utils.printMessage("  Total Iterations: " + smacofRealIterations);
-            Utils.printMessage(
+            utils.printMessage("  Total Loops: " + loopNum);
+            utils.printMessage("  Total Iterations: " + smacofRealIterations);
+            utils.printMessage(
                 String.format(
                     "  Total CG Iterations: %d Avg. CG Iterations: %.5g",
                     outRealCGIterations.getValue(), (outRealCGIterations.getValue() * 1.0) / smacofRealIterations));
-            Utils.printMessage("  Final Stress:\t" + finalStress);
+            utils.printMessage("  Final Stress:\t" + finalStress);
 
             printTimings(totalTime, temperatureLoopTime);*/
 
-            Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
+            utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
             ParallelOps.tearDownParallelism();
         }
         catch (MPIException | IOException e) {
-            Utils.printAndThrowRuntimeException(new RuntimeException(e));
+            utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
     }
 
@@ -295,7 +297,7 @@ public class ProgramLRT {
             "\tBCInternal\tBComm\tBCInternalBofZ\tBCInternalMM\tCGMM" +
             "\tCGInnerProd\tCGLoop\tCGLoopMM\tCGLoopInnerProdPAP" +
             "\tCGLoopInnerProdR\tMMInternal\tMMComm\tBCMerge\tBCExtract\tMMMerge\tMMExtract\tStressInternal\tStressComm\tStressInternalComp";
-        Utils.printMessage(
+        utils.printMessage(
             mainHeader);
         String mainTimings = "  " + totalTime + '\t' + temperatureLoopTime +
                              '\t' +
@@ -344,7 +346,7 @@ public class ProgramLRT {
                      StressInternalTimings.getAverageTime(
                            StressInternalTimings.TimingTask.COMP);
 
-        Utils.printMessage(
+        utils.printMessage(
             mainTimings);
 
         // Accumulated times as percentages of the total time
@@ -356,7 +358,7 @@ public class ProgramLRT {
             "\tCGInnerProd%\tCGLoop%\tCGLoopMM%\tCGLoopInnerProdPAP%" +
             "\tCGLoopInnerProdR%\tMMInternal%\tMMComm%\tBCMerge%\tBCExtract%"
             + "\tMMMerge%\tMMExtract%";
-        Utils.printMessage(
+        utils.printMessage(
             percentHeader);
         String percentTimings =
             "  " + 1.0 + '\t' + (temperatureLoopTime *1.0 / totalTime) + '\t' +
@@ -406,7 +408,7 @@ public class ProgramLRT {
                 StressTimings.TimingTask.COMM) * 1.0 / totalTime + '\t' +
             StressInternalTimings.getTotalTime(
                 StressInternalTimings.TimingTask.COMP) * 1.0 / totalTime;
-        Utils.printMessage(
+        utils.printMessage(
             percentTimings);
 
         // Timing (total timings) distribution against rank/threadID for,

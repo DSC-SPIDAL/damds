@@ -78,6 +78,8 @@ public class Program {
     public static WeightsWrap1D weights;
 
     public static int BlockSize;
+    
+    private static Utils utils = new Utils(0);
 
     /**
      * Weighted SMACOF based on Deterministic Annealing algorithm
@@ -124,8 +126,8 @@ public class Program {
                 config.numberDataPoints, config.targetDimension);
             initializeTimers();
 
-            Utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
-            Utils.printMessage(config.toString(false));
+            utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
+            utils.printMessage(config.toString(false));
 
             readDistancesAndWeights(config.isSammon);
             RefObj<Integer> missingDistCount = new RefObj<>();
@@ -134,7 +136,7 @@ public class Program {
             double missingDistPercent = missingDistCount.getValue() /
                                         (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0/distanceSummary.getSumOfSquare();
-            Utils.printMessage(
+            utils.printMessage(
                 "\nDistance summary... \n" + distanceSummary.toString() +
                 "\n  MissingDistPercentage=" +
                 missingDistPercent);
@@ -159,12 +161,12 @@ public class Program {
             double preStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
                 INV_SUM_OF_SQUARE, partialSigma);
-            Utils.printMessage("\nInitial stress=" + preStress);
+            utils.printMessage("\nInitial stress=" + preStress);
 
             tCur = config.alpha * tMax;
 
             mainTimer.stop();
-            Utils.printMessage(
+            utils.printMessage(
                 "\nUp to the loop took " + mainTimer.elapsed(
                     TimeUnit.SECONDS) + " seconds");
             mainTimer.start();
@@ -189,7 +191,7 @@ public class Program {
 
                 diffStress = config.threshold + 1.0;
 
-                Utils.printMessage(
+                utils.printMessage(
                     String.format(
                         "\nStart of loop %d Temperature (T_Cur) %.5g",
                         loopNum, tCur));
@@ -240,7 +242,7 @@ public class Program {
                     preStress = stress;
 
                     if ((itrNum % 10 == 0) || (itrNum >= config.stressIter)) {
-                        Utils.printMessage(
+                        utils.printMessage(
                             String.format(
                                 "  Loop %d Iteration %d Avg CG count %.5g " +
                                 "Stress " +
@@ -257,7 +259,7 @@ public class Program {
                 --itrNum;
                 if (itrNum >=0 && !(itrNum % 10 == 0) && !(itrNum >=
                                                            config.stressIter)) {
-                    Utils.printMessage(
+                    utils.printMessage(
                         String.format(
                             "  Loop %d Iteration %d Avg CG count %.5g " +
                             "Stress %.5g",
@@ -265,7 +267,7 @@ public class Program {
                             (cgCount.getValue() * 1.0 / (itrNum + 1)), stress));
                 }
 
-                Utils.printMessage(
+                utils.printMessage(
                     String.format(
                         "End of loop %d Total Iterations %d Avg CG count %.5g" +
                         " Stress %.5g",
@@ -290,10 +292,10 @@ public class Program {
             double QoR1 = stress / (config.numberDataPoints * (config.numberDataPoints - 1) / 2);
             double QoR2 = QoR1 / (distanceSummary.getAverage() * distanceSummary.getAverage());
 
-            Utils.printMessage(
+            utils.printMessage(
                 String.format(
                     "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
-            Utils.printMessage(
+            utils.printMessage(
                 String.format(
                     "Average of Delta(original distance) = %.5g",
                     distanceSummary.getAverage()));
@@ -324,30 +326,30 @@ public class Program {
             mainTimer.stop();
 
 
-            Utils.printMessage("Finishing DAMDS run ...");
+            utils.printMessage("Finishing DAMDS run ...");
             long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
             long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
-            Utils.printMessage(
+            utils.printMessage(
                 String.format(
                     "  Total Time: %s (%d ms) Loop Time: %s (%d ms)",
                     formatElapsedMillis(totalTime), totalTime,
                     formatElapsedMillis(temperatureLoopTime), temperatureLoopTime));
-            Utils.printMessage("  Total Loops: " + loopNum);
-            Utils.printMessage("  Total Iterations: " + smacofRealIterations);
-            Utils.printMessage(
+            utils.printMessage("  Total Loops: " + loopNum);
+            utils.printMessage("  Total Iterations: " + smacofRealIterations);
+            utils.printMessage(
                 String.format(
                     "  Total CG Iterations: %d Avg. CG Iterations: %.5g",
                     outRealCGIterations.getValue(), (outRealCGIterations.getValue() * 1.0) / smacofRealIterations));
-            Utils.printMessage("  Final Stress:\t" + finalStress);
+            utils.printMessage("  Final Stress:\t" + finalStress);
 
             printTimings(totalTime, temperatureLoopTime);
 
-            Utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
+            utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
             ParallelOps.tearDownParallelism();
         }
         catch (MPIException | IOException | InterruptedException e) {
-            Utils.printAndThrowRuntimeException(new RuntimeException(e));
+            utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
     }
 
@@ -435,7 +437,7 @@ public class Program {
             "\tBCInternal\tBComm\tBCInternalBofZ\tBCInternalMM\tCGMM" +
             "\tCGInnerProd\tCGLoop\tCGLoopMM\tCGLoopInnerProdPAP" +
             "\tCGLoopInnerProdR\tMMInternal\tMMComm\tBCMerge\tBCExtract\tMMMerge\tMMExtract\tStressInternal\tStressComm\tStressInternalComp";
-        Utils.printMessage(
+        utils.printMessage(
             mainHeader);
         String mainTimings = "  " + totalTime + '\t' + temperatureLoopTime +
                              '\t' +
@@ -484,7 +486,7 @@ public class Program {
                      StressInternalTimings.getAverageTime(
                            StressInternalTimings.TimingTask.COMP);
 
-        Utils.printMessage(
+        utils.printMessage(
             mainTimings);
 
         // Accumulated times as percentages of the total time
@@ -496,7 +498,7 @@ public class Program {
             "\tCGInnerProd%\tCGLoop%\tCGLoopMM%\tCGLoopInnerProdPAP%" +
             "\tCGLoopInnerProdR%\tMMInternal%\tMMComm%\tBCMerge%\tBCExtract%"
             + "\tMMMerge%\tMMExtract%";
-        Utils.printMessage(
+        utils.printMessage(
             percentHeader);
         String percentTimings =
             "  " + 1.0 + '\t' + (temperatureLoopTime *1.0 / totalTime) + '\t' +
@@ -546,7 +548,7 @@ public class Program {
                 StressTimings.TimingTask.COMM) * 1.0 / totalTime + '\t' +
             StressInternalTimings.getTotalTime(
                 StressInternalTimings.TimingTask.COMP) * 1.0 / totalTime;
-        Utils.printMessage(
+        utils.printMessage(
             percentTimings);
 
         // Timing (total timings) distribution against rank/threadID for,

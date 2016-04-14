@@ -88,6 +88,8 @@ public class ParallelOps {
     public static Bytes mmapSWriteBytes;
 
     public static ThreadCommunicator threadComm;
+    
+    private static Utils utils = new Utils(0);
 
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
@@ -108,7 +110,7 @@ public class ParallelOps {
         worldProcsPerNode = worldProcsCount / nodeCount;
         boolean heterogeneous = (worldProcsPerNode * nodeCount) != worldProcsCount;
         if (heterogeneous) {
-            Utils.printMessage("Running in heterogeneous mode");
+            utils.printMessage("Running in heterogeneous mode");
         }
 
         int q,r;
@@ -206,7 +208,7 @@ public class ParallelOps {
             "---------------------------------------------------------\n"
             + "Machine:" + machineName + ' ' + threadCount + 'x'
             + worldProcsPerNode + 'x' + nodeCount;
-        Utils.printMessage(parallelPattern);
+        utils.printMessage(parallelPattern);
     }
 
     public static void tempBreak() throws MPIException {
