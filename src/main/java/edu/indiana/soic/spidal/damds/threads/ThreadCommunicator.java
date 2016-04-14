@@ -4,18 +4,21 @@ import edu.indiana.soic.spidal.common.DoubleStatistics;
 import edu.indiana.soic.spidal.common.RefObj;
 
 import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 
 public class ThreadCommunicator {
     private int threadCount;
     private int[] intBuffer;
+    private double[] doubleBuffer;
+    private double[] pointsBuffer;
     private DoubleStatistics[] doubleStatisticsBuffer;
     private CyclicBarrier barrier;
 
-    public ThreadCommunicator(int threadCount) {
+    public ThreadCommunicator(int threadCount, int numberDataPoints, int targetDimension) {
         this.threadCount = threadCount;
         intBuffer = new int[threadCount];
+        doubleBuffer = new double[threadCount];
+        pointsBuffer = new double[numberDataPoints*targetDimension];
         doubleStatisticsBuffer = new DoubleStatistics[threadCount];
         for (int i = 0; i < threadCount; ++i){
             doubleStatisticsBuffer[i] = new DoubleStatistics();
@@ -31,7 +34,7 @@ public class ThreadCommunicator {
      * @throws BrokenBarrierException
      * @throws InterruptedException
      */
-    public void sumOverThreads(int threadIdx, RefObj<Integer> val)
+    public void sumIntOverThreads(int threadIdx, RefObj<Integer> val)
         throws BrokenBarrierException, InterruptedException {
         intBuffer[threadIdx] = val.getValue();
         barrier.await();
@@ -42,7 +45,18 @@ public class ThreadCommunicator {
         val.setValue(sum);
     }
 
-    public void sumOverThreads(int threadIdx, DoubleStatistics val)
+    public void sumDoublesOverThreads(int threadIdx, RefObj<Double> val)
+        throws BrokenBarrierException, InterruptedException {
+        doubleBuffer[threadIdx] = val.getValue();
+        barrier.await();
+        double sum = 0.0;
+        for (int i = 0; i < threadCount; ++i){
+            sum += doubleBuffer[i];
+        }
+        val.setValue(sum);
+    }
+
+    public void sumDoubleStatisticsOverThreads(int threadIdx, DoubleStatistics val)
         throws BrokenBarrierException, InterruptedException {
         doubleStatisticsBuffer[threadIdx].copyFrom(val);
         barrier.await();
@@ -56,7 +70,7 @@ public class ThreadCommunicator {
         val.copyFrom(sum);
     }
 
-    public void bcastOverThreads(int threadIdx, RefObj<Integer> val, int root)
+    public void bcastIntOverThreads(int threadIdx, RefObj<Integer> val, int root)
         throws BrokenBarrierException, InterruptedException {
         if (threadIdx == root){
             final Integer value = val.getValue();
@@ -68,7 +82,19 @@ public class ThreadCommunicator {
         val.setValue(intBuffer[threadIdx]);
     }
 
-    public void bcastOverThreads(int threadIdx, DoubleStatistics val, int root)
+    public void bcastDoubleOverThreads(int threadIdx, RefObj<Double> val, int root)
+        throws BrokenBarrierException, InterruptedException {
+        if (threadIdx == root){
+            final double value = val.getValue();
+            for (int i = 0; i < threadCount; ++i){
+                doubleBuffer[i] = value;
+            }
+        }
+        barrier.await();
+        val.setValue(doubleBuffer[threadIdx]);
+    }
+
+    public void bcastDoubleStatisticsOverThreads(int threadIdx, DoubleStatistics val, int root)
         throws BrokenBarrierException, InterruptedException {
         if (threadIdx == root){
             for (int i = 0; i < threadCount; ++i){
@@ -79,10 +105,18 @@ public class ThreadCommunicator {
         val.copyFrom(doubleStatisticsBuffer[threadIdx]);
     }
 
-    public void threadBarrier()
+    public void barrier()
         throws BrokenBarrierException, InterruptedException {
         barrier.await();
     }
 
 
+    public void bcastDoubleArrayOverThreads(int threadIdx, double[] preX, int root)
+        throws BrokenBarrierException, InterruptedException {
+        if (threadIdx == root){
+            System.arraycopy(preX, 0, pointsBuffer, 0, preX.length);
+        }
+        barrier.await();
+        System.arraycopy(pointsBuffer, 0, preX, 0, pointsBuffer.length);
+    }
 }
