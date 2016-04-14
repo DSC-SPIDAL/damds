@@ -64,7 +64,6 @@ public class ProgramWorker {
     private ThreadCommunicator comm;
 
     public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection config, ByteOrder byteOrder, int blockSize){
-        System.out.println("In ProgramWorker Constructor " + threadId);
         this.threadId = threadId;
         this.comm = comm;
         this.config = config;
@@ -87,7 +86,6 @@ public class ProgramWorker {
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(
                 distances, weights, missingDistCount);
-            System.out.println("*****CAME HERE****");
             double missingDistPercent = missingDistCount.getValue() /
                                         (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0/distanceSummary.getSumOfSquare();
@@ -1029,16 +1027,16 @@ public class ProgramWorker {
 
         DoubleStatistics distanceSummary =
             calculateStatisticsInternal(distances, weights, refInt);
-        /*comm.sumOverThreads(threadId, distanceSummary);
-        comm.sumOverThreads(threadId, refInt);*/
+        comm.sumOverThreads(threadId, distanceSummary);
+        comm.sumOverThreads(threadId, refInt);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             distanceSummary = ParallelOps.allReduce(distanceSummary);
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
         }
-        /*comm.threadBarrier();
+        comm.threadBarrier();
         comm.bcastOverThreads(threadId, distanceSummary, 0);
-        comm.bcastOverThreads(threadId, refInt, 0);*/
+        comm.bcastOverThreads(threadId, refInt, 0);
         missingDistCount.setValue(refInt.getValue());
         return distanceSummary;
     }
@@ -1116,7 +1114,6 @@ public class ProgramWorker {
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
 
         double origD, weight;
-        System.out.println("Thread Row Start Offset " + ParallelOps.threadRowStartOffsets[threadId]);
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
                 origD = distances[localRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
@@ -1132,7 +1129,6 @@ public class ProgramWorker {
             }
         }
         refMissingDistCount.setValue(missingDistCount);
-        System.out.println("In calcstatinternal " + threadId + " threadRowCount=" + threadRowCount);
         return stat;
     }
 
