@@ -62,6 +62,7 @@ public class ProgramWorker {
     final private RefObj<Integer> refInt = new RefObj<>();
 
     private ThreadCommunicator comm;
+    private Utils utils;
 
     public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection config, ByteOrder byteOrder, int blockSize){
         this.threadId = threadId;
@@ -69,6 +70,7 @@ public class ProgramWorker {
         this.config = config;
         this.byteOrder = byteOrder;
         this.BlockSize = blockSize;
+        utils = new Utils(threadId);
     }
 
     public void setup() {
@@ -89,7 +91,7 @@ public class ProgramWorker {
             double missingDistPercent = missingDistCount.getValue() /
                                         (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0/distanceSummary.getSumOfSquare();
-            Utils.printMessage(
+            utils.printMessage(
                 "\nDistance summary... \n" + distanceSummary.toString() +
                 "\n  MissingDistPercentage=" +
                 missingDistPercent);
@@ -115,12 +117,12 @@ public class ProgramWorker {
             double preStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
                 INV_SUM_OF_SQUARE, partialSigma);
-            Utils.printMessage("\nInitial stress=" + preStress);
+            utils.printMessage("\nInitial stress=" + preStress);
 
             tCur = config.alpha * tMax;
 
             mainTimer.stop();
-            Utils.printMessage(
+            utils.printMessage(
                 "\nUp to the loop took " + mainTimer.elapsed(
                     TimeUnit.SECONDS) + " seconds");
             mainTimer.start();
@@ -145,7 +147,7 @@ public class ProgramWorker {
 
                 diffStress = config.threshold + 1.0;
 
-                Utils.printMessage(
+                utils.printMessage(
                     String.format(
                         "\nStart of loop %d Temperature (T_Cur) %.5g",
                         loopNum, tCur));
@@ -196,7 +198,7 @@ public class ProgramWorker {
                     preStress = stress;
 
                     if ((itrNum % 10 == 0) || (itrNum >= config.stressIter)) {
-                        Utils.printMessage(
+                        utils.printMessage(
                             String.format(
                                 "  Loop %d Iteration %d Avg CG count %.5g " +
                                 "Stress " +
@@ -213,7 +215,7 @@ public class ProgramWorker {
                 --itrNum;
                 if (itrNum >=0 && !(itrNum % 10 == 0) && !(itrNum >=
                                                            config.stressIter)) {
-                    Utils.printMessage(
+                    utils.printMessage(
                         String.format(
                             "  Loop %d Iteration %d Avg CG count %.5g " +
                             "Stress %.5g",
@@ -221,7 +223,7 @@ public class ProgramWorker {
                             (cgCount.getValue() * 1.0 / (itrNum + 1)), stress));
                 }
 
-                Utils.printMessage(
+                utils.printMessage(
                     String.format(
                         "End of loop %d Total Iterations %d Avg CG count %.5g" +
                         " Stress %.5g",
@@ -244,7 +246,7 @@ public class ProgramWorker {
             loopTimer.stop();*/
         }
         catch (MPIException e) {
-            Utils.printAndThrowRuntimeException(new RuntimeException(e));
+            utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
         catch (InterruptedException e) {
             e.printStackTrace();
