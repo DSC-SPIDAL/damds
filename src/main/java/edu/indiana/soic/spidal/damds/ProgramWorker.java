@@ -1113,8 +1113,6 @@ public class ProgramWorker {
         DoubleStatistics stat = new DoubleStatistics();
 
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
-        final int threadRowStartOffset = ParallelOps.threadRowStartOffsets[threadId];
-
 
         double origD, weight;
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
