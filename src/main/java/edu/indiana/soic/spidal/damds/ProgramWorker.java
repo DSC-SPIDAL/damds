@@ -1113,6 +1113,7 @@ public class ProgramWorker {
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
 
         double origD, weight;
+        System.out.println("Thread Row Start Offset " + ParallelOps.threadRowStartOffsets[threadId]);
         for (int localRow = 0; localRow < threadRowCount; ++localRow){
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
                 origD = distances[localRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
