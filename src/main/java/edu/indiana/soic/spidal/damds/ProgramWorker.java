@@ -57,7 +57,7 @@ public class ProgramWorker {
     private int BlockSize;
 
     private int threadId;
-    private Range threadRowRange;
+    private Range threadRowRangeGlobal;
 
     final private RefObj<Integer> refInt = new RefObj<>();
 
@@ -73,7 +73,10 @@ public class ProgramWorker {
     }
 
     public void setup() {
-        threadRowRange = ParallelOps.threadRowRanges[threadId];
+        final int threadRowCount = ParallelOps.threadRowCounts[threadId];
+        final int startIdx = ParallelOps.procRowStartOffset + ParallelOps.threadRowStartOffsets[threadId];
+        threadRowRangeGlobal = new Range(
+            startIdx, startIdx+threadRowCount-1);
     }
     public void  run() {
         try {
@@ -1061,15 +1064,15 @@ public class ProgramWorker {
         }
 
 
-        int elementCount = threadRowRange.getLength() * ParallelOps.globalColCount;
+        int elementCount = threadRowRangeGlobal.getLength() * ParallelOps.globalColCount;
         distances = new short[elementCount];
         if (config.repetitions == 1){
             BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                threadRowRange, ParallelOps.globalColCount, byteOrder,
+                threadRowRangeGlobal, ParallelOps.globalColCount, byteOrder,
                 true, function, distances);
         }else{
             BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                threadRowRange, ParallelOps.globalColCount, byteOrder,
+                threadRowRangeGlobal, ParallelOps.globalColCount, byteOrder,
                 true, function, config.repetitions, distances);
         }
 
@@ -1082,12 +1085,12 @@ public class ProgramWorker {
                 w = new short[elementCount];
                 if (config.repetitions == 1) {
                     BinaryReader1D.readRowRange(config.weightMatrixFile,
-                        threadRowRange, ParallelOps.globalColCount,
+                        threadRowRangeGlobal, ParallelOps.globalColCount,
                         byteOrder, true, function, w);
                 }
                 else {
                     BinaryReader1D.readRowRange(config.weightMatrixFile,
-                        threadRowRange, ParallelOps.globalColCount,
+                        threadRowRangeGlobal, ParallelOps.globalColCount,
                         byteOrder, true, function, config.repetitions, w);
                 }
                 weights = new WeightsWrap1D(
@@ -1095,7 +1098,7 @@ public class ProgramWorker {
             } else {
                 double[] sw = null;
                 sw = BinaryReader2D.readSimpleFile(config.weightMatrixFile, config.numberDataPoints);
-                weights = new WeightsWrap1D(sw, threadRowRange, distances, isSammon, ParallelOps.globalColCount, function);
+                weights = new WeightsWrap1D(sw, threadRowRangeGlobal, distances, isSammon, ParallelOps.globalColCount, function);
             }
         } else {
             weights = new WeightsWrap1D(
