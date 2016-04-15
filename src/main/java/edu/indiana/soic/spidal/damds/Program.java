@@ -214,7 +214,7 @@ public class Program {
                     ParallelOps.worldProcsComm.barrier();
 
                     // TODO - debugs
-                    System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " afterBC preX[2600][1]: " + preX[2600*3+1]);
+                    System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " afterBC preX[2600][1]: " + preX[2600*3+1] + "preX[7200][2]: " + preX[7200*3+2]);
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
