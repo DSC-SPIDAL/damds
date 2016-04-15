@@ -945,9 +945,6 @@ public class ProgramWorker {
                         fullBytes.writeDouble(rand.nextBoolean()
                             ? rand.nextDouble()
                             : -rand.nextDouble());
-                        if (i == 2600 && j == 1){
-                            System.out.println("**Rank: " + ParallelOps.worldProcRank + " tid: " + threadId + " preX[2600][1]=" + fullBytes.readDouble(pos));
-                        }
                         pos += Double.BYTES;
                     }
                 }
@@ -962,7 +959,6 @@ public class ProgramWorker {
         }
         threadComm.barrier();
         extractPoints(fullBytes, numPoints, targetDim, preX);
-        System.out.println("Rank: " + ParallelOps.worldProcRank + "tid: " + threadId + " preX[2600][1]=" + preX[2600*3+1]);
     }
 
     private DoubleStatistics calculateStatistics(
