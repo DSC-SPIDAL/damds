@@ -633,7 +633,7 @@ public class ProgramWorker {
         }
 
         if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[8013][1]: " + internalPartialMM[(8013-7500) * 3 + 1]);
+            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[8013][2]: " + internalPartialMM[(8013-7500) * 3 + 2]);
         }
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
