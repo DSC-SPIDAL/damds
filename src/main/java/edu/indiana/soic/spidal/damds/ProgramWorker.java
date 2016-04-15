@@ -722,7 +722,7 @@ public class ProgramWorker {
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
 
         // TODO - debugs
-        System.out.println("**Rank: " + ParallelOps.worldProcRank + " Tid: "
+        //System.out.println("**Rank: " + ParallelOps.worldProcRank + " Tid: "
                 + threadId + " inMM after MMInternal outMM[2600][1]: " +
                 outMM[2600 * 3 + 1] + " outMM[7200][2]: " + outMM[7200 * 3 +
                 2] + " outMM[8013][2]: " + outMM[8013 * 3 + 2]);
