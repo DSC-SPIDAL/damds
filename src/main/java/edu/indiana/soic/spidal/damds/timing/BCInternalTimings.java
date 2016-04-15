@@ -14,8 +14,8 @@ public class BCInternalTimings {
         BOFZ, MM
     }
 
-    private Stopwatch timerBofZ;
-    private Stopwatch timerMM;
+    private Stopwatch timerBofZ = Stopwatch.createUnstarted();
+    private Stopwatch timerMM = Stopwatch.createUnstarted();
 
     private long tBofZ;
     private long tMM;
