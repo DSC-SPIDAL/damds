@@ -145,12 +145,18 @@ public class ThreadCommunicator {
             bytes.position(pos);
             bytes.writeDouble(val[i]);
             if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-                if (pos == ((8013 - 7500)*3+2)*Double.BYTES){
+                if (pos == ((8013 - 5000)*3+2)*Double.BYTES){
                     System.out.println("************* val=" + val[i] + " " +
                             "buffer=" + bytes.readDouble(pos));
                 }
             }
             pos+=Double.BYTES;
+        }
+
+        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+            System.out.println("######## startIdx=" +startIndex + " val" +
+                    ".length=" + val.length + " last pos=" + (pos-Double
+                    .BYTES));
         }
 
         if (ParallelOps.worldProcRank == 0 && threadId == 1) {
