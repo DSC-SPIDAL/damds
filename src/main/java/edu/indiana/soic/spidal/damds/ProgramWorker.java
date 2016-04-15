@@ -675,7 +675,7 @@ public class ProgramWorker {
 
         MatrixUtils.matrixMultiplyWithThreadOffset(weights, v, x,
             globalThreadRowRange.getLength(), targetDimension, numPoints,
-            blockSize, 0, globalThreadRowRange.getStartIndex(), outMM);
+            blockSize, threadLocalRowRange.getStartIndex(), globalThreadRowRange.getStartIndex(), outMM);
     }
 
 
