@@ -945,8 +945,8 @@ public class ProgramWorker {
                         fullBytes.writeDouble(rand.nextBoolean()
                             ? rand.nextDouble()
                             : -rand.nextDouble());
-                        if (numPoints*targetDim == 2600*3){
-                            System.out.println("Rank: " + ParallelOps.worldProcRank + "tid: " + threadId + " preX[2600*3]=" + fullBytes.readDouble(pos));
+                        if (i*j == 2600*3){
+                            System.out.println("**Rank: " + ParallelOps.worldProcRank + "tid: " + threadId + " preX[2600*3]=" + fullBytes.readDouble(pos));
                         }
                         pos += Double.BYTES;
                     }
