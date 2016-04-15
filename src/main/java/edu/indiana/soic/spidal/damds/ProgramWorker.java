@@ -9,6 +9,7 @@ import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPI;
 import mpi.MPIException;
+import net.openhft.affinity.Affinity;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
 
@@ -19,10 +20,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -108,6 +106,12 @@ public class ProgramWorker {
         threadLocalRowRange = new Range(
                 threadLocalRowStartOffset, (
                 threadLocalRowStartOffset + threadRowCount - 1));
+
+        BitSet bitSet = new BitSet(48);
+        // TODO - let's hard code for juliet for now
+        bitSet.set((ParallelOps.worldProcRank*12)+threadId+1);
+        bitSet.set((ParallelOps.worldProcRank*24)+threadId+1+24);
+        Affinity.setAffinity(bitSet);
     }
 
     public void run() {
