@@ -209,7 +209,7 @@ public class ProgramWorker {
                     threadComm.barrier();
 
                     // TODO - debugs
-                    System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " afterBC preX[2600][1]: " + preX[2600*3+1] + " preX[7200][2]: " + preX[7200*3+2]);
+                    // System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " afterBC preX[2600][1]: " + preX[2600*3+1] + " preX[7200][2]: " + preX[7200*3+2]);
 
                     stressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
@@ -537,7 +537,7 @@ public class ProgramWorker {
         threadComm.barrier();
 
         // TODO - debugs
-        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
+        // System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
 
         int iOffset;
 
@@ -626,6 +626,9 @@ public class ProgramWorker {
         calculateMMInternal(x, targetDimension, numPoints, weights,
             blockSize, v, internalPartialMM);
         mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, threadId);
+
+        // TODO - debugs
+        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[113][1]: " + internalPartialMM[113*3+1] + " internalPartialMM[1327][2]: " + internalPartialMM[1327*3+2]);
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
         threadComm
