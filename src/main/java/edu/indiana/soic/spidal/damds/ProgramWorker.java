@@ -820,7 +820,8 @@ public class ProgramWorker {
         }
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
-        threadComm.collect(threadLocalRowRange.getStartIndex(),
+        threadComm.collect(threadLocalRowRange.getStartIndex()
+                *targetDimension*Double.BYTES,
                 threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);
         threadComm.barrier();
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
