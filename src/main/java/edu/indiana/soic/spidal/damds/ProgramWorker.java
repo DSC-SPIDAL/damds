@@ -800,21 +800,21 @@ public class ProgramWorker {
         // TODO - debugs
         if (ParallelOps.worldProcRank == 0 && threadId == 1) {
             System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "\n" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal\n" +
                     " threadPartialBCInternalMM[2600][1]: " + threadPartialBCInternalMM[(2600
                     - 2500) * 3 + 1]);
         }
 
         if (ParallelOps.worldProcRank == 1 && threadId == 0) {
             System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "\n" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal\n" +
                     " threadPartialBCInternalMM[7200][2]: " + threadPartialBCInternalMM[(7200
                     - 5000) * 3 + 2]);
         }
 
         if (ParallelOps.worldProcRank == 1 && threadId == 1) {
             System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "\n" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal\n" +
                     " threadPartialBCInternalMM[8013][2]: " + threadPartialBCInternalMM[(8013
                     - 7500) * 3 + 2]);
         }
