@@ -994,7 +994,7 @@ public class Program {
         }
 
         // TODO - debugs
-        System.out.println("**Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " inMM after MMInternal outMM[113][1]: " + outMM[2600*3+1] + " outMM[1327][2]: " + outMM[7200*3+2]);
+        System.out.println("**Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " inMM after MMInternal outMM[113][1]: " + outMM[2600*3+1] + " outMM[1327][2]: " + outMM[7200*3+2] + " outMM[8013][2]: " + outMM[8013*3+2]);
     }
 
     private static void calculateMMInternal(
