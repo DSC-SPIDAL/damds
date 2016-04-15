@@ -154,10 +154,13 @@ public class ThreadCommunicator {
                 if (pos == ((8013 - 5000)*3+2)*Double.BYTES){
                     System.out.println("************* val=" + val[i] + " " +
                             "buffer=" + bytes.readDouble(pos));
+
+                    System.out.println("************* val=" + val[i] + " " +
+                            "buffer=" + bytes.readDouble(pos));
                 }
             }
 
-            if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+            /*if (ParallelOps.worldProcRank == 1 && threadId == 1) {
                 if (pos == ((8013 - 5000)*3+2)*Double.BYTES) {
                     System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
 
@@ -167,7 +170,7 @@ public class ThreadCommunicator {
                             " mmapXWriteBytes[8013][2]=" + bytes.readDouble(pos)
                             * Double.BYTES + " val[8013][2]=" + val[(8013 - 7500) * 3 + 2]);
                 }
-            }
+            }*/
 
             pos+=Double.BYTES;
         }
