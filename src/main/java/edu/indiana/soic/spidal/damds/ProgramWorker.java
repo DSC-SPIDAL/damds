@@ -686,7 +686,32 @@ public class ProgramWorker {
         mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
 
         // TODO - debugs
+        if (ParallelOps.worldProcRank == 0 && threadId == 1) {
+            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
+                    "Tid: " +
+                    "\n" + threadId + " inMM after MMInternal\n" +
+                    " mmapXWriteBytes[2600][1]: " + ParallelOps
+                    .mmapXWriteBytes.readDouble(2600 * 3 + 1));
+        }
+        threadComm.barrier();
 
+        if (ParallelOps.worldProcRank == 1 && threadId == 0) {
+            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
+                    "Tid: " +
+                    "\n" + threadId + " inMM after MMInternal\n" +
+                    " mmapXWriteBytes[7200][2]: " + ParallelOps
+                    .mmapXWriteBytes.readDouble((7200 - 5000) * 3 + 2));
+        }
+        threadComm.barrier();
+
+        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
+                    "Tid: " +
+                    "\n" + threadId + " inMM after MMInternal\n" +
+                    " mmapXWriteBytes[8013][2]: " + ParallelOps
+                    .mmapXWriteBytes.readDouble((8013 - 5000) * 3 + 2));
+        }
+        threadComm.barrier();
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
