@@ -208,6 +208,9 @@ public class ProgramWorker {
                     }
                     threadComm.barrier();
 
+                    // TODO - debugs
+                    System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " afterBC preX[2600][1]: " + preX[2600*3+1]);
+
                     stressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
                     calculateConjugateGradient(preX, config.targetDimension,
