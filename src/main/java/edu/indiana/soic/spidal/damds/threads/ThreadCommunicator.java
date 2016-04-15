@@ -2,6 +2,7 @@ package edu.indiana.soic.spidal.damds.threads;
 
 import edu.indiana.soic.spidal.common.DoubleStatistics;
 import edu.indiana.soic.spidal.common.RefObj;
+import edu.indiana.soic.spidal.damds.ParallelOps;
 import net.openhft.lang.io.Bytes;
 
 import java.util.concurrent.BrokenBarrierException;
@@ -135,5 +136,39 @@ public class ThreadCommunicator {
             to[i] = from.readDouble();
         }
 
+    }
+
+    public synchronized void collect(int startIndex, double[] val, Bytes
+            bytes, int threadId) {
+        bytes.position(startIndex);
+        for (double aVal : val) {
+            bytes.writeDouble(aVal);
+        }
+
+        if (ParallelOps.worldProcRank == 0 && threadId == 1) {
+            System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
+                    "Tid=" +
+                    "" + threadId + " inCollect startIdx=" + startIndex +
+                    " mmapXWriteBytes[2600][1]: " + ParallelOps
+                    .mmapXWriteBytes.readDouble((2600 * 3 + 1)*Double.BYTES));
+        }
+
+        if (ParallelOps.worldProcRank == 1 && threadId == 0) {
+            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
+                    "Tid: " +
+                    "" + threadId + " inCollect startIdx=" + startIndex +
+                    " mmapXWriteBytes[7200][2]: " + ParallelOps
+                    .mmapXWriteBytes.readDouble(((7200 - 5000) * 3 + 2))
+                    *Double.BYTES);
+        }
+
+        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
+                    "Tid: " +
+                    "" + threadId + " inCollect startIdx=" + startIndex +
+                    " mmapXWriteBytes[8013][2]: " + ParallelOps
+                    .mmapXWriteBytes.readDouble(((8013 - 5000) * 3 + 2))
+                    *Double.BYTES);
+        }
     }
 }

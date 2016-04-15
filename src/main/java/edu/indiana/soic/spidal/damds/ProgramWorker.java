@@ -820,14 +820,18 @@ public class ProgramWorker {
         }
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
-        threadComm.collect(threadLocalRowRange.getStartIndex()
+        /*threadComm.collect(threadLocalRowRange.getStartIndex()
                 *targetDimension*Double.BYTES,
-                threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);
+                threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);*/
+        // TODO - debugs
+        threadComm.collect(threadLocalRowRange.getStartIndex()
+                        *targetDimension*Double.BYTES,
+                threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes, threadId);
         threadComm.barrier();
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
         // TODO - debugs
-        if (ParallelOps.worldProcRank == 0 && threadId == 1) {
+        /*if (ParallelOps.worldProcRank == 0 && threadId == 1) {
             System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
                     "Tid: " +
                     "" + threadId + " inBC after BCInternal " +
@@ -854,7 +858,7 @@ public class ProgramWorker {
                     .mmapXWriteBytes.readDouble(((8013 - 5000) * 3 + 2))
                     *Double.BYTES);
         }
-        threadComm.barrier();
+        threadComm.barrier();*/
 
 
         if (ParallelOps.worldProcsCount > 1) {
