@@ -955,10 +955,9 @@ public class ProgramWorker {
                 ParallelOps.broadcast(ParallelOps.fullXByteBuffer,
                     numPoints * targetDim * Double.BYTES, 0);
             }
-            extractPoints(fullBytes, numPoints, targetDim, preX);
         }
         threadComm.barrier();
-        threadComm.bcastDoubleArrayOverThreads(threadId, preX, 0);
+        extractPoints(fullBytes, numPoints, targetDim, preX);
     }
 
     private DoubleStatistics calculateStatistics(
