@@ -213,6 +213,8 @@ public class Program {
                     // a single mmap file
                     ParallelOps.worldProcsComm.barrier();
 
+                    // TODO - debugs
+                    System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " afterBC preX[2600][1]: " + preX[2600*3+1]);
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
