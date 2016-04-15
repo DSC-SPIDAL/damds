@@ -27,9 +27,6 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import static edu.rice.hj.Module0.launchHabaneroApp;
-import static edu.rice.hj.Module1.forallChunked;
-
 public class ProgramWorker {
     // Constants
     private final double INV_SHORT_MAX = 1.0 / Short.MAX_VALUE;
@@ -211,7 +208,6 @@ public class ProgramWorker {
                     }
                     threadComm.barrier();
 
-
                     stressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
                     calculateConjugateGradient(preX, config.targetDimension,
@@ -229,10 +225,9 @@ public class ProgramWorker {
                         StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
                         preX, config.targetDimension, tCur, distances, weights,
-                        INV_SUM_OF_SQUARE, partialSigma);
+                        INV_SUM_OF_SQUARE);
                     stressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.STRESS);
-
 
                     diffStress = preStress - stress;
                     preStress = stress;
@@ -284,14 +279,49 @@ public class ProgramWorker {
                 }
             }
             loopTimer.stop();
+
+            double QoR1 = stress / (config.numberDataPoints * (config.numberDataPoints - 1) / 2);
+            double QoR2 = QoR1 / (distanceSummary.getAverage() * distanceSummary.getAverage());
+
+            utils.printMessage(
+                String.format(
+                    "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
+            utils.printMessage(
+                String.format(
+                    "Average of Delta(original distance) = %.5g",
+                    distanceSummary.getAverage()));
+
+            Double finalStress = calculateStress(
+                preX, config.targetDimension, tCur, distances, weights,
+                INV_SUM_OF_SQUARE);
+
+            if (threadId == 0) {
+                mainTimer.stop();
+            }
+
+            utils.printMessage("Finishing DAMDS run ...");
+            long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
+            long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
+            utils.printMessage(
+                String.format(
+                    "  Total Time: %s (%d ms) Loop Time: %s (%d ms)",
+                    formatElapsedMillis(totalTime), totalTime,
+                    formatElapsedMillis(temperatureLoopTime), temperatureLoopTime));
+            utils.printMessage("  Total Loops: " + loopNum);
+            utils.printMessage("  Total Iterations: " + smacofRealIterations);
+            utils.printMessage(
+                String.format(
+                    "  Total CG Iterations: %d Avg. CG Iterations: %.5g",
+                    outRealCGIterations.getValue(), (outRealCGIterations.getValue() * 1.0) / smacofRealIterations));
+            utils.printMessage("  Final Stress:\t" + finalStress);
+
+            // TODO - fix print timings
+            /*printTimings(totalTime, temperatureLoopTime);*/
         }
         catch (MPIException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
-        catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        catch (BrokenBarrierException e) {
+        catch (InterruptedException | BrokenBarrierException e) {
             e.printStackTrace();
         }
     }
@@ -343,14 +373,6 @@ public class ProgramWorker {
         mpiOnlyTimingBuffer.position(0);
         mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
         return mpiOnlyTimingArray;
-    }
-
-    private static void initializeTimers() {
-        stressTimings.init(ParallelOps.threadCount);
-        stressInternalTimings.init(ParallelOps.threadCount);
-        bcInternalTimings.init(ParallelOps.threadCount);
-        bcTimings.init(ParallelOps.threadCount);
-        mmTimings.init(ParallelOps.threadCount);
     }
 
     private void readInitMapping(
@@ -488,33 +510,36 @@ public class ProgramWorker {
     }
 
 
+    private void calculateConjugateGradient(
+        double[] preX, int targetDimension, int numPoints, double[] BC,
+        int cgIter, double cgThreshold, RefObj<Integer> outCgCount,
+        RefObj<Integer> outRealCGIterations, WeightsWrap1D weights,
+        int blockSize, double[] v, double[] MMr, double[] MMAp,
+        double[] threadPartialMM)
 
-    /*private static void calculateConjugateGradient(
-        double[] preX, int targetDimension, int numPoints, double[] BC, int cgIter, double cgThreshold,
-        RefObj<Integer> outCgCount, RefObj<Integer> outRealCGIterations,
-        WeightsWrap1D weights, int blockSize, double[][] v, double[] MMr, double[] MMAp, double[][] threadPartialMM)
-
-        throws MPIException {
+        throws MPIException, BrokenBarrierException, InterruptedException {
 
 
         zeroOutArray(threadPartialMM);
         cgTimings.startTiming(CGTimings.TimingTask.MM);
-        calculateMM(preX, targetDimension, numPoints, weights, blockSize,
-            v, MMr, threadPartialMM);
-
+        calculateMM(preX, targetDimension, numPoints, weights, blockSize, v,
+            MMr, threadPartialMM);
         cgTimings.endTiming(CGTimings.TimingTask.MM);
-        // This barrier was necessary for correctness when using
-        // a single mmap file
-        ParallelOps.worldProcsComm.barrier();
+
+        if (threadId == 0) {
+            // This barrier was necessary for correctness when using
+            // a single mmap file
+            ParallelOps.worldProcsComm.barrier();
+        }
+        threadComm.barrier();
 
         int iOffset;
-        double[] tmpRHSRow;
 
-        for(int i = 0; i < numPoints; ++i) {
-            iOffset = i*targetDimension;
+        for (int i = 0; i < numPoints; ++i) {
+            iOffset = i * targetDimension;
             for (int j = 0; j < targetDimension; ++j) {
-                BC[iOffset+j] -= MMr[iOffset+j];
-                MMr[iOffset+j] = BC[iOffset+j];
+                BC[iOffset + j] -= MMr[iOffset + j];
+                MMr[iOffset + j] = BC[iOffset + j];
             }
         }
 
@@ -526,28 +551,30 @@ public class ProgramWorker {
         double testEnd = rTr * cgThreshold;
 
         cgTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
-        while(cgCount < cgIter){
+        while (cgCount < cgIter) {
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
 
             //calculate alpha
             zeroOutArray(threadPartialMM);
             cgLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
-            calculateMM(BC, targetDimension, numPoints, weights, blockSize,
-                v, MMAp, threadPartialMM);
-            ParallelOps.worldProcsComm.barrier();
+            calculateMM(BC, targetDimension, numPoints, weights, blockSize, v,
+                MMAp, threadPartialMM);
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
+            if (threadId == 0) {
+                ParallelOps.worldProcsComm.barrier();
+            }
+            threadComm.barrier();
 
             cgLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
-            double alpha = rTr
-                           /innerProductCalculation(BC, MMAp);
+            double alpha = rTr / innerProductCalculation(BC, MMAp);
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
 
             //update Xi to Xi+1
-            for(int i = 0; i < numPoints; ++i) {
-                iOffset = i*targetDimension;
+            for (int i = 0; i < numPoints; ++i) {
+                iOffset = i * targetDimension;
                 for (int j = 0; j < targetDimension; ++j) {
-                    preX[iOffset+j] += alpha * BC[iOffset+j];
+                    preX[iOffset + j] += alpha * BC[iOffset + j];
                 }
             }
 
@@ -556,10 +583,10 @@ public class ProgramWorker {
             }
 
             //update ri to ri+1
-            for(int i = 0; i < numPoints; ++i) {
-                iOffset = i*targetDimension;
+            for (int i = 0; i < numPoints; ++i) {
+                iOffset = i * targetDimension;
                 for (int j = 0; j < targetDimension; ++j) {
-                    MMr[iOffset+j] -= alpha * MMAp[iOffset+j];
+                    MMr[iOffset + j] -= alpha * MMAp[iOffset + j];
                 }
             }
 
@@ -567,90 +594,79 @@ public class ProgramWorker {
             cgLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double rTr1 = innerProductCalculation(MMr);
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
-            double beta = rTr1/rTr;
+            double beta = rTr1 / rTr;
             rTr = rTr1;
 
             //update pi to pi+1
-            for(int i = 0; i < numPoints; ++i) {
-                iOffset = i*targetDimension;
+            for (int i = 0; i < numPoints; ++i) {
+                iOffset = i * targetDimension;
                 for (int j = 0; j < targetDimension; ++j) {
-                    BC[iOffset+j] = MMr[iOffset+j] + beta * BC[iOffset+j];
+                    BC[iOffset + j] = MMr[iOffset + j] + beta * BC[iOffset + j];
                 }
             }
 
         }
         cgTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
-    }*/
-
-    private static void calculateMM(
-        double[] x, int targetDimension, int numPoints, WeightsWrap1D weights,
-        int blockSize, double[][] vArray, double[] outMM,
-        double[][] internalPartialMM) throws MPIException {
-
-        if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> {
-                        mmTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadIdx);
-                        calculateMMInternal(threadIdx, x, targetDimension,
-                            numPoints, weights, blockSize,
-                            vArray,
-                            internalPartialMM[threadIdx]);
-                        mmTimings.endTiming(
-                            MMTimings.TimingTask.MM_INTERNAL, threadIdx);
-                    }));
-        }
-        else {
-            mmTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
-            calculateMMInternal(0, x, targetDimension, numPoints, weights,
-                blockSize, vArray, internalPartialMM[0]);
-            mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
-        }
-
-        if (ParallelOps.worldProcsCount > 1) {
-            mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
-            mergePartials(internalPartialMM, ParallelOps.mmapXWriteBytes);
-            mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
-
-            // Important barrier here - as we need to make sure writes are done to the mmap file
-            // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
-            // if we wait on the whole world
-            ParallelOps.worldProcsComm.barrier();
-
-            if (ParallelOps.isMmapLead) {
-                mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
-                ParallelOps.partialXAllGather();
-                mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
-            }
-            // Each process in a memory group waits here.
-            // It's not necessary to wait for a process
-            // in another memory map group, hence the use of mmapProcComm.
-            // However it's cleaner for any timings to have everyone sync here,
-            // so will use worldProcsComm instead.
-            ParallelOps.worldProcsComm.barrier();
-            mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
-            extractPoints(ParallelOps.fullXBytes,
-                ParallelOps.globalColCount,
-                targetDimension, outMM);
-            mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
-        } else {
-            mergePartials(internalPartialMM, outMM);
-        }
     }
 
-    private static void calculateMMInternal(
-        Integer threadIdx, double[] x, int targetDimension, int numPoints,
-        WeightsWrap1D weights, int blockSize, double[][] vArray, double[] outMM) {
+    private void calculateMM(
+        double[] x, int targetDimension, int numPoints, WeightsWrap1D weights,
+        int blockSize, double[] v, double[] outMM,
+        double[] internalPartialMM)
+        throws MPIException, BrokenBarrierException, InterruptedException {
 
-        MatrixUtils
-            .matrixMultiplyWithThreadOffset(weights, vArray[threadIdx], x,
-                ParallelOps.threadRowCounts[threadIdx], targetDimension,
-                numPoints, blockSize,
-                ParallelOps.threadRowStartOffsets[threadIdx],
-                ParallelOps.threadRowStartOffsets[threadIdx]
-                + ParallelOps.procRowStartOffset, outMM);
+        mmTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadId);
+        calculateMMInternal(x, targetDimension, numPoints, weights,
+            blockSize, v, internalPartialMM);
+        mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, threadId);
+
+        mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
+        threadComm
+            .collect(threadLocalRowRange.getStartIndex(), internalPartialMM,
+                ParallelOps.mmapXWriteBytes);
+        threadComm.barrier();
+        mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
+
+        if (ParallelOps.worldProcsCount > 1) {
+           if (threadId == 0) {
+               // Important barrier here - as we need to make sure writes are done to the mmap file
+
+               // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
+               // if we wait on the whole world
+               ParallelOps.worldProcsComm.barrier();
+
+               if (ParallelOps.isMmapLead) {
+                   mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
+                   ParallelOps.partialXAllGather();
+                   mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
+               }
+               // Each process in a memory group waits here.
+               // It's not necessary to wait for a process
+               // in another memory map group, hence the use of mmapProcComm.
+               // However it's cleaner for any timings to have everyone sync
+               // here,
+               // so will use worldProcsComm instead.
+               ParallelOps.worldProcsComm.barrier();
+           }
+            threadComm.barrier();
+
+        }
+        mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+        threadComm.copy(ParallelOps.worldProcsCount > 1
+                ? ParallelOps.fullXBytes
+                : ParallelOps.mmapXWriteBytes, outMM,
+            ParallelOps.globalColCount * targetDimension);
+        mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+    }
+
+    private void calculateMMInternal(
+        double[] x, int targetDimension, int numPoints,
+        WeightsWrap1D weights, int blockSize, double[] v, double[] outMM) {
+
+        MatrixUtils.matrixMultiplyWithThreadOffset(weights, v, x,
+            globalThreadRowRange.getLength(), targetDimension, numPoints,
+            blockSize, 0, globalThreadRowRange.getStartIndex(), outMM);
     }
 
 
