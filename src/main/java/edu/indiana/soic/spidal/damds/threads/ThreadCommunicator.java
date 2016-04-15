@@ -150,21 +150,37 @@ public class ThreadCommunicator {
                         .worldProcRank + " tid=" + threadId);
             }
 
-
             if (ParallelOps.worldProcRank == 1 && threadId == 1) {
                 if (pos == ((8013 - 5000)*3+2)*Double.BYTES){
                     System.out.println("************* val=" + val[i] + " " +
                             "buffer=" + bytes.readDouble(pos));
                 }
             }
+
+            if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+                if (pos == ((8013 - 5000)*3+2)*Double.BYTES) {
+                    System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
+
+                            "Tid=" +
+                            "" + threadId + " inCollect startIdx=" +
+                            startIndex +
+                            " mmapXWriteBytes[8013][2]=" + bytes.readDouble((
+                            (8013 -
+                            5000) * 3 + 2))
+                            * Double.BYTES + " val[8013][2]=" + val[(8013 - 7500) * 3 + 2]);
+                }
+            }
+
             pos+=Double.BYTES;
         }
 
-        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+
+
+       /* if (ParallelOps.worldProcRank == 1 && threadId == 1) {
             System.out.println("######## startIdx=" +startIndex + " val" +
                     ".length=" + val.length + " last pos=" + (pos-Double
                     .BYTES));
-        }
+        }*/
 
         /*if (ParallelOps.worldProcRank == 0 && threadId == 1) {
             System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
@@ -184,13 +200,6 @@ public class ThreadCommunicator {
                     *Double.BYTES + " val[7200][2]=" + val[(7200-5000)*3+2]);
         }*/
 
-        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-            System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
-                    "Tid=" +
-                    "" + threadId + " inCollect startIdx=" + startIndex +
-                    " mmapXWriteBytes[8013][2]=" + bytes.readDouble(((8013 -
-                    5000) * 3 + 2))
-                    *Double.BYTES + " val[8013][2]=" + val[(8013-7500)*3+2]);
-        }
+
     }
 }
