@@ -149,26 +149,27 @@ public class ThreadCommunicator {
             System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
                     "Tid=" +
                     "" + threadId + " inCollect startIdx=" + startIndex +
-                    " mmapXWriteBytes[2600][1]: " + ParallelOps
-                    .mmapXWriteBytes.readDouble((2600 * 3 + 1)*Double.BYTES));
+                    " mmapXWriteBytes[2600][1]=" + ParallelOps
+                    .mmapXWriteBytes.readDouble((2600 * 3 + 1)*Double.BYTES)
+                    + " val[2600][1]=" + val[(2600-2500)*3+1]);
         }
 
         if (ParallelOps.worldProcRank == 1 && threadId == 0) {
-            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
-                    "Tid: " +
+            System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
+                    "Tid=" +
                     "" + threadId + " inCollect startIdx=" + startIndex +
-                    " mmapXWriteBytes[7200][2]: " + ParallelOps
+                    " mmapXWriteBytes[7200][2]=" + ParallelOps
                     .mmapXWriteBytes.readDouble(((7200 - 5000) * 3 + 2))
-                    *Double.BYTES);
+                    *Double.BYTES + " val[7200][2]=" + val[(7200-5000)*3+2]);
         }
 
         if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
-                    "Tid: " +
+            System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
+                    "Tid=" +
                     "" + threadId + " inCollect startIdx=" + startIndex +
-                    " mmapXWriteBytes[8013][2]: " + ParallelOps
+                    " mmapXWriteBytes[8013][2]=" + ParallelOps
                     .mmapXWriteBytes.readDouble(((8013 - 5000) * 3 + 2))
-                    *Double.BYTES);
+                    *Double.BYTES + " val[8013][2]=" + val[(8013-7500)*3+2]);
         }
     }
 }
