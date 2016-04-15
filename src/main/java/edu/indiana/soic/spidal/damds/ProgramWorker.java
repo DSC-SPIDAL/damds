@@ -58,7 +58,8 @@ public class ProgramWorker {
     private int BlockSize;
 
     private int threadId;
-    private Range threadRowRangeGlobal;
+    private Range globalThreadRowRange;
+    private Range threadLocalRowRange;
 
     final private RefObj<Integer> refInt = new RefObj<>();
     final private RefObj<Double> refDouble = new RefObj<>();
@@ -66,6 +67,16 @@ public class ProgramWorker {
     private ThreadCommunicator threadComm;
     private Utils utils;
     private Stopwatch mainTimer;
+    
+    private BCInternalTimings bcInternalTimings;
+    private BCTimings bcTimings;
+    private CGLoopTimings cgLoopTimings;
+    private CGTimings cgTimings;
+    private MMTimings mmTimings;
+    private StressInternalTimings stressInternalTimings;
+    private StressLoopTimings stressLoopTimings;
+    private StressTimings stressTimings;
+    private TemperatureLoopTimings temperatureLoopTimings;
 
     public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection config, ByteOrder byteOrder, int blockSize, Stopwatch mainTimer){
         this.threadId = threadId;
@@ -75,13 +86,28 @@ public class ProgramWorker {
         this.BlockSize = blockSize;
         this.mainTimer = mainTimer;
         utils = new Utils(threadId);
+        
+        bcInternalTimings = new BCInternalTimings();
+        bcTimings = new BCTimings();
+        cgLoopTimings = new CGLoopTimings();
+        cgTimings = new CGTimings();
+        mmTimings = new MMTimings();
+        stressInternalTimings = new StressInternalTimings();
+        stressLoopTimings = new StressLoopTimings();
+        stressTimings = new StressTimings();
+        temperatureLoopTimings = new TemperatureLoopTimings();
     }
 
     public void setup() {
         final int threadRowCount = ParallelOps.threadRowCounts[threadId];
-        final int startIdx = ParallelOps.procRowStartOffset + ParallelOps.threadRowStartOffsets[threadId];
-        threadRowRangeGlobal = new Range(
-            startIdx, startIdx+threadRowCount-1);
+        final int threadLocalRowStartOffset =
+            ParallelOps.threadRowStartOffsets[threadId];
+        final int globalThreadRowStartOffset = ParallelOps.procRowStartOffset + threadLocalRowStartOffset;
+        globalThreadRowRange = new Range(
+            globalThreadRowStartOffset, globalThreadRowStartOffset+threadRowCount-1);
+        threadLocalRowRange = new Range(
+            threadLocalRowStartOffset, (
+            threadLocalRowStartOffset + threadRowCount - 1));
     }
     public void  run() {
         try {
@@ -147,12 +173,12 @@ public class ProgramWorker {
             int smacofRealIterations = 0;
             while (true) {
 
-                TemperatureLoopTimings.startTiming(
+                temperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
                 preStress = calculateStress(
                     preX, config.targetDimension, tCur, distances, weights,
-                    INV_SUM_OF_SQUARE, partialSigma);
-                TemperatureLoopTimings.endTiming(
+                    INV_SUM_OF_SQUARE);
+                temperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
                 diffStress = config.threshold + 1.0;
@@ -164,25 +190,29 @@ public class ProgramWorker {
 
                 int itrNum = 0;
                 cgCount.setValue(0);
-                TemperatureLoopTimings.startTiming(
+                temperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
 
                     zeroOutArray(threadPartialMM);
-                    StressLoopTimings.startTiming(
+                    stressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
                         preX, config.targetDimension, tCur, distances,
                         weights, BlockSize, BC, threadPartialBofZ,
                         threadPartialMM);
-                    StressLoopTimings.endTiming(
+                    stressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
-                    // This barrier was necessary for correctness when using
-                    // a single mmap file
-                    ParallelOps.worldProcsComm.barrier();
+
+                    if (threadId == 0) {
+                        // This barrier was necessary for correctness when using
+                        // a single mmap file
+                        ParallelOps.worldProcsComm.barrier();
+                    }
+                    threadComm.barrier();
 
 
-                    StressLoopTimings.startTiming(
+                    stressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
                     calculateConjugateGradient(preX, config.targetDimension,
                         config.numberDataPoints,
@@ -191,16 +221,16 @@ public class ProgramWorker {
                         config.cgErrorThreshold, cgCount,
                         outRealCGIterations, weights,
                         BlockSize, v, MMr, MMAp, threadPartialMM);
-                    StressLoopTimings.endTiming(
+                    stressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.CG);
 
 
-                    StressLoopTimings.startTiming(
+                    stressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
                         preX, config.targetDimension, tCur, distances, weights,
                         INV_SUM_OF_SQUARE, partialSigma);
-                    StressLoopTimings.endTiming(
+                    stressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.STRESS);
 
 
@@ -219,7 +249,7 @@ public class ProgramWorker {
                     ++itrNum;
                     ++smacofRealIterations;
                 }
-                TemperatureLoopTimings.endTiming(
+                temperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
 
                 --itrNum;
@@ -316,11 +346,11 @@ public class ProgramWorker {
     }
 
     private static void initializeTimers() {
-        StressTimings.init(ParallelOps.threadCount);
-        StressInternalTimings.init(ParallelOps.threadCount);
-        BCInternalTimings.init(ParallelOps.threadCount);
-        BCTimings.init(ParallelOps.threadCount);
-        MMTimings.init(ParallelOps.threadCount);
+        stressTimings.init(ParallelOps.threadCount);
+        stressInternalTimings.init(ParallelOps.threadCount);
+        bcInternalTimings.init(ParallelOps.threadCount);
+        bcTimings.init(ParallelOps.threadCount);
+        mmTimings.init(ParallelOps.threadCount);
     }
 
     private void readInitMapping(
@@ -468,11 +498,11 @@ public class ProgramWorker {
 
 
         zeroOutArray(threadPartialMM);
-        CGTimings.startTiming(CGTimings.TimingTask.MM);
+        cgTimings.startTiming(CGTimings.TimingTask.MM);
         calculateMM(preX, targetDimension, numPoints, weights, blockSize,
             v, MMr, threadPartialMM);
 
-        CGTimings.endTiming(CGTimings.TimingTask.MM);
+        cgTimings.endTiming(CGTimings.TimingTask.MM);
         // This barrier was necessary for correctness when using
         // a single mmap file
         ParallelOps.worldProcsComm.barrier();
@@ -489,29 +519,29 @@ public class ProgramWorker {
         }
 
         int cgCount = 0;
-        CGTimings.startTiming(CGTimings.TimingTask.INNER_PROD);
+        cgTimings.startTiming(CGTimings.TimingTask.INNER_PROD);
         double rTr = innerProductCalculation(MMr);
-        CGTimings.endTiming(CGTimings.TimingTask.INNER_PROD);
+        cgTimings.endTiming(CGTimings.TimingTask.INNER_PROD);
         // Adding relative value test for termination as suggested by Dr. Fox.
         double testEnd = rTr * cgThreshold;
 
-        CGTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
+        cgTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
         while(cgCount < cgIter){
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
 
             //calculate alpha
             zeroOutArray(threadPartialMM);
-            CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
+            cgLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             calculateMM(BC, targetDimension, numPoints, weights, blockSize,
                 v, MMAp, threadPartialMM);
             ParallelOps.worldProcsComm.barrier();
-            CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
+            cgLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
 
-            CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
+            cgLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr
                            /innerProductCalculation(BC, MMAp);
-            CGLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
+            cgLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
 
             //update Xi to Xi+1
             for(int i = 0; i < numPoints; ++i) {
@@ -534,9 +564,9 @@ public class ProgramWorker {
             }
 
             //calculate beta
-            CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
+            cgLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double rTr1 = innerProductCalculation(MMr);
-            CGLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
+            cgLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double beta = rTr1/rTr;
             rTr = rTr1;
 
@@ -549,7 +579,7 @@ public class ProgramWorker {
             }
 
         }
-        CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
+        cgTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
     }*/
 
@@ -563,26 +593,26 @@ public class ProgramWorker {
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
-                        MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadIdx);
+                        mmTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadIdx);
                         calculateMMInternal(threadIdx, x, targetDimension,
                             numPoints, weights, blockSize,
                             vArray,
                             internalPartialMM[threadIdx]);
-                        MMTimings.endTiming(
+                        mmTimings.endTiming(
                             MMTimings.TimingTask.MM_INTERNAL, threadIdx);
                     }));
         }
         else {
-            MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
+            mmTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
             calculateMMInternal(0, x, targetDimension, numPoints, weights,
                 blockSize, vArray, internalPartialMM[0]);
-            MMTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
+            mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
         }
 
         if (ParallelOps.worldProcsCount > 1) {
-            MMTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
+            mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
             mergePartials(internalPartialMM, ParallelOps.mmapXWriteBytes);
-            MMTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
+            mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
 
             // Important barrier here - as we need to make sure writes are done to the mmap file
             // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
@@ -590,9 +620,9 @@ public class ProgramWorker {
             ParallelOps.worldProcsComm.barrier();
 
             if (ParallelOps.isMmapLead) {
-                MMTimings.startTiming(MMTimings.TimingTask.COMM, 0);
+                mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                 ParallelOps.partialXAllGather();
-                MMTimings.endTiming(MMTimings.TimingTask.COMM, 0);
+                mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
             }
             // Each process in a memory group waits here.
             // It's not necessary to wait for a process
@@ -600,11 +630,11 @@ public class ProgramWorker {
             // However it's cleaner for any timings to have everyone sync here,
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
-            MMTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+            mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
             extractPoints(ParallelOps.fullXBytes,
                 ParallelOps.globalColCount,
                 targetDimension, outMM);
-            MMTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+            mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
         } else {
             mergePartials(internalPartialMM, outMM);
         }
@@ -644,89 +674,85 @@ public class ProgramWorker {
         return sum;
     }
 
-    /*private static void calculateBC(
+    private void calculateBC(
         double[] preX, int targetDimension, double tCur, short[] distances,
         WeightsWrap1D weights, int blockSize, double[] BC,
-        double[][][] threadPartialBCInternalBofZ,
-        double[][] threadPartialBCInternalMM)
-        throws MPIException, InterruptedException {
+        double[][] threadPartialBCInternalBofZ,
+        double[] threadPartialBCInternalMM)
+        throws MPIException, InterruptedException, BrokenBarrierException {
 
-        if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> {
-                        BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
-                        calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
-                        BCTimings.endTiming(
-                            BCTimings.TimingTask.BC_INTERNAL, threadIdx);
-                    }));
-        }
-        else {
-            BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
-            calculateBCInternal(
-                0, preX, targetDimension, tCur, distances, weights, blockSize,
-                threadPartialBCInternalBofZ[0], threadPartialBCInternalMM[0]);
-            BCTimings.endTiming(
-                BCTimings.TimingTask.BC_INTERNAL, 0);
-        }
+        bcTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL);
+        calculateBCInternal(
+            preX, targetDimension, tCur, distances, weights, blockSize,
+            threadPartialBCInternalBofZ, threadPartialBCInternalMM);
+        bcTimings.endTiming(
+            BCTimings.TimingTask.BC_INTERNAL, 0);
+
+        bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
+        threadComm.collect(threadLocalRowRange.getStartIndex(), threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);
+        bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
+        threadComm.barrier();
 
         if (ParallelOps.worldProcsCount > 1) {
-            BCTimings.startTiming(BCTimings.TimingTask.BC_MERGE, 0);
-            mergePartials(threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);
-            BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
+            if (threadId == 0) {
+                // Important barrier here - as we need to make sure writes
+                // are done to the mmap file
 
-            // Important barrier here - as we need to make sure writes are done to the mmap file
-            // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
-            // if we wait on the whole world
-            ParallelOps.worldProcsComm.barrier();
+                // it's sufficient to wait on ParallelOps.mmapProcComm, but
+                // it's cleaner for timings
+                // if we wait on the whole world
+                ParallelOps.worldProcsComm.barrier();
 
-            if (ParallelOps.isMmapLead) {
-                BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
-                ParallelOps.partialXAllGather();
-                BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+                if (ParallelOps.isMmapLead) {
+                    bcTimings.startTiming(BCTimings.TimingTask.COMM);
+                    ParallelOps.partialXAllGather();
+                    bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+                }
+                // Each process in a memory group waits here.
+                // It's not necessary to wait for a process
+                // in another memory map group, hence the use of
+                // mmapProcComm.
+                // However it's cleaner for any timings to have everyone sync
+                // here, so will use worldProcsComm instead.
+                ParallelOps.worldProcsComm.barrier();
             }
-            // Each process in a memory group waits here.
-            // It's not necessary to wait for a process
-            // in another memory map group, hence the use of mmapProcComm.
-            // However it's cleaner for any timings to have everyone sync here,
-            // so will use worldProcsComm instead.
-            ParallelOps.worldProcsComm.barrier();
-
-            BCTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
-            extractPoints(ParallelOps.fullXBytes,
-                ParallelOps.globalColCount,
-                targetDimension, BC);
-            BCTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
-        } else {
-            mergePartials(threadPartialBCInternalMM, BC);
+            threadComm.barrier();
+            bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
+            threadComm.copy(ParallelOps.fullXBytes, BC,
+                ParallelOps.globalColCount* targetDimension);
+            threadComm.barrier();
+            bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
         }
-    }*/
+        else {
+            bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
+            threadComm.copy(ParallelOps.mmapXWriteBytes, BC, ParallelOps.globalColCount*targetDimension);
+            threadComm.barrier();
+            bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
+        }
+    }
 
-    /*private static void calculateBCInternal(
-        Integer threadIdx, double[] preX, int targetDimension, double tCur,
-        short[] distances, WeightsWrap1D weights, int blockSize,
-        double[][] internalBofZ, double[] outMM) {
+    private void calculateBCInternal(
+        double[] preX, int targetDimension, double tCur, short[] distances,
+        WeightsWrap1D weights, int blockSize, double[][] internalBofZ, double[] outMM) {
 
-        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
-        calculateBofZ(threadIdx, preX, targetDimension, tCur,
+        bcInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ);
+        calculateBofZ(preX, targetDimension, tCur,
             distances, weights, internalBofZ);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        bcInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ);
 
         // Next we can calculate the BofZ * preX.
-        BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        bcInternalTimings.startTiming(BCInternalTimings.TimingTask.MM);
         MatrixUtils.matrixMultiply(internalBofZ, preX,
-            ParallelOps.threadRowCounts[threadIdx], targetDimension,
+            globalThreadRowRange.getLength(), targetDimension,
             ParallelOps.globalColCount, blockSize, outMM);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-    }*/
+        bcInternalTimings.endTiming(BCInternalTimings.TimingTask.MM);
+    }
 
-    /*private static void calculateBofZ(
-        int threadIdx, double[] preX, int targetDimension, double tCur, short[] distances, WeightsWrap1D weights,
+    private void calculateBofZ(
+        double[] preX, int targetDimension, double tCur, short[] distances, WeightsWrap1D weights,
         double[][] outBofZ) {
 
-        int threadRowCount = ParallelOps.threadRowCounts[threadIdx];
+        int threadRowCount = globalThreadRowRange.getLength();
 
         double vBlockValue = -1;
 
@@ -735,37 +761,32 @@ public class ProgramWorker {
             diff = Math.sqrt(2.0 * targetDimension)  * tCur;
         }
 
-        short[] distancesProcLocalRow;
         double[] outBofZLocalRow;
-        double[] preXGlobalRow;
         double origD, weight, dist;
 
         final int globalColCount = ParallelOps.globalColCount;
-        final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
-                                    + ParallelOps.procRowStartOffset;
-        int globalRow, procLocalRow;
-        for (int localRow = 0; localRow < threadRowCount; ++localRow) {
-            globalRow = localRow + globalRowOffset;
-            procLocalRow = globalRow - ParallelOps.procRowStartOffset;
-            outBofZLocalRow = outBofZ[localRow];
+        final int globalRowOffset = globalThreadRowRange.getStartIndex();
+        int globalRow;
+        for (int threadLocalRow = 0; threadLocalRow < threadRowCount; ++threadLocalRow) {
+            globalRow = threadLocalRow + globalRowOffset;
+            outBofZLocalRow = outBofZ[threadLocalRow];
             outBofZLocalRow[globalRow] = 0;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount; globalCol++) {
-				*//*
-				 * B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
+				 /* B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
 				 * otherwise v_ij = - w_ij.
 				 *
 				 * Therefore, B_ij = v_ij * delta_ij / d_ij(Z). 0 (if d_ij(Z) >=
 				 * small threshold) --> the actual meaning is (if d_ij(Z) == 0)
 				 * BofZ[i][j] = V[i][j] * deltaMat[i][j] / CalculateDistance(ref
-				 * preX, i, j);
-				 *//*
+				 * preX, i, j);*/
+
                 // this is for the i!=j case. For i==j case will be calculated
                 // separately (see above).
                 if (globalRow == globalCol) continue;
 
 
-                origD = distances[procLocalRow*globalColCount+globalCol] * INV_SHORT_MAX;
-                weight = weights.getWeight(procLocalRow,globalCol);
+                origD = distances[threadLocalRow*globalColCount+globalCol] * INV_SHORT_MAX;
+                weight = weights.getWeight(threadLocalRow,globalCol);
 
                 if (origD < 0 || weight == 0) {
                     continue;
@@ -777,11 +798,10 @@ public class ProgramWorker {
                 } else {
                     outBofZLocalRow[globalCol] = 0;
                 }
-
                 outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
             }
         }
-    }*/
+    }
 
     private static void extractPoints(
         Bytes bytes, int numPoints, int dimension, double[] to) {
@@ -846,9 +866,9 @@ public class ProgramWorker {
                 ParallelOps.mmapSWriteBytes.writeDouble(stress);
 
                 // Leaders participate in MPI AllReduce
-                StressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
+                stressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
                 ParallelOps.partialSAllReduce(MPI.SUM);
-                StressTimings.endTiming(StressTimings.TimingTask.COMM, 0);
+                stressTimings.endTiming(StressTimings.TimingTask.COMM, 0);
             }
 
             // Each process in a memory group waits here.
@@ -870,15 +890,15 @@ public class ProgramWorker {
     private double calculateStressInternal(
         int threadIdx, double[] preX, int targetDim, double tCur, short[] distances, WeightsWrap1D weights) {
 
-        StressInternalTimings.startTiming(StressInternalTimings.TimingTask.COMP, threadIdx);
+        stressInternalTimings.startTiming(StressInternalTimings.TimingTask.COMP, threadIdx);
         double sigma = 0.0;
         double diff = 0.0;
         if (tCur > 10E-10) {
             diff = Math.sqrt(2.0 * targetDim) * tCur;
         }
 
-        int threadRowCount = threadRowRangeGlobal.getLength();
-        final int globalRowOffset = threadRowRangeGlobal.getStartIndex();
+        int threadRowCount = globalThreadRowRange.getLength();
+        final int globalRowOffset = globalThreadRowRange.getStartIndex();
 
         int globalColCount = ParallelOps.globalColCount;
         int globalRow;
@@ -903,7 +923,7 @@ public class ProgramWorker {
                 sigma += weight * tmpD * tmpD;
             }
         }
-        StressInternalTimings.endTiming(StressInternalTimings.TimingTask.COMP, threadIdx);
+        stressInternalTimings.endTiming(StressInternalTimings.TimingTask.COMP, threadIdx);
         return sigma;
     }
 
@@ -927,7 +947,7 @@ public class ProgramWorker {
         return dist;
     }*/
 
-    public static double calculateEuclideanDist(double[] v, int i, int j, int d){
+    public double calculateEuclideanDist(double[] v, int i, int j, int d){
         double t = 0.0; double e;
         i = d*i; j=d*j;
         for (int k = 0; k < d; ++k){
@@ -1011,15 +1031,15 @@ public class ProgramWorker {
         }
 
 
-        int elementCount = threadRowRangeGlobal.getLength() * ParallelOps.globalColCount;
+        int elementCount = globalThreadRowRange.getLength() * ParallelOps.globalColCount;
         distances = new short[elementCount];
         if (config.repetitions == 1){
             BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                threadRowRangeGlobal, ParallelOps.globalColCount, byteOrder,
+                globalThreadRowRange, ParallelOps.globalColCount, byteOrder,
                 true, function, distances);
         }else{
             BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                threadRowRangeGlobal, ParallelOps.globalColCount, byteOrder,
+                globalThreadRowRange, ParallelOps.globalColCount, byteOrder,
                 true, function, config.repetitions, distances);
         }
 
@@ -1032,12 +1052,12 @@ public class ProgramWorker {
                 w = new short[elementCount];
                 if (config.repetitions == 1) {
                     BinaryReader1D.readRowRange(config.weightMatrixFile,
-                        threadRowRangeGlobal, ParallelOps.globalColCount,
+                        globalThreadRowRange, ParallelOps.globalColCount,
                         byteOrder, true, function, w);
                 }
                 else {
                     BinaryReader1D.readRowRange(config.weightMatrixFile,
-                        threadRowRangeGlobal, ParallelOps.globalColCount,
+                        globalThreadRowRange, ParallelOps.globalColCount,
                         byteOrder, true, function, config.repetitions, w);
                 }
                 weights = new WeightsWrap1D(
@@ -1045,7 +1065,7 @@ public class ProgramWorker {
             } else {
                 double[] sw = null;
                 sw = BinaryReader2D.readSimpleFile(config.weightMatrixFile, config.numberDataPoints);
-                weights = new WeightsWrap1D(sw, threadRowRangeGlobal, distances, isSammon, ParallelOps.globalColCount, function);
+                weights = new WeightsWrap1D(sw, globalThreadRowRange, distances, isSammon, ParallelOps.globalColCount, function);
             }
         } else {
             weights = new WeightsWrap1D(

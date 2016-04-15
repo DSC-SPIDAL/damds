@@ -29,7 +29,7 @@ public class BCTimings {
     private long countBCMerge;
     private long countBCExtract;
 
-    public void startTiming(TimingTask task, int threadIdx){
+    public void startTiming(TimingTask task){
         switch (task){
             case BC_INTERNAL:
                 timerBCInternal.start();

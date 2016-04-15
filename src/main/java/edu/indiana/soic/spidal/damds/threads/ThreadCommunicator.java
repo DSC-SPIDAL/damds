@@ -2,6 +2,7 @@ package edu.indiana.soic.spidal.damds.threads;
 
 import edu.indiana.soic.spidal.common.DoubleStatistics;
 import edu.indiana.soic.spidal.common.RefObj;
+import net.openhft.lang.io.Bytes;
 
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
@@ -118,5 +119,21 @@ public class ThreadCommunicator {
         }
         barrier.await();
         System.arraycopy(pointsBuffer, 0, preX, 0, pointsBuffer.length);
+    }
+
+    public synchronized void collect(
+        int startIndex, double[] val, Bytes bytes) {
+        bytes.position(startIndex);
+        for (double aVal : val) {
+            bytes.writeDouble(aVal);
+        }
+    }
+
+    public synchronized void copy(Bytes from, double[] to, int count) {
+        from.position(0);
+        for (int i = 0; i < count; ++i){
+            to[i] = from.readDouble();
+        }
+
     }
 }
