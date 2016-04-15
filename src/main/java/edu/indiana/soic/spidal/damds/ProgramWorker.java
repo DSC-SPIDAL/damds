@@ -537,7 +537,7 @@ public class ProgramWorker {
         threadComm.barrier();
 
         // TODO - debugs
-         System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
+        //System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
 
         int iOffset;
 
