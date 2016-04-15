@@ -124,9 +124,11 @@ public class ThreadCommunicator {
 
     public synchronized void collect(
         int startIndex, double[] val, Bytes bytes) {
-        bytes.position(startIndex);
+        int pos = startIndex;
         for (double aVal : val) {
+            bytes.position(pos);
             bytes.writeDouble(aVal);
+            pos+=Double.BYTES;
         }
     }
 
