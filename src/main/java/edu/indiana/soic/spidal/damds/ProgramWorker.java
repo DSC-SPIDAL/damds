@@ -798,7 +798,7 @@ public class ProgramWorker {
                 BCTimings.TimingTask.BC_INTERNAL, 0);
 
         // TODO - debugs
-        if (ParallelOps.worldProcRank == 0 && threadId == 1) {
+        /*if (ParallelOps.worldProcRank == 0 && threadId == 1) {
             System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
                     "" + threadId + " inBC after BCInternal " +
                     " threadPartialBCInternalMM[2600][1]: " + threadPartialBCInternalMM[(2600
@@ -810,7 +810,7 @@ public class ProgramWorker {
                     "" + threadId + " inBC after BCInternal " +
                     " threadPartialBCInternalMM[7200][2]: " + threadPartialBCInternalMM[(7200
                     - 5000) * 3 + 2]);
-        }
+        }*/
 
         if (ParallelOps.worldProcRank == 1 && threadId == 1) {
             System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
