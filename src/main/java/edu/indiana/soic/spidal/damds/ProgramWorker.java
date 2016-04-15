@@ -959,7 +959,7 @@ public class ProgramWorker {
         }
         threadComm.barrier();
         extractPoints(fullBytes, numPoints, targetDim, preX);
-        if (ParallelOps.worldProcRank != 0 && threadId != 0){
+        if (ParallelOps.worldProcRank != 0 || threadId != 0){
             System.out.println("Rank: " + ParallelOps.worldProcRank + "tid: " + threadId + " preX[2600*3]=" + preX[2600*3]);
         }
     }
