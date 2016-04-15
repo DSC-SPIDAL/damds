@@ -144,6 +144,13 @@ public class ThreadCommunicator {
         for (int i =0; i < val.length; ++i) {
             bytes.position(pos);
             bytes.writeDouble(val[i]);
+
+            if (pos == ((8013 - 5000)*3+2)*Double.BYTES){
+                System.out.println("@@@@ CAME HERE Rank=" + ParallelOps
+                        .worldProcRank + " tid=" + threadId);
+            }
+
+
             if (ParallelOps.worldProcRank == 1 && threadId == 1) {
                 if (pos == ((8013 - 5000)*3+2)*Double.BYTES){
                     System.out.println("************* val=" + val[i] + " " +
