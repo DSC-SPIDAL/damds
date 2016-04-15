@@ -164,13 +164,15 @@ public class ThreadCommunicator {
 
             if (ParallelOps.worldProcRank == 1 && threadId == 1) {
                 if (pos == magicIdx) {
-                    System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
+                    System.out.println("************* val=" + val[i] + " " +
+                            "buffer=" + bytes.readDouble(pos));
+                    /*System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
 
                             "Tid=" +
                             "" + threadId + " inCollect startIdx=" +
                             startIndex +
                             " mmapXWriteBytes[8013][2]=" + bytes.readDouble(pos)
-                            * Double.BYTES + " val[8013][2]=" + val[(8013 - 7500) * 3 + 2]);
+                            * Double.BYTES + " val[8013][2]=" + val[(8013 - 7500) * 3 + 2]);*/
                 }
             }
 
