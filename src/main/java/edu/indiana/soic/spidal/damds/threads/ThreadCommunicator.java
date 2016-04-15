@@ -164,9 +164,7 @@ public class ThreadCommunicator {
                             "Tid=" +
                             "" + threadId + " inCollect startIdx=" +
                             startIndex +
-                            " mmapXWriteBytes[8013][2]=" + bytes.readDouble((
-                            (8013 -
-                            5000) * 3 + 2))
+                            " mmapXWriteBytes[8013][2]=" + bytes.readDouble(pos)
                             * Double.BYTES + " val[8013][2]=" + val[(8013 - 7500) * 3 + 2]);
                 }
             }
