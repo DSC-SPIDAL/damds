@@ -124,12 +124,13 @@ public class ProgramLRT {
                 config.numberDataPoints, config.targetDimension);
             initializeTimers();
 
-            utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
-            utils.printMessage(config.toString(false));
 
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
             Stopwatch mainTimer = Stopwatch.createStarted();
+
+            utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
+            utils.printMessage(config.toString(false));
 
             /* TODO - Fork - join starts here */
 
@@ -138,11 +139,11 @@ public class ProgramLRT {
                     () -> forallChunked(
                         0, ParallelOps.threadCount - 1,
                         (threadIdx) -> {
-                            new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize).run();
+                            new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
                         }));
             }
             else {
-                new ProgramWorker(0, ParallelOps.threadComm, config, byteOrder, BlockSize).run();
+                new ProgramWorker(0, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
             }
 
 

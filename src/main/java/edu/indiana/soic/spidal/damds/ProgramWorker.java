@@ -1,6 +1,7 @@
 package edu.indiana.soic.spidal.damds;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
@@ -23,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import static edu.rice.hj.Module0.launchHabaneroApp;
@@ -63,13 +65,15 @@ public class ProgramWorker {
 
     private ThreadCommunicator threadComm;
     private Utils utils;
+    private Stopwatch mainTimer;
 
-    public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection config, ByteOrder byteOrder, int blockSize){
+    public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection config, ByteOrder byteOrder, int blockSize, Stopwatch mainTimer){
         this.threadId = threadId;
         this.threadComm = comm;
         this.config = config;
         this.byteOrder = byteOrder;
         this.BlockSize = blockSize;
+        this.mainTimer = mainTimer;
         utils = new Utils(threadId);
     }
 
@@ -121,12 +125,17 @@ public class ProgramWorker {
             utils.printMessage("\nInitial stress=" + preStress);
 
             tCur = config.alpha * tMax;
-            /*
-            mainTimer.stop();
-            utils.printMessage(
-                "\nUp to the loop took " + mainTimer.elapsed(
+
+            if (threadId == 0){
+                ParallelOps.worldProcsComm.barrier();
+            }
+            threadComm.barrier();
+            if (threadId == 0) {
+                mainTimer.stop();
+                utils.printMessage("\nUp to the loop took " + mainTimer.elapsed(
                     TimeUnit.SECONDS) + " seconds");
-            mainTimer.start();
+                mainTimer.start();
+            }
 
             Stopwatch loopTimer = Stopwatch.createStarted();
 
