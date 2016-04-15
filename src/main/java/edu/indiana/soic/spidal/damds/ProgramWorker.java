@@ -658,6 +658,15 @@ public class ProgramWorker {
                     ParallelOps.mmapXWriteBytes.readDouble((8013 - 5000) * 3
                             + 2));
         }
+        threadComm.barrier();
+        if (ParallelOps.worldProcRank == 1 && threadId == 0) {
+            ParallelOps.mmapXWriteBytes.position(0);
+            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
+                    "" + threadId + " inMM after MMInternal " +
+                    "and collect internalPartialMM[7200][2]: " +
+                    ParallelOps.mmapXWriteBytes.readDouble((7200-5000) * 3 +
+                            2));
+        }
 
         if (ParallelOps.worldProcsCount > 1) {
            if (threadId == 0) {
