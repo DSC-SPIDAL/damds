@@ -214,7 +214,7 @@ public class Program {
                     ParallelOps.worldProcsComm.barrier();
 
                     // TODO - debugs
-                    System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " afterBC preX[2600][1]: " + preX[2600*3+1] + " preX[7200][2]: " + preX[7200*3+2]);
+                    // System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " afterBC preX[2600][1]: " + preX[2600*3+1] + " preX[7200][2]: " + preX[7200*3+2]);
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
@@ -857,7 +857,7 @@ public class Program {
         ParallelOps.worldProcsComm.barrier();
 
         // TODO - debugs
-        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
+        // System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
 
         int iOffset;
         double[] tmpRHSRow;
@@ -950,6 +950,8 @@ public class Program {
                                             numPoints, weights, blockSize,
                                             vArray,
                                             internalPartialMM[threadIdx]);
+                        // TODO - debugs
+                        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadIdx + " inMM after MMInternal internalPartialMM[113][1]: " + internalPartialMM[threadIdx][113*3+1] + " internalPartialMM[1327][2]: " + internalPartialMM[threadIdx][1327*3+2]);
                         MMTimings.endTiming(
                             MMTimings.TimingTask.MM_INTERNAL, threadIdx);
                     }));
