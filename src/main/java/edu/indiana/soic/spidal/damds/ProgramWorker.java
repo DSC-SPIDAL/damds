@@ -690,8 +690,8 @@ public class ProgramWorker {
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
         threadComm.collect(threadLocalRowRange.getStartIndex(), threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);
-        bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
         threadComm.barrier();
+        bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
@@ -717,18 +717,14 @@ public class ProgramWorker {
                 ParallelOps.worldProcsComm.barrier();
             }
             threadComm.barrier();
-            bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
-            threadComm.copy(ParallelOps.fullXBytes, BC,
-                ParallelOps.globalColCount* targetDimension);
-            threadComm.barrier();
-            bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
         }
-        else {
-            bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
-            threadComm.copy(ParallelOps.mmapXWriteBytes, BC, ParallelOps.globalColCount*targetDimension);
-            threadComm.barrier();
-            bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
-        }
+        bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
+        threadComm.copy(ParallelOps.worldProcsCount > 1
+                ? ParallelOps.fullXBytes
+                : ParallelOps.mmapXWriteBytes, BC,
+            ParallelOps.globalColCount * targetDimension);
+        threadComm.barrier();
+        bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
     }
 
     private void calculateBCInternal(
