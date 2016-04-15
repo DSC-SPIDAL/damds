@@ -537,7 +537,7 @@ public class ProgramWorker {
         threadComm.barrier();
 
         // TODO - debugs
-        // System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
+         System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
 
         int iOffset;
 
@@ -669,7 +669,7 @@ public class ProgramWorker {
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
 
         // TODO - debugs
-        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal outMM[113][1]: " + outMM[113*3+1] + " outMM[1327][2]: " + outMM[1327*3+2]);
+//        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal outMM[113][1]: " + outMM[113*3+1] + " outMM[1327][2]: " + outMM[1327*3+2]);
     }
 
     private void calculateMMInternal(
