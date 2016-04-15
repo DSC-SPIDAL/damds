@@ -14,35 +14,26 @@ public class BCTimings {
         BC_INTERNAL,COMM, BC_MERGE, BC_EXTRACT
     }
 
-    private static int numThreads;
-    public static void init(int numThreads){
-        timerBCInternal = new Stopwatch[numThreads];
-        IntStream.range(0,numThreads).forEach(i -> timerBCInternal[i] = Stopwatch.createUnstarted());
-        tBCInternal = new long[numThreads];
-        countBCInternal = new long[numThreads];
-        BCTimings.numThreads = numThreads;
-    }
+    private Stopwatch timerBCInternal = Stopwatch.createUnstarted();
+    private Stopwatch timerComm = Stopwatch.createUnstarted();
+    private Stopwatch timerBCMerge = Stopwatch.createUnstarted();
+    private Stopwatch timerBCExtract = Stopwatch.createUnstarted();
 
-    private static Stopwatch [] timerBCInternal;
-    private static Stopwatch timerComm = Stopwatch.createUnstarted();
-    private static Stopwatch timerBCMerge = Stopwatch.createUnstarted();
-    private static Stopwatch timerBCExtract = Stopwatch.createUnstarted();
+    private long tBCInternal;
+    private long tComm;
+    private long tBCMerge;
+    private long tBCExtract;
 
-    private static long [] tBCInternal;
-    private static long tComm;
-    private static long tBCMerge;
-    private static long tBCExtract;
+    private long countBCInternal;
+    private long countComm;
+    private long countBCMerge;
+    private long countBCExtract;
 
-    private static long [] countBCInternal;
-    private static long countComm;
-    private static long countBCMerge;
-    private static long countBCExtract;
-
-    public static void startTiming(TimingTask task, int threadIdx){
+    public void startTiming(TimingTask task, int threadIdx){
         switch (task){
             case BC_INTERNAL:
-                timerBCInternal[threadIdx].start();
-                ++countBCInternal[threadIdx];
+                timerBCInternal.start();
+                ++countBCInternal;
                 break;
             case COMM:
                 timerComm.start();
@@ -59,12 +50,12 @@ public class BCTimings {
         }
     }
 
-    public static void endTiming(TimingTask task, int threadIdx){
+    public void endTiming(TimingTask task, int threadIdx){
         switch (task){
             case BC_INTERNAL:
-                timerBCInternal[threadIdx].stop();
-                tBCInternal[threadIdx] += timerBCInternal[threadIdx].elapsed(TimeUnit.MILLISECONDS);
-                timerBCInternal[threadIdx].reset();
+                timerBCInternal.stop();
+                tBCInternal += timerBCInternal.elapsed(TimeUnit.MILLISECONDS);
+                timerBCInternal.reset();
                 break;
             case COMM:
                 timerComm.stop();
@@ -84,10 +75,10 @@ public class BCTimings {
         }
     }
 
-    public static double getTotalTime(TimingTask task){
+    public double getTotalTime(TimingTask task){
         switch (task){
             case BC_INTERNAL:
-                return Arrays.stream(tBCInternal).reduce(0, (i,j) -> i+j);
+                return tBCInternal;
             case COMM:
                 return tComm;
             case BC_MERGE:
@@ -98,10 +89,10 @@ public class BCTimings {
         return  0.0;
     }
 
-    public static double getAverageTime(TimingTask task){
+    public double getAverageTime(TimingTask task){
         switch (task){
             case BC_INTERNAL:
-                return Arrays.stream(tBCInternal).reduce(0, (i,j) -> i+j) *1.0 / Arrays.stream(countBCInternal).reduce(0, (i,j)->i+j);
+                return tBCInternal * 1.0 / countBCInternal;
             case COMM:
                 return tComm *1.0/ countComm;
             case BC_MERGE:
@@ -112,7 +103,7 @@ public class BCTimings {
         return  0.0;
     }
 
-    public static long[] getTotalTimeDistribution(TimingTask task)
+    /*public long[] getTotalTimeDistribution(TimingTask task)
         throws MPIException {
         LongBuffer threadsAndMPITimingBuffer =
             ParallelOps.threadsAndMPIBuffer;
@@ -148,7 +139,5 @@ public class BCTimings {
                 return mpiOnlyTimingArray;
         }
         return null;
-    }
-
-
+    }*/
 }

@@ -2,7 +2,6 @@ package edu.indiana.soic.spidal.damds;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
-import com.google.common.base.Strings;
 import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
@@ -15,14 +14,11 @@ import org.apache.commons.cli.*;
 import java.io.*;
 import java.nio.ByteOrder;
 import java.nio.LongBuffer;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static edu.rice.hj.Module0.launchHabaneroApp;
@@ -891,14 +887,14 @@ public class ProgramLRT {
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
                                         distances, weights, internalBofZ);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ);
 
         // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
         MatrixUtils.matrixMultiply(internalBofZ, preX,
             ParallelOps.threadRowCounts[threadIdx], targetDimension,
             ParallelOps.globalColCount, blockSize, outMM);
-        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM);
     }
 
     private static void calculateBofZ(

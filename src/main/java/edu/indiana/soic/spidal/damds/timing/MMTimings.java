@@ -11,41 +11,32 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 public class MMTimings {
-    public static enum TimingTask{
+    public enum TimingTask{
         MM_INTERNAL,COMM, MM_MERGE, MM_EXTRACT
     }
 
-    private static int numThreads;
-    public static void init(int numThreads){
-        timerMMInternal = new Stopwatch[numThreads];
-        IntStream.range(0, numThreads).forEach(i -> timerMMInternal[i] = Stopwatch.createUnstarted());
-        tMMInternal = new long[numThreads];
-        countMMInternal = new long[numThreads];
-        MMTimings.numThreads = numThreads;
-    }
+    private Stopwatch timerMMInternal = Stopwatch.createUnstarted();
+    private Stopwatch timerComm = Stopwatch.createUnstarted();
+    private Stopwatch timerMMMerge = Stopwatch.createUnstarted();
+    private Stopwatch timerMMExtract = Stopwatch.createUnstarted();
 
-    private static Stopwatch [] timerMMInternal;
-    private static Stopwatch timerComm = Stopwatch.createUnstarted();
-    private static Stopwatch timerMMMerge = Stopwatch.createUnstarted();
-    private static Stopwatch timerMMExtract = Stopwatch.createUnstarted();
+    private long tMMInternal;
+    private long tComm;
+    private long tMMMerge;
+    private long tMMExtract;
 
-    private static long [] tMMInternal;
-    private static long tComm;
-    private static long tMMMerge;
-    private static long tMMExtract;
-
-    private static long [] countMMInternal;
-    private static long countComm;
-    private static long countMMMerge;
-    private static long countMMExtract;
+    private long countMMInternal;
+    private long countComm;
+    private long countMMMerge;
+    private long countMMExtract;
 
 
 
-    public static void startTiming(TimingTask task, int threadIdx){
+    public void startTiming(TimingTask task, int threadIdx){
         switch (task){
             case MM_INTERNAL:
-                timerMMInternal[threadIdx].start();
-                ++countMMInternal[threadIdx];
+                timerMMInternal.start();
+                ++countMMInternal;
                 break;
             case COMM:
                 timerComm.start();
@@ -62,13 +53,13 @@ public class MMTimings {
         }
     }
 
-    public static void endTiming(TimingTask task, int threadIdx){
+    public void endTiming(TimingTask task, int threadIdx){
         switch (task){
             case MM_INTERNAL:
-                timerMMInternal[threadIdx].stop();
-                tMMInternal[threadIdx] += timerMMInternal[threadIdx].elapsed(
+                timerMMInternal.stop();
+                tMMInternal += timerMMInternal.elapsed(
                     TimeUnit.MILLISECONDS);
-                timerMMInternal[threadIdx].reset();
+                timerMMInternal.reset();
                 break;
             case COMM:
                 timerComm.stop();
@@ -88,11 +79,10 @@ public class MMTimings {
         }
     }
 
-    public static double getTotalTime(TimingTask task){
+    public double getTotalTime(TimingTask task){
         switch (task){
             case MM_INTERNAL:
-                OptionalLong max = Arrays.stream(tMMInternal).max();
-                return max.isPresent() ? max.getAsLong() * 1.0 : 0.0;
+                return tMMInternal;
             case COMM:
                 return tComm;
             case MM_MERGE:
@@ -103,11 +93,10 @@ public class MMTimings {
         return  0.0;
     }
 
-    public static double getAverageTime(TimingTask task){
+    public double getAverageTime(TimingTask task){
         switch (task){
             case MM_INTERNAL:
-                return Arrays.stream(tMMInternal).reduce(0, (i,j) -> i+j) *1.0 / Arrays.stream(
-                    countMMInternal).reduce(0, (i,j)->i+j);
+                return tMMInternal * 1.0/ countMMInternal;
             case COMM:
                 return tComm *1.0/ countComm;
             case MM_MERGE:
@@ -118,7 +107,7 @@ public class MMTimings {
         return  0.0;
     }
 
-    public static long[] getTotalTimeDistribution(TimingTask task)
+    /*public long[] getTotalTimeDistribution(TimingTask task)
         throws MPIException {
         LongBuffer threadsAndMPITimingBuffer =
             ParallelOps.threadsAndMPIBuffer;
@@ -155,9 +144,9 @@ public class MMTimings {
         }
 
         return null;
-    }
+    }*/
 
-    public static long[] getCountDistribution(TimingTask task)
+    /*public long[] getCountDistribution(TimingTask task)
         throws MPIException {
         LongBuffer threadsAndMPIBuffer =
             ParallelOps.threadsAndMPIBuffer;
@@ -193,7 +182,7 @@ public class MMTimings {
                 return mpiOnlyArray;
         }
         return null;
-    }
+    }*/
 
 
 }

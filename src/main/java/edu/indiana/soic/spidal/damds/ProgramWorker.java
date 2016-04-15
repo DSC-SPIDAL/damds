@@ -247,13 +247,13 @@ public class ProgramWorker {
                     tCur = 0;
                 ++loopNum;
 
-                *//* Note - quick way to test programs without running full
-                * number of temperature loops *//*
+                /* Note - quick way to test programs without running full
+                * number of temperature loops */
                 if (config.maxtemploops > 0 && loopNum == config.maxtemploops){
                     break;
                 }
             }
-            loopTimer.stop();*/
+            loopTimer.stop();
         }
         catch (MPIException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));

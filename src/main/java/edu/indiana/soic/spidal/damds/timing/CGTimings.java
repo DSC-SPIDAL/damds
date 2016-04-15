@@ -10,19 +10,19 @@ public class CGTimings {
 
     }
 
-    private static Stopwatch timerMM = Stopwatch.createUnstarted();
-    private static Stopwatch timerInnerProd = Stopwatch.createUnstarted();
-    private static Stopwatch timerCGLoop = Stopwatch.createUnstarted();
+    private Stopwatch timerMM = Stopwatch.createUnstarted();
+    private Stopwatch timerInnerProd = Stopwatch.createUnstarted();
+    private Stopwatch timerCGLoop = Stopwatch.createUnstarted();
 
-    private static long tMM;
-    private static long tInnerProd;
-    private static long tCGLoop;
+    private long tMM;
+    private long tInnerProd;
+    private long tCGLoop;
 
-    private static long countMM;
-    private static long countInnerProd;
-    private static long countCGLoop;
+    private long countMM;
+    private long countInnerProd;
+    private long countCGLoop;
 
-    public static void startTiming(TimingTask task){
+    public void startTiming(TimingTask task){
         switch (task){
             case MM:
                 timerMM.start();
@@ -39,7 +39,7 @@ public class CGTimings {
         }
     }
 
-    public static void endTiming(TimingTask task){
+    public void endTiming(TimingTask task){
         switch (task){
             case MM:
                 timerMM.stop();
@@ -59,7 +59,7 @@ public class CGTimings {
         }
     }
 
-    public static double getTotalTime(TimingTask task){
+    public double getTotalTime(TimingTask task){
         switch (task){
             case MM:
                 return tMM;
@@ -71,7 +71,7 @@ public class CGTimings {
         return  0.0;
     }
 
-    public static double getAverageTime(TimingTask task){
+    public double getAverageTime(TimingTask task){
         switch (task){
             case MM:
                 return tMM *1.0/ countMM;

@@ -12,19 +12,19 @@ public class StressLoopTimings {
         BC,CG, STRESS
     }
 
-    private static Stopwatch timerBC = Stopwatch.createUnstarted();
-    private static Stopwatch timerCG = Stopwatch.createUnstarted();
-    private static Stopwatch timerStress = Stopwatch.createUnstarted();
+    private Stopwatch timerBC = Stopwatch.createUnstarted();
+    private Stopwatch timerCG = Stopwatch.createUnstarted();
+    private Stopwatch timerStress = Stopwatch.createUnstarted();
 
-    private static long tBC;
-    private static long tCG;
-    private static long tStress;
+    private long tBC;
+    private long tCG;
+    private long tStress;
 
-    private static long countBC;
-    private static long countCG;
-    private static long countStress;
+    private long countBC;
+    private long countCG;
+    private long countStress;
 
-    public static void startTiming(TimingTask task){
+    public void startTiming(TimingTask task){
         switch (task){
             case BC:
                 timerBC.start();
@@ -41,7 +41,7 @@ public class StressLoopTimings {
         }
     }
 
-    public static void endTiming(TimingTask task){
+    public void endTiming(TimingTask task){
         switch (task){
             case BC:
                 timerBC.stop();
@@ -61,7 +61,7 @@ public class StressLoopTimings {
         }
     }
 
-    public static double getTotalTime(TimingTask task){
+    public double getTotalTime(TimingTask task){
         switch (task){
             case BC:
                 return tBC;
@@ -73,7 +73,7 @@ public class StressLoopTimings {
         return  0.0;
     }
 
-    public static double getAverageTime(TimingTask task){
+    public double getAverageTime(TimingTask task){
         switch (task){
             case BC:
                 return tBC *1.0/countBC;
@@ -85,7 +85,7 @@ public class StressLoopTimings {
         return  0.0;
     }
 
-    public static long[] getTotalTimeDistribution(TimingTask task)
+    public long[] getTotalTimeDistribution(TimingTask task)
         throws MPIException {
         LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         mpiOnlyTimingBuffer.position(0);
@@ -107,7 +107,7 @@ public class StressLoopTimings {
         return mpiOnlyTimingArray;
     }
 
-    public static long[] getCountDistribution(TimingTask task) throws MPIException{
+    public long[] getCountDistribution(TimingTask task) throws MPIException{
         LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         mpiOnlyTimingBuffer.position(0);
         long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcsCount];
