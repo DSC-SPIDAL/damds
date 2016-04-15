@@ -666,6 +666,7 @@ public class ProgramWorker {
                 ? ParallelOps.fullXBytes
                 : ParallelOps.mmapXWriteBytes, outMM,
             ParallelOps.globalColCount * targetDimension);
+        threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
     }
 
