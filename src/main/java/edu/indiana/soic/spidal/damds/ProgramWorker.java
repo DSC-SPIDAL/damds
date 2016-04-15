@@ -216,12 +216,6 @@ public class ProgramWorker {
                     }
                     threadComm.barrier();
 
-                    // TODO - debugs
-                    // System.out.println("Rank: " + ParallelOps
-                    // .worldProcRank + " Tid: " + threadId + " afterBC
-                    // preX[2600][1]: " + preX[2600*3+1] + " preX[7200][2]: "
-                    // + preX[7200*3+2]);
-
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.CG);
                     calculateConjugateGradient(preX, config.targetDimension,
@@ -562,11 +556,6 @@ public class ProgramWorker {
         }
         threadComm.barrier();
 
-        // TODO - debugs
-        //System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: "
-        // + threadId + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] +
-        // " MMr[7200][2]: " + MMr[7200*3+2]);
-
         int iOffset;
 
         for (int i = 0; i < numPoints; ++i) {
@@ -656,62 +645,12 @@ public class ProgramWorker {
                 blockSize, v, internalPartialMM);
         mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, threadId);
 
-        // TODO - debugs
-        /*if (ParallelOps.worldProcRank == 0 && threadId == 1) {
-            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "\n" + threadId + " inMM after MMInternal\n" +
-                    " internalPartialMM[2600][1]: " + internalPartialMM[(2600
-                    - 2500) * 3 + 1]);
-        }
-
-        if (ParallelOps.worldProcRank == 1 && threadId == 0) {
-            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "\n" + threadId + " inMM after MMInternal\n" +
-                    " internalPartialMM[7200][2]: " + internalPartialMM[(7200
-                    - 5000) * 3 + 2]);
-        }
-
-        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "\n" + threadId + " inMM after MMInternal\n" +
-                    " internalPartialMM[8013][2]: " + internalPartialMM[(8013
-                    - 7500) * 3 + 2]);
-        }*/
-
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
         threadComm
                 .collect(threadLocalRowRange.getStartIndex()*targetDimension*Double.BYTES, internalPartialMM,
                         ParallelOps.mmapXWriteBytes);
         threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
-
-        // TODO - debugs
-        /*if (ParallelOps.worldProcRank == 0 && threadId == 1) {
-            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
-                    "Tid: " +
-                    "\n" + threadId + " inMM after MMInternal\n" +
-                    " mmapXWriteBytes[2600][1]: " + ParallelOps
-                    .mmapXWriteBytes.readDouble(2600 * 3 + 1));
-        }
-        threadComm.barrier();
-
-        if (ParallelOps.worldProcRank == 1 && threadId == 0) {
-            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
-                    "Tid: " +
-                    "\n" + threadId + " inMM after MMInternal\n" +
-                    " mmapXWriteBytes[7200][2]: " + ParallelOps
-                    .mmapXWriteBytes.readDouble((7200 - 5000) * 3 + 2));
-        }
-        threadComm.barrier();
-
-        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-            System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
-                    "Tid: " +
-                    "\n" + threadId + " inMM after MMInternal\n" +
-                    " mmapXWriteBytes[8013][2]: " + ParallelOps
-                    .mmapXWriteBytes.readDouble((8013 - 5000) * 3 + 2));
-        }
-        threadComm.barrier();*/
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
@@ -745,12 +684,6 @@ public class ProgramWorker {
                 ParallelOps.globalColCount * targetDimension);
         threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
-
-        // TODO - debugs
-        /*System.out.println("**Rank: " + ParallelOps.worldProcRank + " Tid: "
-                + threadId + " inMM after MMInternal outMM[2600][1]: " +
-                outMM[2600 * 3 + 1] + " outMM[7200][2]: " + outMM[7200 * 3 +
-                2] + " outMM[8013][2]: " + outMM[8013 * 3 + 2]);*/
     }
 
     private void calculateMMInternal(
