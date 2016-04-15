@@ -951,7 +951,7 @@ public class Program {
                                             vArray,
                                             internalPartialMM[threadIdx]);
                         // TODO - debugs
-                        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadIdx + " inMM after MMInternal internalPartialMM[113][1]: " + internalPartialMM[threadIdx][113*3+1] + " internalPartialMM[1327][2]: " + internalPartialMM[threadIdx][1327*3+2]);
+                        //System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadIdx + " inMM after MMInternal internalPartialMM[113][1]: " + internalPartialMM[threadIdx][113*3+1] + " internalPartialMM[1327][2]: " + internalPartialMM[threadIdx][1327*3+2]);
                         MMTimings.endTiming(
                             MMTimings.TimingTask.MM_INTERNAL, threadIdx);
                     }));
@@ -992,6 +992,9 @@ public class Program {
         } else {
             mergePartials(internalPartialMM, outMM);
         }
+
+        // TODO - debugs
+        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " inMM after MMInternal outMM[113][1]: " + outMM[113*3+1] + " outMM[1327][2]: " + outMM[1327*3+2]);
     }
 
     private static void calculateMMInternal(
