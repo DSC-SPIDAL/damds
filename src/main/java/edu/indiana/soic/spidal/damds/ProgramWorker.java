@@ -700,7 +700,7 @@ public class ProgramWorker {
                     "Tid: " +
                     "\n" + threadId + " inMM after MMInternal\n" +
                     " mmapXWriteBytes[7200][2]: " + ParallelOps
-                    .mmapXWriteBytes.readDouble((7200 - 5000) * 3 + 2));
+                    .mmapXReadByteBuffer.getDouble((7200 - 5000) * 3 + 2));
         }
         threadComm.barrier();
 
