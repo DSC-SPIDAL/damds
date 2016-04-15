@@ -140,18 +140,20 @@ public class ThreadCommunicator {
 
     public synchronized void collect(int startIndex, double[] val, Bytes
             bytes, int threadId) {
+        int magicIdx = ((8013 - 5000) * 3 + 2) * Double.BYTES;
         int pos = startIndex;
         for (int i =0; i < val.length; ++i) {
             bytes.position(pos);
             bytes.writeDouble(val[i]);
 
-            if (pos == ((8013 - 5000)*3+2)*Double.BYTES){
+
+            if (pos == magicIdx){
                 System.out.println("@@@@ CAME HERE Rank=" + ParallelOps
                         .worldProcRank + " tid=" + threadId);
             }
 
             if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-                if (pos == ((8013 - 5000)*3+2)*Double.BYTES){
+                if (pos == magicIdx){
                     System.out.println("************* val=" + val[i] + " " +
                             "buffer=" + bytes.readDouble(pos));
 
@@ -160,8 +162,8 @@ public class ThreadCommunicator {
                 }
             }
 
-            /*if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-                if (pos == ((8013 - 5000)*3+2)*Double.BYTES) {
+            if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+                if (pos == magicIdx) {
                     System.out.println("++Rank=" + ParallelOps.worldProcRank + " " +
 
                             "Tid=" +
@@ -170,7 +172,7 @@ public class ThreadCommunicator {
                             " mmapXWriteBytes[8013][2]=" + bytes.readDouble(pos)
                             * Double.BYTES + " val[8013][2]=" + val[(8013 - 7500) * 3 + 2]);
                 }
-            }*/
+            }
 
             pos+=Double.BYTES;
         }
