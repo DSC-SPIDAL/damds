@@ -627,14 +627,14 @@ public class ProgramWorker {
             blockSize, v, internalPartialMM);
         mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, threadId);
 
-        // TODO - debugs
-        if (ParallelOps.worldProcRank == 0 && threadId == 1) {
-            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[2600][1]: " + internalPartialMM[(2600-2500) * 3 + 1]);
-        }
-
-        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
-            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[8013][2]: " + internalPartialMM[(8013-7500) * 3 + 2]);
-        }
+//        // TODO - debugs
+//        if (ParallelOps.worldProcRank == 0 && threadId == 1) {
+//            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[2600][1]: " + internalPartialMM[(2600-2500) * 3 + 1]);
+//        }
+//
+//        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+//            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[8013][2]: " + internalPartialMM[(8013-7500) * 3 + 2]);
+//        }
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
         threadComm
@@ -642,6 +642,22 @@ public class ProgramWorker {
                 ParallelOps.mmapXWriteBytes);
         threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
+
+        // TODO - debugs
+        if (ParallelOps.worldProcRank == 0 && threadId == 1) {
+            ParallelOps.mmapXWriteBytes.position(0);
+            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
+                    "" + threadId + " inMM after MMInternal " +
+                    "and collect internalPartialMM[2600][1]: " +
+                    ParallelOps.mmapXWriteBytes.readDouble(2600 * 3 + 1));
+        }
+        if (ParallelOps.worldProcRank == 1 && threadId == 1) {
+            System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
+                    "" + threadId + " inMM after MMInternal " +
+                    "and collect internalPartialMM[8013][2]: " +
+                    ParallelOps.mmapXWriteBytes.readDouble((8013 - 5000) * 3
+                            + 2));
+        }
 
         if (ParallelOps.worldProcsCount > 1) {
            if (threadId == 0) {
