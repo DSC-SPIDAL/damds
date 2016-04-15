@@ -214,7 +214,7 @@ public class Program {
                     ParallelOps.worldProcsComm.barrier();
 
                     // TODO - debugs
-                    System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " afterBC preX[2600][1]: " + preX[2600*3+1] + "preX[7200][2]: " + preX[7200*3+2]);
+                    System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " afterBC preX[2600][1]: " + preX[2600*3+1] + " preX[7200][2]: " + preX[7200*3+2]);
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
@@ -855,6 +855,9 @@ public class Program {
         // This barrier was necessary for correctness when using
         // a single mmap file
         ParallelOps.worldProcsComm.barrier();
+
+        // TODO - debugs
+        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + 0 + " inCG after 1st MM MMr[2600][1]: " + MMr[2600*3+1] + " MMr[7200][2]: " + MMr[7200*3+2]);
 
         int iOffset;
         double[] tmpRHSRow;
