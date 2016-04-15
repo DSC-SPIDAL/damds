@@ -800,21 +800,21 @@ public class ProgramWorker {
         // TODO - debugs
         if (ParallelOps.worldProcRank == 0 && threadId == 1) {
             System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal " +
                     " threadPartialBCInternalMM[2600][1]: " + threadPartialBCInternalMM[(2600
                     - 2500) * 3 + 1]);
         }
 
         if (ParallelOps.worldProcRank == 1 && threadId == 0) {
             System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal " +
                     " threadPartialBCInternalMM[7200][2]: " + threadPartialBCInternalMM[(7200
                     - 5000) * 3 + 2]);
         }
 
         if (ParallelOps.worldProcRank == 1 && threadId == 1) {
             System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " +
-                    "" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal " +
                     " threadPartialBCInternalMM[8013][2]: " + threadPartialBCInternalMM[(8013
                     - 7500) * 3 + 2]);
         }
@@ -830,7 +830,7 @@ public class ProgramWorker {
         if (ParallelOps.worldProcRank == 0 && threadId == 1) {
             System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
                     "Tid: " +
-                    "" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal " +
                     " mmapXWriteBytes[2600][1]: " + ParallelOps
                     .mmapXWriteBytes.readDouble((2600 * 3 + 1)*Double.BYTES));
         }
@@ -839,7 +839,7 @@ public class ProgramWorker {
         if (ParallelOps.worldProcRank == 1 && threadId == 0) {
             System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
                     "Tid: " +
-                    "" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal " +
                     " mmapXWriteBytes[7200][2]: " + ParallelOps
                     .mmapXWriteBytes.readDouble(((7200 - 5000) * 3 + 2))
                     *Double.BYTES);
@@ -849,7 +849,7 @@ public class ProgramWorker {
         if (ParallelOps.worldProcRank == 1 && threadId == 1) {
             System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
                     "Tid: " +
-                    "" + threadId + " inBC after BCInternal\n" +
+                    "" + threadId + " inBC after BCInternal " +
                     " mmapXWriteBytes[8013][2]: " + ParallelOps
                     .mmapXWriteBytes.readDouble(((8013 - 5000) * 3 + 2))
                     *Double.BYTES);
