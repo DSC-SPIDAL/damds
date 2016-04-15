@@ -628,7 +628,7 @@ public class ProgramWorker {
         mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, threadId);
 
         // TODO - debugs
-        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[113][1]: " + internalPartialMM[113*3+1] + " internalPartialMM[1327][2]: " + internalPartialMM[1327*3+2]);
+        //System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal internalPartialMM[113][1]: " + internalPartialMM[113*3+1] + " internalPartialMM[1327][2]: " + internalPartialMM[1327*3+2]);
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
         threadComm
@@ -659,7 +659,6 @@ public class ProgramWorker {
                ParallelOps.worldProcsComm.barrier();
            }
             threadComm.barrier();
-
         }
         mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
         threadComm.copy(ParallelOps.worldProcsCount > 1
@@ -668,6 +667,9 @@ public class ProgramWorker {
             ParallelOps.globalColCount * targetDimension);
         threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+
+        // TODO - debugs
+        System.out.println("Rank: " + ParallelOps.worldProcRank + " Tid: " + threadId + " inMM after MMInternal outMM[113][1]: " + outMM[113*3+1] + " outMM[1327][2]: " + outMM[1327*3+2]);
     }
 
     private void calculateMMInternal(
