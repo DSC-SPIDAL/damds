@@ -140,9 +140,11 @@ public class ThreadCommunicator {
 
     public synchronized void collect(int startIndex, double[] val, Bytes
             bytes, int threadId) {
-        bytes.position(startIndex);
-        for (double aVal : val) {
-            bytes.writeDouble(aVal);
+        int pos = startIndex;
+        for (int i =0; i < val.length; ++i) {
+            bytes.position(pos);
+            bytes.writeDouble(val[i]);
+            pos+=Double.BYTES;
         }
 
         if (ParallelOps.worldProcRank == 0 && threadId == 1) {
