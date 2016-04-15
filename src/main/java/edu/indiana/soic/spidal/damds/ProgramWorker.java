@@ -848,17 +848,17 @@ public class ProgramWorker {
                     .mmapXWriteBytes.readDouble(((7200 - 5000) * 3 + 2))
                     *Double.BYTES);
         }
-        threadComm.barrier();
+        threadComm.barrier();*/
 
         if (ParallelOps.worldProcRank == 1 && threadId == 1) {
             System.out.println("++Rank: " + ParallelOps.worldProcRank + " " +
                     "Tid: " +
                     "" + threadId + " inBC after BCInternal " +
                     " mmapXWriteBytes[8013][2]: " + ParallelOps
-                    .mmapXWriteBytes.readDouble(((8013 - 5000) * 3 + 2))
-                    *Double.BYTES);
+                    .mmapXWriteBytes.readDouble(((8013 - 5000) * 3 + 2)
+                    *Double.BYTES));
         }
-        threadComm.barrier();*/
+        threadComm.barrier();
 
 
         if (ParallelOps.worldProcsCount > 1) {
