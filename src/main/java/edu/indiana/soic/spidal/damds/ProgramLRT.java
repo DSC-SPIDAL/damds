@@ -186,6 +186,7 @@ public class ProgramLRT {
             utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
             ParallelOps.tearDownParallelism();
+            threads.shutDown();
         }
         catch (MPIException | IOException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
