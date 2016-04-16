@@ -98,7 +98,7 @@ public class ProgramLRT {
             ParallelOps.setParallelDecomposition(
                 config.numberDataPoints, config.targetDimension);
 
-            threads = new SpidalThreads(ParallelOps.threadCount, true, false,
+            threads = new SpidalThreads(ParallelOps.threadCount, false, true,
                     48, ParallelOps.worldProcRank * 12 + 1);
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
