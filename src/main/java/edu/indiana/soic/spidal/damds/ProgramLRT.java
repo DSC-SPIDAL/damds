@@ -56,7 +56,7 @@ public class ProgramLRT {
     public static int BlockSize;
     private static Utils utils = new Utils(0);
 
-    private static SpidalThreads threads;
+    private static SpidalThreads threads = null;
 
     /**
      * Weighted SMACOF based on Deterministic Annealing algorithm
@@ -186,8 +186,8 @@ public class ProgramLRT {
 
             utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
-            ParallelOps.tearDownParallelism();
             threads.shutDown();
+            ParallelOps.tearDownParallelism();
         }
         catch (MPIException | IOException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
