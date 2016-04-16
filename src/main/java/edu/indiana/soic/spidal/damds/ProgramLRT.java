@@ -5,6 +5,7 @@ import com.google.common.base.Stopwatch;
 import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
+import edu.indiana.soic.spidal.damds.threads.SpidalThreads;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPI;
 import mpi.MPIException;
@@ -48,34 +49,14 @@ public class ProgramLRT {
             Constants.CMD_OPTION_DESCRIPTION_MMAP_SCRATCH_DIR);
     }
 
-    // Constants
-    public static final double INV_SHORT_MAX = 1.0 / Short.MAX_VALUE;
-    public static final double SHORT_MAX = Short.MAX_VALUE;
-
-    // Calculated Constants
-    public static double INV_SUM_OF_SQUARE;
-
-    // Arrays
-    public static double[] preX;
-    public static double[] BC;
-    public static double[] MMr;
-    public static double[] MMAp;
-
-    public static double[][][] threadPartialBofZ;
-    public static double[][] threadPartialMM;
-
-    public static double[] partialSigma;
-    public static double[][] vArray;
-
     //Config Settings
     public static DAMDSSection config;
     public static ByteOrder byteOrder;
-    public static short[] distances;
-    public static WeightsWrap1D weights;
 
     public static int BlockSize;
-    
     private static Utils utils = new Utils(0);
+
+    private static SpidalThreads threads;
 
     /**
      * Weighted SMACOF based on Deterministic Annealing algorithm
@@ -117,6 +98,7 @@ public class ProgramLRT {
             ParallelOps.setParallelDecomposition(
                 config.numberDataPoints, config.targetDimension);
 
+            threads = new SpidalThreads(ParallelOps.threadCount, false, true, 48, ParallelOps.worldProcRank * 12 + 1);
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
             Stopwatch mainTimer = Stopwatch.createStarted();
@@ -127,12 +109,16 @@ public class ProgramLRT {
             /* TODO - Fork - join starts here */
 
             if (ParallelOps.threadCount > 1) {
-                launchHabaneroApp(
-                    () -> forallChunked(
-                        0, ParallelOps.threadCount - 1,
+//                launchHabaneroApp(
+//                    () -> forallChunked(
+//                        0, ParallelOps.threadCount - 1,
+//                        (threadIdx) -> {
+//                            new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
+//                        }));
+                threads.forall(
                         (threadIdx) -> {
                             new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
-                        }));
+                        });
             }
             else {
                 new ProgramWorker(0, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
