@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.IntStream;
 
 import static edu.rice.hj.Module0.launchHabaneroApp;
@@ -99,8 +100,8 @@ public class ProgramLRT {
                 config.numberDataPoints, config.targetDimension);
 
             if (ParallelOps.threadCount > 1) {
-                threads = new SpidalThreads(ParallelOps.threadCount, false, true,
-                        48, ParallelOps.worldProcRank * 12 + 1);
+//                threads = new SpidalThreads(ParallelOps.threadCount, false, true,
+//                        48, ParallelOps.worldProcRank * 12 + 1);
             }
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
@@ -110,18 +111,17 @@ public class ProgramLRT {
             utils.printMessage(config.toString(false));
 
             /* TODO - Fork - join starts here */
-
             if (ParallelOps.threadCount > 1) {
-//                launchHabaneroApp(
-//                    () -> forallChunked(
-//                        0, ParallelOps.threadCount - 1,
-//                        (threadIdx) -> {
-//                            new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
-//                        }));
-                threads.forall(
+                launchHabaneroApp(
+                    () -> forallChunked(
+                        0, ParallelOps.threadCount - 1,
                         (threadIdx) -> {
                             new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
-                        });
+                        }));
+//                threads.forall(
+//                        (threadIdx) -> {
+//                            new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
+//                        });
             }
             else {
                 new ProgramWorker(0, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();

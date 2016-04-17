@@ -14,7 +14,7 @@ public class ThreadCommunicator {
     private double[] doubleBuffer;
     private double[] pointsBuffer;
     private DoubleStatistics[] doubleStatisticsBuffer;
-    private CyclicBarrier barrier;
+    private SpinCyclicBarrier barrier;
 
     public ThreadCommunicator(int threadCount, int numberDataPoints, int targetDimension) {
         this.threadCount = threadCount;
@@ -25,7 +25,7 @@ public class ThreadCommunicator {
         for (int i = 0; i < threadCount; ++i){
             doubleStatisticsBuffer[i] = new DoubleStatistics();
         }
-        barrier = new CyclicBarrier(threadCount);
+        barrier = new SpinCyclicBarrier(threadCount);
     }
 
     /**
