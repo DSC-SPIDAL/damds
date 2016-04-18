@@ -112,9 +112,9 @@ public class ProgramWorker {
                 threadLocalRowStartOffset, (
                 threadLocalRowStartOffset + threadRowCount - 1));
 
-        /*if (lock != null) {
+        if (lock != null) {
             lock.lock();
-        }*/
+        }
         long threadLocalMmapXWriteByteOffset =
                 ((ParallelOps.procRowStartOffset -
                         ParallelOps.procRowRanges[ParallelOps.mmapLeadWorldRank]
@@ -131,9 +131,9 @@ public class ProgramWorker {
         threadLocalFullXBytes = ParallelOps.fullXBytes.slice(0, config.numberDataPoints *
                 config.targetDimension * Double.BYTES);
 
-        /*if (lock != null) {
+        if (lock != null) {
             lock.unlock();
-        }*/
+        }
     }
 
     public void run() {
