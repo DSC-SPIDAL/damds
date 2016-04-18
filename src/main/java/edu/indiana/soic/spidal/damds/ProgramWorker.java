@@ -145,6 +145,9 @@ public class ProgramWorker {
         try {
             setup();
             readDistancesAndWeights(config.isSammon);
+            System.out.println("Rank " + ParallelOps.worldProcRank + " " +
+                    "TID " + threadId + "Came " +
+                    "here ");
 
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(
