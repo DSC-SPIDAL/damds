@@ -674,7 +674,7 @@ public class ProgramWorker {
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
         threadComm
                 .collect2(threadLocalRowRange.getStartIndex() * targetDimension * Double.BYTES, internalPartialMM,
-                        ParallelOps.mmapXWriteBytes, threadId);
+                        threadLocalMmapXWriteBytes, threadId);
         //threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
 
@@ -760,7 +760,7 @@ public class ProgramWorker {
         //System.out.println(threadId);
         threadComm.collect2(threadLocalRowRange.getStartIndex()
                         * targetDimension * Double.BYTES,
-                threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes, threadId);
+                threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);
         //threadComm.barrier();
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
