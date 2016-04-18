@@ -22,6 +22,9 @@ public class ThreadCommunicator {
     private double sum = 0;
     private AtomicInteger sumCount = new AtomicInteger(0);
     private AtomicInteger sumCount2 = new AtomicInteger(0);
+    private AtomicInteger collectCounter = new AtomicInteger(0);
+    private AtomicInteger copyCounter = new AtomicInteger(0);
+
 
     public ThreadCommunicator(int threadCount, int numberDataPoints, int targetDimension) {
         this.threadCount = threadCount;
@@ -56,6 +59,8 @@ public class ThreadCommunicator {
 
     public void sumDoublesOverThreads(int threadIdx, RefObj<Double> val)
         throws BrokenBarrierException, InterruptedException {
+        sumCount.compareAndSet(threadCount, 0);
+
         doubleBuffer[threadIdx] = val.getValue();
         sumCount.getAndIncrement();
         // thread 0 waits for others to update
@@ -68,7 +73,6 @@ public class ThreadCommunicator {
                 sum += doubleBuffer[i];
             }
             val.setValue(sum);
-            sumCount.set(0);
         }
     }
 
@@ -160,5 +164,41 @@ public class ThreadCommunicator {
             to[i] = from.readDouble();
         }
 
+    }
+
+    public void collect2(
+            int startIndex, double[] val, Bytes bytes, int threadid) {
+        //System.out.println("col " + threadid);
+        collectCounter.compareAndSet(threadCount, 0);
+        int pos = startIndex;
+        lock.lock();
+        for (double aVal : val) {
+            bytes.position(pos);
+            bytes.writeDouble(aVal);
+            pos+=Double.BYTES;
+        }
+        lock.unlock();
+        collectCounter.getAndIncrement();
+        while (collectCounter.get() != threadCount) {
+//            System.out.println(collectCounter.get());
+            ;
+        }
+        //System.out.println("Col");
+    }
+
+    public void copy2(Bytes from, double[] to, int count, int threadId) {
+        copyCounter.compareAndSet(threadCount, 0);
+        //System.out.println("Copy " + threadId);
+        lock.lock();
+        from.position(0);
+        for (int i = 0; i < count; ++i){
+            to[i] = from.readDouble();
+        }
+        lock.unlock();
+        copyCounter.getAndIncrement();
+        while (copyCounter.get() != threadCount) {
+            ;
+        }
+        //System.out.println("Copy");
     }
 }

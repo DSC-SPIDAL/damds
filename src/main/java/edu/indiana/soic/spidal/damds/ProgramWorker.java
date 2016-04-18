@@ -652,9 +652,9 @@ public class ProgramWorker {
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
         threadComm
-                .collect(threadLocalRowRange.getStartIndex()*targetDimension*Double.BYTES, internalPartialMM,
-                        ParallelOps.mmapXWriteBytes);
-        threadComm.barrier();
+                .collect2(threadLocalRowRange.getStartIndex() * targetDimension * Double.BYTES, internalPartialMM,
+                        ParallelOps.mmapXWriteBytes, threadId);
+        //threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
 
         if (ParallelOps.worldProcsCount > 1) {
@@ -683,11 +683,11 @@ public class ProgramWorker {
             threadComm.barrier();
         }
         mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
-        threadComm.copy(ParallelOps.worldProcsCount > 1
+        threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? ParallelOps.fullXBytes
                         : ParallelOps.mmapXWriteBytes, outMM,
-                ParallelOps.globalColCount * targetDimension);
-        threadComm.barrier();
+                ParallelOps.globalColCount * targetDimension, threadId);
+        //threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
     }
 
@@ -736,10 +736,11 @@ public class ProgramWorker {
                 BCTimings.TimingTask.BC_INTERNAL, 0);
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
-        threadComm.collect(threadLocalRowRange.getStartIndex()
-                *targetDimension*Double.BYTES,
-                threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);
-        threadComm.barrier();
+        //System.out.println(threadId);
+        threadComm.collect2(threadLocalRowRange.getStartIndex()
+                        * targetDimension * Double.BYTES,
+                threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes, threadId);
+        //threadComm.barrier();
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
         if (ParallelOps.worldProcsCount > 1) {
@@ -768,11 +769,11 @@ public class ProgramWorker {
             threadComm.barrier();
         }
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
-        threadComm.copy(ParallelOps.worldProcsCount > 1
+        threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? ParallelOps.fullXBytes
                         : ParallelOps.mmapXWriteBytes, BC,
-                ParallelOps.globalColCount * targetDimension);
-        threadComm.barrier();
+                ParallelOps.globalColCount * targetDimension, threadId);
+        //threadComm.barrier();
         bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
     }
 
