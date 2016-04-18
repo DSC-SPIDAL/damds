@@ -1115,7 +1115,7 @@ public class ProgramWorker {
         }
     }
 
-    private synchronized void readDistancesAndWeights(boolean isSammon) {
+    private void readDistancesAndWeights(boolean isSammon) {
         TransformationFunction function;
         if (!Strings.isNullOrEmpty(config.transformationFunction)) {
             function = loadFunction(config.transformationFunction);
