@@ -141,7 +141,7 @@ public class ProgramWorker {
             // TODO - let's hard code for juliet for now
             bitSet.set((ParallelOps.worldProcRank * 12) + threadId + 1);
 //            bitSet.set((ParallelOps.worldProcRank * 24) + threadId + 1 + 24);
-            Affinity.setAffinity(bitSet);
+//            Affinity.setAffinity(bitSet);
         }
     }
 
