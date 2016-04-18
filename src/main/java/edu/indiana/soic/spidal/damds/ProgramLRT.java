@@ -118,7 +118,7 @@ public class ProgramLRT {
                                     threadIdx + 1);
                             bitSet.set((ParallelOps.worldProcRank * 24) +
                                     threadIdx + 1 + 24);*/
-                            Affinity.setAffinity(1);
+                            Affinity.setAffinity(36);
 
                             final ProgramWorker worker = new ProgramWorker
                                     (threadIdx,
