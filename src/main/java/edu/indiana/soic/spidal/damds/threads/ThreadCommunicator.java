@@ -176,13 +176,13 @@ public class ThreadCommunicator {
         //System.out.println("col " + threadid);
         collectCounter.compareAndSet(threadCount, 0);
         int pos = startIndex;
-//        lock.lock();
+        lock.lock();
         for (double aVal : val) {
             bytes.position(pos);
             bytes.writeDouble(aVal);
             pos+=Double.BYTES;
         }
-//        lock.unlock();
+        lock.unlock();
         collectCounter.getAndIncrement();
         while (collectCounter.get() != threadCount) {
 //            System.out.println(collectCounter.get());
