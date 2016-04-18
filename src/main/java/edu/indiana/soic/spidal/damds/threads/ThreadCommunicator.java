@@ -194,12 +194,12 @@ public class ThreadCommunicator {
     public void copy2(Bytes from, double[] to, int count, int threadId) {
         copyCounter.compareAndSet(threadCount, 0);
         //System.out.println("Copy " + threadId);
-        lock.lock();
+//        lock.lock();
         from.position(0);
         for (int i = 0; i < count; ++i){
             to[i] = from.readDouble();
         }
-        lock.unlock();
+//        lock.unlock();
         copyCounter.getAndIncrement();
         while (copyCounter.get() != threadCount) {
             ;

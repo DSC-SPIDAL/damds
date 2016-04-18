@@ -9,7 +9,6 @@ import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPI;
 import mpi.MPIException;
-import net.openhft.affinity.Affinity;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
 
@@ -23,6 +22,7 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import java.util.regex.Pattern;
 
 public class ProgramWorker {
@@ -73,14 +73,19 @@ public class ProgramWorker {
     private StressTimings stressTimings;
     private TemperatureLoopTimings temperatureLoopTimings;
 
+    private Lock lock;
+    private Bytes threadLocalFullXBytes;
+    private Bytes threadLocalMmapXWriteBytes;
+
     public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection
-            config, ByteOrder byteOrder, int blockSize, Stopwatch mainTimer) {
+            config, ByteOrder byteOrder, int blockSize, Stopwatch mainTimer, Lock lock) {
         this.threadId = threadId;
         this.threadComm = comm;
         this.config = config;
         this.byteOrder = byteOrder;
         this.BlockSize = blockSize;
         this.mainTimer = mainTimer;
+        this.lock = lock;
         utils = new Utils(threadId);
 
         bcInternalTimings = new BCInternalTimings();
@@ -107,17 +112,33 @@ public class ProgramWorker {
                 threadLocalRowStartOffset, (
                 threadLocalRowStartOffset + threadRowCount - 1));
 
-       /* BitSet bitSet = new BitSet(48);
-        // TODO - let's hard code for juliet for now
-        bitSet.set((ParallelOps.worldProcRank*12)+threadId+1);
-        bitSet.set((ParallelOps.worldProcRank*24)+threadId+1+24);
-        Affinity.setAffinity(bitSet);*/
+        if (lock != null) {
+            lock.lock();
+        }
+        long threadLocalMmapXWriteByteOffset =
+                ((ParallelOps.procRowStartOffset -
+                        ParallelOps.procRowRanges[ParallelOps.mmapLeadWorldRank]
+                                .getStartIndex()) + ParallelOps
+                        .threadRowStartOffsets[threadId])
+                        * config.targetDimension * Double.BYTES;
+        int threadLocalMmapXWriteByteExtent = ParallelOps
+                .threadRowCounts[threadId] *
+                config.targetDimension * Double
+                .BYTES;
+        threadLocalMmapXWriteBytes = ParallelOps.mmapXReadBytes.slice
+                (threadLocalMmapXWriteByteOffset, threadLocalMmapXWriteByteExtent);
+
+        threadLocalFullXBytes = ParallelOps.fullXBytes.slice(0, config.numberDataPoints *
+                config.targetDimension * Double.BYTES);
+
+        if (lock != null) {
+            lock.unlock();
+        }
     }
 
     public void run() {
         try {
             setup();
-
             readDistancesAndWeights(config.isSammon);
 
             RefObj<Integer> missingDistCount = new RefObj<>();
@@ -684,8 +705,8 @@ public class ProgramWorker {
         }
         mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
-                        ? ParallelOps.fullXBytes
-                        : ParallelOps.mmapXWriteBytes, outMM,
+                        ? threadLocalFullXBytes
+                        : threadLocalMmapXWriteBytes, outMM,
                 ParallelOps.globalColCount * targetDimension, threadId);
         //threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
@@ -770,8 +791,8 @@ public class ProgramWorker {
         }
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
-                        ? ParallelOps.fullXBytes
-                        : ParallelOps.mmapXWriteBytes, BC,
+                        ? threadLocalFullXBytes
+                        : threadLocalMmapXWriteBytes, BC,
                 ParallelOps.globalColCount * targetDimension, threadId);
         //threadComm.barrier();
         bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
@@ -1025,7 +1046,6 @@ public class ProgramWorker {
             int numPoints, int targetDim, double[] preX)
             throws MPIException, BrokenBarrierException, InterruptedException {
 
-        Bytes fullBytes = ParallelOps.fullXBytes;
         if (threadId == 0) {
             if (ParallelOps.worldProcRank == 0) {
                 int pos = 0;
@@ -1035,8 +1055,8 @@ public class ProgramWorker {
                 Random rand = new Random(System.currentTimeMillis());
                 for (int i = 0; i < numPoints; i++) {
                     for (int j = 0; j < targetDim; j++) {
-                        fullBytes.position(pos);
-                        fullBytes.writeDouble(rand.nextBoolean()
+                        threadLocalFullXBytes.position(pos);
+                        threadLocalFullXBytes.writeDouble(rand.nextBoolean()
                                 ? rand.nextDouble()
                                 : -rand.nextDouble());
                         pos += Double.BYTES;
@@ -1052,7 +1072,7 @@ public class ProgramWorker {
             }
         }
         threadComm.barrier();
-        extractPoints(fullBytes, numPoints, targetDim, preX);
+        extractPoints(threadLocalFullXBytes, numPoints, targetDim, preX);
     }
 
     private DoubleStatistics calculateStatistics(

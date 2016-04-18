@@ -2,26 +2,19 @@ package edu.indiana.soic.spidal.damds;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
-import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.SpidalThreads;
-import edu.indiana.soic.spidal.damds.timing.*;
-import mpi.MPI;
 import mpi.MPIException;
-import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
 
 import java.io.*;
 import java.nio.ByteOrder;
 import java.nio.LongBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.IntStream;
 
 import static edu.rice.hj.Module0.launchHabaneroApp;
 import static edu.rice.hj.Module1.forallChunked;
@@ -112,11 +105,17 @@ public class ProgramLRT {
 
             /* TODO - Fork - join starts here */
             if (ParallelOps.threadCount > 1) {
+                Lock lock = new ReentrantLock();
                 launchHabaneroApp(
                     () -> forallChunked(
                         0, ParallelOps.threadCount - 1,
                         (threadIdx) -> {
-                            new ProgramWorker(threadIdx, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
+                            final ProgramWorker worker = new ProgramWorker
+                                    (threadIdx,
+                                    ParallelOps
+                                    .threadComm, config, byteOrder,
+                                            BlockSize, mainTimer, lock);
+                            worker.run();
                         }));
 //                threads.forall(
 //                        (threadIdx) -> {
@@ -124,7 +123,8 @@ public class ProgramLRT {
 //                        });
             }
             else {
-                new ProgramWorker(0, ParallelOps.threadComm, config, byteOrder, BlockSize, mainTimer).run();
+                new ProgramWorker(0, ParallelOps.threadComm, config,
+                        byteOrder, BlockSize, mainTimer, null).run();
             }
 
 
