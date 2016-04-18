@@ -1088,7 +1088,7 @@ public class ProgramWorker {
             distanceSummary = ParallelOps.allReduce(distanceSummary);
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
         }
-        threadComm.barrier();
+//        threadComm.barrier();
         threadComm.bcastDoubleStatisticsOverThreads(threadId,
                 distanceSummary, 0);
         threadComm.bcastIntOverThreads(threadId, refInt, 0);

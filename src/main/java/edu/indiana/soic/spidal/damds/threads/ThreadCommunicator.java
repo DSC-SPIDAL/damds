@@ -22,8 +22,11 @@ public class ThreadCommunicator {
     private double sum = 0;
     private AtomicInteger sumCount = new AtomicInteger(0);
     private AtomicInteger sumCount2 = new AtomicInteger(0);
+    private AtomicInteger sumCountDoubleStats = new AtomicInteger(0);
     private AtomicInteger collectCounter = new AtomicInteger(0);
     private AtomicInteger copyCounter = new AtomicInteger(0);
+    private AtomicInteger bcastCounter = new AtomicInteger(0);
+    private AtomicInteger bcastCounterStats = new AtomicInteger(0);
     private AtomicInteger barrierCounter = new AtomicInteger(0);
 
     public ThreadCommunicator(int threadCount, int numberDataPoints, int targetDimension) {
@@ -78,16 +81,24 @@ public class ThreadCommunicator {
 
     public void sumDoubleStatisticsOverThreads(int threadIdx, DoubleStatistics val)
         throws BrokenBarrierException, InterruptedException {
+        sumCountDoubleStats.compareAndSet(threadCount, 0);
+
         doubleStatisticsBuffer[threadIdx].copyFrom(val);
-        barrier.await();
+        sumCountDoubleStats.getAndIncrement();
+
+//        barrier.await();
         DoubleStatistics sum = doubleStatisticsBuffer[0];
         if (threadIdx == 0){
+            while (sumCountDoubleStats.get() != threadCount) {
+                ;
+            }
+
             for (int i = 1; i < threadCount; ++i){
                 sum.combine(doubleStatisticsBuffer[i]);
             }
+            val.copyFrom(sum);
         }
-        barrier.await();
-        val.copyFrom(sum);
+//        barrier.await();
     }
 
     public void bcastIntOverThreads(int threadIdx, RefObj<Integer> val, int root)
@@ -124,12 +135,18 @@ public class ThreadCommunicator {
 
     public void bcastDoubleStatisticsOverThreads(int threadIdx, DoubleStatistics val, int root)
         throws BrokenBarrierException, InterruptedException {
+        bcastCounterStats.compareAndSet(threadCount, 0);
+
         if (threadIdx == root){
             for (int i = 0; i < threadCount; ++i){
                 doubleStatisticsBuffer[i].copyFrom(val);
             }
         }
-        barrier.await();
+//        barrier.await();
+        bcastCounterStats.getAndIncrement();
+        while (bcastCounterStats.get() != threadCount) {
+            ;
+        }
         val.copyFrom(doubleStatisticsBuffer[threadIdx]);
     }
 
@@ -146,10 +163,15 @@ public class ThreadCommunicator {
 
     public void bcastDoubleArrayOverThreads(int threadIdx, double[] preX, int root)
         throws BrokenBarrierException, InterruptedException {
+        bcastCounter.compareAndSet(threadCount, 0);
         if (threadIdx == root){
             System.arraycopy(preX, 0, pointsBuffer, 0, preX.length);
         }
-        barrier.await();
+//        barrier.await();
+        bcastCounter.getAndIncrement();
+        while (bcastCounter.get() != threadCount) {
+            ;
+        }
         System.arraycopy(pointsBuffer, 0, preX, 0, pointsBuffer.length);
     }
 
