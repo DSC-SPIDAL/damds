@@ -9,6 +9,7 @@ import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPI;
 import mpi.MPIException;
+import net.openhft.affinity.Affinity;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
 
@@ -134,6 +135,12 @@ public class ProgramWorker {
         if (lock != null) {
             lock.unlock();
         }
+
+         BitSet bitSet = new BitSet(48);
+        // TODO - let's hard code for juliet for now
+        bitSet.set((ParallelOps.worldProcRank*12)+threadId+1);
+        bitSet.set((ParallelOps.worldProcRank*24)+threadId+1+24);
+        Affinity.setAffinity(bitSet);
     }
 
     public void run() {

@@ -92,10 +92,10 @@ public class ProgramLRT {
             ParallelOps.setParallelDecomposition(
                 config.numberDataPoints, config.targetDimension);
 
-            if (ParallelOps.threadCount > 1) {
+            /*if (ParallelOps.threadCount > 1) {
                 threads = new SpidalThreads(ParallelOps.threadCount, false, true,
                         48, ParallelOps.worldProcRank * 12 + 1);
-            }
+            }*/
             // Note - a barrier to get cleaner timings
             ParallelOps.worldProcsComm.barrier();
             Stopwatch mainTimer = Stopwatch.createStarted();
@@ -106,7 +106,7 @@ public class ProgramLRT {
             /* TODO - Fork - join starts here */
             if (ParallelOps.threadCount > 1) {
                 Lock lock = new ReentrantLock();
-                /*launchHabaneroApp(
+                launchHabaneroApp(
                     () -> forallChunked(
                         0, ParallelOps.threadCount - 1,
                         (threadIdx) -> {
@@ -116,13 +116,13 @@ public class ProgramLRT {
                                     .threadComm, config, byteOrder,
                                             BlockSize, mainTimer, lock);
                             worker.run();
-                        }));*/
-                threads.forall(
+                        }));
+                /*threads.forall(
                         (threadIdx) -> {
                             new ProgramWorker(threadIdx, ParallelOps
                                     .threadComm, config, byteOrder,
                                     BlockSize, mainTimer,lock).run();
-                        });
+                        });*/
             }
             else {
                 new ProgramWorker(0, ParallelOps.threadComm, config,
@@ -190,9 +190,9 @@ public class ProgramLRT {
 
             utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
-            if (ParallelOps.threadCount > 1) {
+            /*if (ParallelOps.threadCount > 1) {
                 threads.shutDown();
-            }
+            }*/
             ParallelOps.tearDownParallelism();
         }
         catch (MPIException | IOException e) {
