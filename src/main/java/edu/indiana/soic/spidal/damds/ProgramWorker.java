@@ -218,7 +218,7 @@ public class ProgramWorker {
                         // a single mmap file
                         ParallelOps.worldProcsComm.barrier();
                     }
-                    threadComm.barrier();
+                    //threadComm.barrier();
 
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.CG);
@@ -559,7 +559,7 @@ public class ProgramWorker {
             // a single mmap file
             ParallelOps.worldProcsComm.barrier();
         }
-        threadComm.barrier();
+        //threadComm.barrier();
 
         int iOffset;
 
@@ -592,7 +592,7 @@ public class ProgramWorker {
             if (threadId == 0) {
                 ParallelOps.worldProcsComm.barrier();
             }
-            threadComm.barrier();
+            // threadComm.barrier();
 
             cgLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr / innerProductCalculation(BC, MMAp);
@@ -680,7 +680,7 @@ public class ProgramWorker {
                 // so will use worldProcsComm instead.
                 ParallelOps.worldProcsComm.barrier();
             }
-            threadComm.barrier();
+            //threadComm.barrier();
         }
         mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
@@ -766,7 +766,7 @@ public class ProgramWorker {
                 // here, so will use worldProcsComm instead.
                 ParallelOps.worldProcsComm.barrier();
             }
-            threadComm.barrier();
+            //threadComm.barrier();
         }
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
