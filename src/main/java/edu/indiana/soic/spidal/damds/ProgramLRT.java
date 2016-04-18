@@ -6,6 +6,7 @@ import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.SpidalThreads;
 import mpi.MPIException;
+import net.openhft.affinity.Affinity;
 import org.apache.commons.cli.*;
 
 import java.io.*;
@@ -110,6 +111,15 @@ public class ProgramLRT {
                     () -> forallChunked(
                         0, ParallelOps.threadCount - 1,
                         (threadIdx) -> {
+
+                            BitSet bitSet = new BitSet(48);
+                            // TODO - let's hard code for juliet for now
+                            bitSet.set((ParallelOps.worldProcRank * 12) +
+                                    threadIdx + 1);
+                            bitSet.set((ParallelOps.worldProcRank * 24) +
+                                    threadIdx + 1 + 24);
+                            Affinity.setAffinity(bitSet);
+
                             final ProgramWorker worker = new ProgramWorker
                                     (threadIdx,
                                     ParallelOps
