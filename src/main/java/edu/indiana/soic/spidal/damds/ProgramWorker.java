@@ -339,7 +339,7 @@ public class ProgramWorker {
                             (outRealCGIterations.getValue() * 1.0) /
                                     smacofRealIterations));
             utils.printMessage("  Final Stress:\t" + finalStress);
-            System.exit(0);
+            // System.exit(0);
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
         } catch (MPIException e) {
