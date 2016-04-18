@@ -136,11 +136,13 @@ public class ProgramWorker {
             lock.unlock();
         }
 
-         BitSet bitSet = new BitSet(48);
-        // TODO - let's hard code for juliet for now
-        bitSet.set((ParallelOps.worldProcRank*12)+threadId+1);
-        bitSet.set((ParallelOps.worldProcRank*24)+threadId+1+24);
-        Affinity.setAffinity(bitSet);
+        if (ParallelOps.threadCount > 1) {
+            BitSet bitSet = new BitSet(48);
+            // TODO - let's hard code for juliet for now
+            bitSet.set((ParallelOps.worldProcRank * 12) + threadId + 1);
+            bitSet.set((ParallelOps.worldProcRank * 24) + threadId + 1 + 24);
+            Affinity.setAffinity(bitSet);
+        }
     }
 
     public void run() {
