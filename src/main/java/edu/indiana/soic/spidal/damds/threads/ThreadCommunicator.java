@@ -24,7 +24,7 @@ public class ThreadCommunicator {
     private AtomicInteger sumCount2 = new AtomicInteger(0);
     private AtomicInteger collectCounter = new AtomicInteger(0);
     private AtomicInteger copyCounter = new AtomicInteger(0);
-
+    private AtomicInteger barrierCounter = new AtomicInteger(0);
 
     public ThreadCommunicator(int threadCount, int numberDataPoints, int targetDimension) {
         this.threadCount = threadCount;
@@ -135,7 +135,12 @@ public class ThreadCommunicator {
 
     public void barrier()
         throws BrokenBarrierException, InterruptedException {
-        barrier.await();
+        barrierCounter.compareAndSet(threadCount, 0);
+        barrierCounter.incrementAndGet();
+        while (barrierCounter.get() != threadCount) {
+            ;
+        }
+//        barrier.await();
     }
 
 
