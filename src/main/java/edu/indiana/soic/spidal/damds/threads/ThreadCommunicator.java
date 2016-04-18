@@ -7,6 +7,9 @@ import net.openhft.lang.io.Bytes;
 
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ThreadCommunicator {
     private int threadCount;
@@ -14,7 +17,11 @@ public class ThreadCommunicator {
     private double[] doubleBuffer;
     private double[] pointsBuffer;
     private DoubleStatistics[] doubleStatisticsBuffer;
-    private SpinCyclicBarrier barrier;
+    private CyclicBarrier barrier;
+    private Lock lock = new ReentrantLock();
+    private double sum = 0;
+    private AtomicInteger sumCount = new AtomicInteger(0);
+    private AtomicInteger sumCount2 = new AtomicInteger(0);
 
     public ThreadCommunicator(int threadCount, int numberDataPoints, int targetDimension) {
         this.threadCount = threadCount;
@@ -25,7 +32,7 @@ public class ThreadCommunicator {
         for (int i = 0; i < threadCount; ++i){
             doubleStatisticsBuffer[i] = new DoubleStatistics();
         }
-        barrier = new SpinCyclicBarrier(threadCount);
+        barrier = new CyclicBarrier(threadCount);
     }
 
     /**
@@ -50,12 +57,19 @@ public class ThreadCommunicator {
     public void sumDoublesOverThreads(int threadIdx, RefObj<Double> val)
         throws BrokenBarrierException, InterruptedException {
         doubleBuffer[threadIdx] = val.getValue();
-        barrier.await();
-        double sum = 0.0;
-        for (int i = 0; i < threadCount; ++i){
-            sum += doubleBuffer[i];
+        sumCount.getAndIncrement();
+        // thread 0 waits for others to update
+        if (threadIdx == 0) {
+            while (sumCount.get() != threadCount) {
+                //System.out.println("l1");
+            }
+            double sum = 0.0;
+            for (int i = 0; i < threadCount; ++i){
+                sum += doubleBuffer[i];
+            }
+            val.setValue(sum);
+            sumCount.set(0);
         }
-        val.setValue(sum);
     }
 
     public void sumDoubleStatisticsOverThreads(int threadIdx, DoubleStatistics val)
@@ -91,8 +105,16 @@ public class ThreadCommunicator {
             for (int i = 0; i < threadCount; ++i){
                 doubleBuffer[i] = value;
             }
+//            System.out.println("Set sum count");
+            sumCount2.set(threadCount);
         }
-        barrier.await();
+
+        while (sumCount2.get() == 0) {
+            // System.out.println("l2");
+        }
+        sumCount2.decrementAndGet();
+//        System.out.println("l2");
+//        barrier.await();
         val.setValue(doubleBuffer[threadIdx]);
     }
 

@@ -938,7 +938,7 @@ public class ProgramWorker {
             refDouble.setValue(stress);
         }
 
-        threadComm.barrier();
+        // threadComm.barrier();
         threadComm.bcastDoubleOverThreads(threadId, refDouble, 0);
         return refDouble.getValue() * invSumOfSquareDist;
     }
