@@ -54,7 +54,6 @@ public class ProgramLRT {
 
     public static int BlockSize;
     private static Utils utils = new Utils(0);
-    private static volatile RefObj<short[]> procDistances = new RefObj<>();
 
     private static SpidalThreads threads = null;
 
@@ -98,8 +97,6 @@ public class ProgramLRT {
             ParallelOps.setParallelDecomposition(
                 config.numberDataPoints, config.targetDimension);
 
-            readDistancesFromProc();
-
             /*if (ParallelOps.threadCount > 1) {
                 threads = new SpidalThreads(ParallelOps.threadCount, false, true,
                         48, ParallelOps.worldProcRank * 12 + 1);
@@ -132,7 +129,7 @@ public class ProgramLRT {
                                     ParallelOps
                                     .threadComm, config, byteOrder,
                                             BlockSize, mainTimer,
-                                            procDistances, lock);
+                                            lock);
                             worker.run();
                         }));
                 /*threads.forall(
@@ -144,7 +141,7 @@ public class ProgramLRT {
             }
             else {
                 new ProgramWorker(0, ParallelOps.threadComm, config,
-                        byteOrder, BlockSize, mainTimer, procDistances,null)
+                        byteOrder, BlockSize, mainTimer, null)
                         .run();
             }
 
@@ -216,31 +213,6 @@ public class ProgramLRT {
         }
         catch (MPIException | IOException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
-        }
-    }
-
-    // TODO a temporary fix for stalling threads when reading distances
-    private static void readDistancesFromProc() {
-        TransformationFunction function = null;
-        /*if (!Strings.isNullOrEmpty(config.transformationFunction)) {
-            function = loadFunction(config.transformationFunction);
-        } else {
-            function = (config.distanceTransform != 1.0
-                    ? (d -> Math.pow(d, config.distanceTransform))
-                    : null);
-        }*/
-
-
-        procDistances.setValue(new short[
-                ParallelOps.procRowRange.getLength() * ParallelOps.globalColCount]);
-        if (config.repetitions == 1) {
-            BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                    ParallelOps.procRowRange, ParallelOps.globalColCount, byteOrder,
-                    true, function, procDistances.getValue());
-        } else {
-            BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                    ParallelOps.procRowRange, ParallelOps.globalColCount, byteOrder,
-                    true, function, config.repetitions, procDistances.getValue());
         }
     }
 

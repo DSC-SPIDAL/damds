@@ -48,7 +48,6 @@ public class ProgramWorker {
     private DAMDSSection config;
     private ByteOrder byteOrder;
     private short[] distances;
-    private RefObj<short[]> procDistances;
     private WeightsWrap1D weights;
 
     private int BlockSize;
@@ -81,14 +80,13 @@ public class ProgramWorker {
 
     public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection
             config, ByteOrder byteOrder, int blockSize, Stopwatch mainTimer,
-                         RefObj<short[]> procDistances, Lock lock) {
+                         Lock lock) {
         this.threadId = threadId;
         this.threadComm = comm;
         this.config = config;
         this.byteOrder = byteOrder;
         this.BlockSize = blockSize;
         this.mainTimer = mainTimer;
-        this.procDistances = procDistances;
         this.lock = lock;
         utils = new Utils(threadId);
 
@@ -1116,8 +1114,7 @@ public class ProgramWorker {
         }
     }
 
-    private void readDistancesAndWeights(boolean isSammon) throws
-            BrokenBarrierException, InterruptedException {
+    private void readDistancesAndWeights(boolean isSammon) {
         TransformationFunction function;
         if (!Strings.isNullOrEmpty(config.transformationFunction)) {
             function = loadFunction(config.transformationFunction);
@@ -1131,44 +1128,16 @@ public class ProgramWorker {
         int elementCount = globalThreadRowRange.getLength() * ParallelOps
                 .globalColCount;
         distances = new short[elementCount];
-        // TODO - a fix for the delay in doing this with each thread
-        // The idea is to read all for processes in thread 0 and let others
-        // copy their parts
-       /* if (threadId == 0) {
-            *//*procDistances.setValue(new short[
-                    ParallelOps.procRowRange.getLength() *
-                            ParallelOps.globalColCount]);*//*
-            if (config.repetitions == 1) {
-                System.out.println("***Rank " + ParallelOps.worldProcRank + "" +
-                        " " +
-                        "TID " + threadId + "Came " +
-                        "here ");
-                BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                        ParallelOps.procRowRange, ParallelOps.globalColCount,
-                        byteOrder,
-                        true, function, procDistances.getValue());
-                System.out.println("***Rank " + ParallelOps.worldProcRank + "" +
-                        " " +
-                        "TID " + threadId + "Came after " +
-                        "here ");
-            } else {
-                BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                        ParallelOps.procRowRange, ParallelOps.globalColCount,
-                        byteOrder,
-                        true, function, config.repetitions, procDistances.getValue());
-            }
+        if (config.repetitions == 1) {
+            BinaryReader1D.readRowRange(config.distanceMatrixFile,
+                    globalThreadRowRange, ParallelOps.globalColCount, byteOrder,
+                    true, function, distances);
+        } else {
+            BinaryReader1D.readRowRange(config.distanceMatrixFile,
+                    globalThreadRowRange, ParallelOps.globalColCount, byteOrder,
+                    true, function, config.repetitions, distances);
         }
-        threadComm.barrier();*/
-        System.arraycopy(procDistances.getValue(), threadLocalRowRange.getStartIndex()
-                *ParallelOps.globalColCount, distances, 0,
-                threadLocalRowRange.getLength()*ParallelOps.globalColCount);
-        System.out.println("@@Rank " + ParallelOps.worldProcRank + "" +
-                " " +
-                "TID " + threadId + "Came after " +
-                "here ");
 
-
-        // TODO - let's not worry about weights for now
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)) {
             short[] w = null;
             function = !Strings.isNullOrEmpty(config
