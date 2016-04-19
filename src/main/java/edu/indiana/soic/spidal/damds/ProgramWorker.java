@@ -1134,10 +1134,10 @@ public class ProgramWorker {
         // TODO - a fix for the delay in doing this with each thread
         // The idea is to read all for processes in thread 0 and let others
         // copy their parts
-        if (threadId == 0) {
-            procDistances.setValue(new short[
+       /* if (threadId == 0) {
+            *//*procDistances.setValue(new short[
                     ParallelOps.procRowRange.getLength() *
-                            ParallelOps.globalColCount]);
+                            ParallelOps.globalColCount]);*//*
             if (config.repetitions == 1) {
                 System.out.println("***Rank " + ParallelOps.worldProcRank + "" +
                         " " +
@@ -1158,10 +1158,14 @@ public class ProgramWorker {
                         true, function, config.repetitions, procDistances.getValue());
             }
         }
-        threadComm.barrier();
+        threadComm.barrier();*/
         System.arraycopy(procDistances.getValue(), threadLocalRowRange.getStartIndex()
                 *ParallelOps.globalColCount, distances, 0,
                 threadLocalRowRange.getLength()*ParallelOps.globalColCount);
+        System.out.println("@@Rank " + ParallelOps.worldProcRank + "" +
+                " " +
+                "TID " + threadId + "Came after " +
+                "here ");
 
 
         // TODO - let's not worry about weights for now
