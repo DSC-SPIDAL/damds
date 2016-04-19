@@ -1134,7 +1134,9 @@ public class ProgramWorker {
         // TODO - a fix for the delay in doing this with each thread
         // The idea is to read all for processes in thread 0 and let others
         // copy their parts
-
+        System.out.println("Rank " + ParallelOps.worldProcRank + " " +
+                "TID " + threadId + "Came " +
+                "here ");
         if (threadId == 0) {
             procDistances.setValue(new short[
                     ParallelOps.procRowRange.getLength() *
@@ -1144,20 +1146,25 @@ public class ProgramWorker {
                         ParallelOps.procRowRange, ParallelOps.globalColCount,
                         byteOrder,
                         true, function, procDistances.getValue());
+                System.out.println("***Rank " + ParallelOps.worldProcRank + "" +
+                        " " +
+                        "TID " + threadId + "Came " +
+                        "here ");
             } else {
                 BinaryReader1D.readRowRange(config.distanceMatrixFile,
                         ParallelOps.procRowRange, ParallelOps.globalColCount,
                         byteOrder,
                         true, function, config.repetitions, procDistances.getValue());
+                System.out.println("**Rank " + ParallelOps.worldProcRank + " " +
+                        "TID " + threadId + "Came " +
+                        "here ");
             }
         }
         threadComm.barrier();
         System.arraycopy(procDistances.getValue(), threadLocalRowRange.getStartIndex()
                 *ParallelOps.globalColCount, distances, 0,
                 threadLocalRowRange.getLength()*ParallelOps.globalColCount);
-        System.out.println("Rank " + ParallelOps.worldProcRank + " " +
-                "TID " + threadId + "Came " +
-                "here ");
+
 
         // TODO - let's not worry about weights for now
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)) {
