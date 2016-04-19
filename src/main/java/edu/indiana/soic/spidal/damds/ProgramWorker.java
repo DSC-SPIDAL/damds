@@ -9,7 +9,6 @@ import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPI;
 import mpi.MPIException;
-import net.openhft.affinity.Affinity;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
 
@@ -49,6 +48,7 @@ public class ProgramWorker {
     private DAMDSSection config;
     private ByteOrder byteOrder;
     private short[] distances;
+    private RefObj<short[]> procDistances;
     private WeightsWrap1D weights;
 
     private int BlockSize;
@@ -74,18 +74,21 @@ public class ProgramWorker {
     private StressTimings stressTimings;
     private TemperatureLoopTimings temperatureLoopTimings;
 
-    private Lock lock;
     private Bytes threadLocalFullXBytes;
     private Bytes threadLocalMmapXWriteBytes;
 
+    private Lock lock;
+
     public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection
-            config, ByteOrder byteOrder, int blockSize, Stopwatch mainTimer, Lock lock) {
+            config, ByteOrder byteOrder, int blockSize, Stopwatch mainTimer,
+                         RefObj<short[]> procDistances, Lock lock) {
         this.threadId = threadId;
         this.threadComm = comm;
         this.config = config;
         this.byteOrder = byteOrder;
         this.BlockSize = blockSize;
         this.mainTimer = mainTimer;
+        this.procDistances = procDistances;
         this.lock = lock;
         utils = new Utils(threadId);
 
@@ -137,8 +140,6 @@ public class ProgramWorker {
         if (lock != null) {
             lock.unlock();
         }
-
-
     }
 
     public void run() {
@@ -1115,7 +1116,8 @@ public class ProgramWorker {
         }
     }
 
-    private void readDistancesAndWeights(boolean isSammon) {
+    private void readDistancesAndWeights(boolean isSammon) throws
+            BrokenBarrierException, InterruptedException {
         TransformationFunction function;
         if (!Strings.isNullOrEmpty(config.transformationFunction)) {
             function = loadFunction(config.transformationFunction);
@@ -1129,16 +1131,32 @@ public class ProgramWorker {
         int elementCount = globalThreadRowRange.getLength() * ParallelOps
                 .globalColCount;
         distances = new short[elementCount];
-        if (config.repetitions == 1) {
-            BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                    globalThreadRowRange, ParallelOps.globalColCount, byteOrder,
-                    true, function, distances);
-        } else {
-            BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                    globalThreadRowRange, ParallelOps.globalColCount, byteOrder,
-                    true, function, config.repetitions, distances);
-        }
+        // TODO - a fix for the delay in doing this with each thread
+        // The idea is to read all for processes in thread 0 and let others
+        // copy their parts
 
+        if (threadId == 0) {
+            procDistances.setValue(new short[
+                    ParallelOps.procRowRange.getLength() *
+                            ParallelOps.globalColCount]);
+            if (config.repetitions == 1) {
+                BinaryReader1D.readRowRange(config.distanceMatrixFile,
+                        ParallelOps.procRowRange, ParallelOps.globalColCount,
+                        byteOrder,
+                        true, function, procDistances.getValue());
+            } else {
+                BinaryReader1D.readRowRange(config.distanceMatrixFile,
+                        ParallelOps.procRowRange, ParallelOps.globalColCount,
+                        byteOrder,
+                        true, function, config.repetitions, procDistances.getValue());
+            }
+        }
+        threadComm.barrier();
+        System.arraycopy(procDistances.getValue(), threadLocalRowRange.getStartIndex()
+                *ParallelOps.globalColCount, distances, 0,
+                threadLocalRowRange.getLength()*ParallelOps.globalColCount);
+
+        // TODO - let's not worry about weights for now
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)) {
             short[] w = null;
             function = !Strings.isNullOrEmpty(config

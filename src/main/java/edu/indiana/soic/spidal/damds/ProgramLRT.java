@@ -2,6 +2,7 @@ package edu.indiana.soic.spidal.damds;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
+import edu.indiana.soic.spidal.common.RefObj;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.SpidalThreads;
@@ -50,6 +51,7 @@ public class ProgramLRT {
 
     public static int BlockSize;
     private static Utils utils = new Utils(0);
+    private static volatile RefObj<short[]> procDistances = new RefObj<>();
 
     private static SpidalThreads threads = null;
 
@@ -124,7 +126,8 @@ public class ProgramLRT {
                                     (threadIdx,
                                     ParallelOps
                                     .threadComm, config, byteOrder,
-                                            BlockSize, mainTimer, lock);
+                                            BlockSize, mainTimer,
+                                            procDistances, lock);
                             worker.run();
                         }));
                 /*threads.forall(
@@ -136,7 +139,8 @@ public class ProgramLRT {
             }
             else {
                 new ProgramWorker(0, ParallelOps.threadComm, config,
-                        byteOrder, BlockSize, mainTimer, null).run();
+                        byteOrder, BlockSize, mainTimer, procDistances,null)
+                        .run();
             }
 
 
