@@ -116,13 +116,13 @@ public class ProgramLRT {
                         0, ParallelOps.threadCount - 1,
                         (threadIdx) -> {
 
-                            BitSet bitSet = new BitSet(48);
+                            /*BitSet bitSet = new BitSet(48);
                             // TODO - let's hard code for juliet 12x2 for now
                             bitSet.set(((ParallelOps.worldProcRank%2) * 12) +
                                     threadIdx);
                             bitSet.set(((ParallelOps.worldProcRank%2) * 24) +
                                     threadIdx + 24);
-                            Affinity.setAffinity(bitSet);
+                            Affinity.setAffinity(bitSet);*/
 
                             final ProgramWorker worker = new ProgramWorker
                                     (threadIdx,
