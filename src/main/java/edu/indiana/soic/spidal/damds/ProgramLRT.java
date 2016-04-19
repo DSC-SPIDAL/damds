@@ -232,17 +232,14 @@ public class ProgramLRT {
 
 
         procDistances.setValue(new short[
-                ParallelOps.procRowRange.getLength() *
-                        ParallelOps.globalColCount]);
+                ParallelOps.procRowRange.getLength() * ParallelOps.globalColCount]);
         if (config.repetitions == 1) {
             BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                    ParallelOps.procRowRange, ParallelOps.globalColCount,
-                    byteOrder,
+                    ParallelOps.procRowRange, ParallelOps.globalColCount, byteOrder,
                     true, function, procDistances.getValue());
         } else {
             BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                    ParallelOps.procRowRange, ParallelOps.globalColCount,
-                    byteOrder,
+                    ParallelOps.procRowRange, ParallelOps.globalColCount, byteOrder,
                     true, function, config.repetitions, procDistances.getValue());
         }
     }
