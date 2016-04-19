@@ -146,9 +146,9 @@ public class ProgramWorker {
         try {
             setup();
             readDistancesAndWeights(config.isSammon);
-            System.out.println("Rank " + ParallelOps.worldProcRank + " " +
+            /*System.out.println("Rank " + ParallelOps.worldProcRank + " " +
                     "TID " + threadId + "Came " +
-                    "here ");
+                    "here ");*/
 
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(
@@ -1155,6 +1155,9 @@ public class ProgramWorker {
         System.arraycopy(procDistances.getValue(), threadLocalRowRange.getStartIndex()
                 *ParallelOps.globalColCount, distances, 0,
                 threadLocalRowRange.getLength()*ParallelOps.globalColCount);
+        System.out.println("Rank " + ParallelOps.worldProcRank + " " +
+                "TID " + threadId + "Came " +
+                "here ");
 
         // TODO - let's not worry about weights for now
         if (!Strings.isNullOrEmpty(config.weightMatrixFile)) {
