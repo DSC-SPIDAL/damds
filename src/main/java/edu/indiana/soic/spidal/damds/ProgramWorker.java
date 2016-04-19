@@ -1147,6 +1147,10 @@ public class ProgramWorker {
                         ParallelOps.procRowRange, ParallelOps.globalColCount,
                         byteOrder,
                         true, function, procDistances.getValue());
+                System.out.println("***Rank " + ParallelOps.worldProcRank + "" +
+                        " " +
+                        "TID " + threadId + "Came after " +
+                        "here ");
             } else {
                 BinaryReader1D.readRowRange(config.distanceMatrixFile,
                         ParallelOps.procRowRange, ParallelOps.globalColCount,
