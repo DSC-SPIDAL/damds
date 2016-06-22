@@ -120,7 +120,7 @@ public class ProgramLRT {
                             // TODO - let's hard code for juliet 12x2 for now
                             bitSet.set(((ParallelOps.worldProcRank%2) * 12) +
                                     threadIdx);
-                            bitSet.set(((ParallelOps.worldProcRank%2) * 24) +
+                            bitSet.set(((ParallelOps.worldProcRank%2) * 12) +
                                     threadIdx + 24);
                             Affinity.setAffinity(bitSet);
 
