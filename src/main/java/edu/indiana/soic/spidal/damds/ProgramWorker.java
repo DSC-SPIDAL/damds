@@ -140,7 +140,7 @@ public class ProgramWorker {
         }
     }
 
-    public void run() {
+    public void run() throws IOException {
         try {
             setup();
             readDistancesAndWeights(config.isSammon);
@@ -345,6 +345,9 @@ public class ProgramWorker {
                     INV_SUM_OF_SQUARE);
 
             if (threadId == 0) {
+                if (ParallelOps.worldProcRank == 0){
+                    Utils.writeOutput(preX, ProgramLRT.config.targetDimension, ProgramLRT.config.labelFile, ProgramLRT.config.pointsFile);
+                }
                 mainTimer.stop();
             }
 

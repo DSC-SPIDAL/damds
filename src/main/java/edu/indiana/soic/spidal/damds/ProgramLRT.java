@@ -130,7 +130,11 @@ public class ProgramLRT {
                                     .threadComm, config, byteOrder,
                                             BlockSize, mainTimer,
                                             lock);
-                            worker.run();
+                            try {
+                                worker.run();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                         }));
                 /*threads.forall(
                         (threadIdx) -> {
@@ -148,19 +152,8 @@ public class ProgramLRT {
 
             /* TODO - Fork-join should end here */
 
-            // TODO - Fix after threads
-            /*double QoR1 = stress / (config.numberDataPoints * (config.numberDataPoints - 1) / 2);
-            double QoR2 = QoR1 / (distanceSummary.getAverage() * distanceSummary.getAverage());
 
-            utils.printMessage(
-                String.format(
-                    "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
-            utils.printMessage(
-                String.format(
-                    "Average of Delta(original distance) = %.5g",
-                    distanceSummary.getAverage()));
-
-
+            /*
              // TODO Fix error handling here
             if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
                 "NOLABEL")) {
@@ -510,46 +503,7 @@ public class ProgramLRT {
 
     }
 
-    private static void writeOuput(double[] X, int vecLen, String labelFile,
-                                   String outputFile) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(labelFile));
-        String line;
-        String parts[];
-        Map<String, Integer> labels = new HashMap<>();
-        while ((line = reader.readLine()) != null) {
-            parts = line.split(" ");
-            if (parts.length < 2) {
-                // Don't need to throw an error because this is the last part of
-                // the computation
-                System.out.println("ERROR: Invalid label");
-            }
-            labels.put(parts[0].trim(), Integer.valueOf(parts[1]));
-        }
-        reader.close();
 
-        File file = new File(outputFile);
-        PrintWriter writer = new PrintWriter(new FileWriter(file));
-
-        int N = X.length / 3;
-
-        DecimalFormat format = new DecimalFormat("#.##########");
-        for (int i = 0; i < N; i++) {
-            int index = i * vecLen;
-            writer.print(String.valueOf(i) + '\t'); // print ID.
-            for (int j = 0; j < vecLen; j++) {
-                writer.print(format.format(X[index + j]) + '\t'); // print
-                // configuration
-                // of each axis.
-            }
-            /* TODO Fix bug here - it's from Ryan's code*/
-            /*writer.println(labels.get(String.valueOf(ids[i]))); // print label*/
-            // value, which
-            // is
-            // ONE for all data.
-        }
-        writer.flush();
-        writer.close();
-    }
 
     private static void readConfiguration(CommandLine cmd) {
         config = ConfigurationMgr.LoadConfiguration(
