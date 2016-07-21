@@ -2,10 +2,6 @@ package edu.indiana.soic.spidal.damds;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
-import com.google.common.base.Strings;
-import edu.indiana.soic.spidal.common.BinaryReader1D;
-import edu.indiana.soic.spidal.common.RefObj;
-import edu.indiana.soic.spidal.common.TransformationFunction;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.SpidalThreads;
@@ -50,6 +46,12 @@ public class ProgramLRT {
         programOptions.addOption(
                 Constants.CMD_OPTION_SHORT_BIND_THREADS, true,
                 Constants.CMD_OPTION_DESCRIPTION_BIND_THREADS);
+
+        programOptions.addOption(
+                Constants.CMD_OPTION_SHORT_CPS, true,
+                Constants.CMD_OPTION_DESCRIPTION_CPS);
+
+
     }
 
     //Config Settings
@@ -59,6 +61,7 @@ public class ProgramLRT {
     public static int BlockSize;
     private static Utils utils = new Utils(0);
     private static boolean bind;
+    private static int cps;
 
     private static SpidalThreads threads = null;
 
@@ -122,7 +125,7 @@ public class ProgramLRT {
                         (threadIdx) -> {
 
                             if (bind) {
-                                BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, (ParallelOps.nodeCount));
+                                BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
                                 Affinity.setAffinity(bitSet);
                             }
 
@@ -147,7 +150,7 @@ public class ProgramLRT {
             }
             else {
                 if (bind) {
-                    BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, 0, ParallelOps.threadCount, (ParallelOps.nodeCount));
+                    BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, 0, ParallelOps.threadCount, cps);
                     Affinity.setAffinity(bitSet);
                 }
                 new ProgramWorker(0, ParallelOps.threadComm, config,
@@ -527,6 +530,11 @@ public class ProgramLRT {
 
         bind = !cmd.hasOption(Constants.CMD_OPTION_SHORT_BIND_THREADS) ||
                 Boolean.parseBoolean(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_BIND_THREADS));
+        cps = (cmd.hasOption(Constants.CMD_OPTION_SHORT_CPS)) ? Integer.parseInt(Constants.CMD_OPTION_SHORT_CPS) : -1;
+        if (cps == -1){
+            utils.printMessage("Disabling thread binding as cps is not specified");
+            bind = false;
+        }
     }
 
     /**

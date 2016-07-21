@@ -24,6 +24,9 @@ public class Constants {
     public static final String CMD_OPTION_SHORT_BIND_THREADS = "bind";
     public static final String CMD_OPTION_DESCRIPTION_BIND_THREADS = "Bind threads to cores";
 
+    public static final String CMD_OPTION_SHORT_CPS = "cps";
+    public static final String CMD_OPTION_DESCRIPTION_CPS = "Cores per socket";
+
 
     static final String CMD_OPTION_DESCRIPTION_T = "Thread count";
     static final String
