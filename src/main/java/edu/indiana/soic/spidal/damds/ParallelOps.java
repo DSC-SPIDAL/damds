@@ -420,7 +420,7 @@ public class ParallelOps {
         return intBuffer.get(0);
     }
 
-    public static void allGather() throws MPIException, NoSuchFieldException {
+    public static void allGather() throws MPIException {
 
         // Important barrier here - as we need to make sure writes
         // are done to the mmap file

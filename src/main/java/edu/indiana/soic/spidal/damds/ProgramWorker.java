@@ -140,7 +140,7 @@ public class ProgramWorker {
         }
     }
 
-    public void run() throws IOException, NoSuchFieldException {
+    public void run() throws IOException {
         try {
             setup();
             readDistancesAndWeights(config.isSammon);
@@ -740,7 +740,7 @@ public class ProgramWorker {
             WeightsWrap1D weights, int blockSize, double[] BC,
             double[][] threadPartialBCInternalBofZ,
             double[] threadPartialBCInternalMM)
-            throws MPIException, InterruptedException, BrokenBarrierException, NoSuchFieldException {
+            throws MPIException, InterruptedException, BrokenBarrierException {
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL);
         calculateBCInternal(
