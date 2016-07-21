@@ -4,6 +4,7 @@ import edu.indiana.soic.spidal.common.DoubleStatistics;
 import edu.indiana.soic.spidal.common.Range;
 import edu.indiana.soic.spidal.common.RangePartitioner;
 import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
+import edu.indiana.soic.spidal.damds.timing.BCTimings;
 import mpi.Intracomm;
 import mpi.MPI;
 import mpi.MPIException;
@@ -13,6 +14,7 @@ import net.openhft.lang.io.Bytes;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.*;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
@@ -82,6 +84,8 @@ public class ParallelOps {
     public static String mmapEntryLockFileName;
     public static Bytes mmapLockOne;
     public static Bytes mmapEntryLock;
+    private static int FLAG = 0;
+    private static int COUNT = Long.BYTES;
 
     public static Bytes mmapXReadBytes;
     public static ByteBuffer mmapXReadByteBuffer;
@@ -353,6 +357,22 @@ public class ParallelOps {
                                                           fullXByteOffset,
                                                           fullXByteExtent));
             fullXByteBuffer = fullXBytes.sliceAsByteBuffer(fullXByteBuffer);
+
+            File lockFile = new File(mmapScratchDir, mmapLockFileNameOne);
+            FileChannel fc = new RandomAccessFile(lockFile, "rw").getChannel();
+            mmapLockOne = ByteBufferBytes.wrap(fc.map(FileChannel.MapMode.READ_WRITE, 0, 64));
+            if (isMmapLead){
+                mmapLockOne.writeBoolean(FLAG, false);
+                mmapLockOne.writeLong(COUNT, 0);
+            }
+
+            lockFile = new File(mmapScratchDir, mmapEntryLockFileName);
+            fc = new RandomAccessFile(lockFile, "rw").getChannel();
+            mmapEntryLock = ByteBufferBytes.wrap(fc.map(FileChannel.MapMode.READ_WRITE, 0, 64));
+            if (isMmapLead){
+                mmapEntryLock.writeBoolean(FLAG, false);
+                mmapEntryLock.writeLong(COUNT, 0);
+            }
         }
 
         /* Allocate memory maps for single double valued communications like AllReduce */
@@ -400,8 +420,64 @@ public class ParallelOps {
         return intBuffer.get(0);
     }
 
-    static void allGather() {
+    public static void allGather() throws MPIException, NoSuchFieldException {
 
+        // Important barrier here - as we need to make sure writes
+        // are done to the mmap file
+
+        /* Safety logic to make sure all procs in the mmap has reached here. Otherwise, it's possible that
+            * one (or more) procs from a same mmap may have come here while a previous call to this collective
+            * is being carried out by the other procs in the same mmap. Also, note the use of a separate lock for this,
+            * without that there's a chance to crash/hang */
+        if (mmapEntryLock.addAndGetInt(COUNT, 1) == mmapProcsCount){
+            mmapEntryLock.writeInt(COUNT, 0);
+        } else {
+            int count;
+            do  {
+                count = mmapEntryLock.readInt(COUNT);
+            } while (count != 0);
+        }
+
+        if (ParallelOps.isMmapLead) {
+            cgProcComm.allGatherv(mmapXReadByteBuffer,
+                    cgProcsMmapXByteExtents[cgProcRank], MPI.BYTE,
+                    fullXByteBuffer, cgProcsMmapXByteExtents,
+                    cgProcsMmapXDisplas, MPI.BYTE);
+
+            if (mmapProcsCount > 1) {
+                mmapLockOne.writeInt(COUNT, 1); // order matters as no locks
+                mmapLockOne.writeBoolean(FLAG, true);
+            } else {
+                /* This is for the case if you only have 1 proc per mmap,
+                * then it needs to clear the flag and reset the count.
+                * We special case when 1 proc per mmap under uniform mode, but
+                * in a heterogeneous setting it's possible to have an mmap with 1 proc, hence this logic*/
+                mmapLockOne.writeInt(COUNT, 0); // order does NOT matter for this case
+                mmapLockOne.writeBoolean(FLAG, false);
+            }
+        } else {
+            busyWaitTillDataReady();
+        }
+        // Each process in a memory group waits here.
+        // It's not necessary to wait for a process
+        // in another memory map group, hence the use of
+        // mmapProcComm.
+        // However it's cleaner for any timings to have everyone sync
+        // here, so will use worldProcsComm instead.
+//        ParallelOps.worldProcsComm.barrier();
+    }
+
+    private static void busyWaitTillDataReady(){
+        boolean ready = false;
+        int count;
+        while (!ready){
+            ready = mmapLockOne.readBoolean(FLAG);
+        }
+        count = mmapLockOne.addAndGetInt(COUNT,1);
+        if (count == mmapProcsCount){
+            mmapLockOne.writeBoolean(FLAG, false);
+            mmapLockOne.writeInt(COUNT, 0);
+        }
     }
 
     public static void partialXAllGather() throws MPIException {

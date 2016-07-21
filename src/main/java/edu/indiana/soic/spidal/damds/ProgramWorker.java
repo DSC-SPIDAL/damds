@@ -140,7 +140,7 @@ public class ProgramWorker {
         }
     }
 
-    public void run() throws IOException {
+    public void run() throws IOException, NoSuchFieldException {
         try {
             setup();
             readDistancesAndWeights(config.isSammon);
@@ -740,7 +740,7 @@ public class ProgramWorker {
             WeightsWrap1D weights, int blockSize, double[] BC,
             double[][] threadPartialBCInternalBofZ,
             double[] threadPartialBCInternalMM)
-            throws MPIException, InterruptedException, BrokenBarrierException {
+            throws MPIException, InterruptedException, BrokenBarrierException, NoSuchFieldException {
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL);
         calculateBCInternal(
@@ -753,11 +753,14 @@ public class ProgramWorker {
         //System.out.println(threadId);
         threadComm.collect2(0,
                 threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);
-        //threadComm.barrier();
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
+                bcTimings.startTiming(BCTimings.TimingTask.COMM);
+                ParallelOps.allGather();
+                bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+                /*
                 // Important barrier here - as we need to make sure writes
                 // are done to the mmap file
 
@@ -778,6 +781,7 @@ public class ProgramWorker {
                 // However it's cleaner for any timings to have everyone sync
                 // here, so will use worldProcsComm instead.
                 ParallelOps.worldProcsComm.barrier();
+                */
             }
             threadComm.barrier();
         }
