@@ -456,6 +456,7 @@ public class ProgramWorker {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+            System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 done reading");
         }
         threadComm.barrier();
         threadComm.bcastDoubleArrayOverThreads(threadId, preX, 0);
