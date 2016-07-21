@@ -434,6 +434,7 @@ public class ProgramWorker {
             String initialPointsFile, double[] preX, int dimension)
             throws BrokenBarrierException, InterruptedException {
         if (threadId == 0) {
+            System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 came to reading");
             try (BufferedReader br = Files
                     .newBufferedReader(Paths.get(initialPointsFile),
                             Charset.defaultCharset())) {
@@ -441,6 +442,7 @@ public class ProgramWorker {
                 Pattern pattern = Pattern.compile("[\t]");
                 int row = 0;
                 while ((line = br.readLine()) != null) {
+                    System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 is reading");
                     if (Strings.isNullOrEmpty(line)) {
                         continue; // continue on empty lines - "while" will
                     }
@@ -457,6 +459,7 @@ public class ProgramWorker {
                 throw new RuntimeException(e);
             }
             System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 done reading");
+
         }
         threadComm.barrier();
         threadComm.bcastDoubleArrayOverThreads(threadId, preX, 0);
