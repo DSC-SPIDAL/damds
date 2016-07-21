@@ -443,7 +443,7 @@ public class ProgramWorker {
                 int row = 0;
                 while ((line = br.readLine()) != null) {
 
-
+                    System.out.println("**Rank: " + ParallelOps.worldProcRank + " thread 0 is reading row "+ row + " " +line);
                     if (Strings.isNullOrEmpty(line)) {
                         continue; // continue on empty lines - "while" will
                     }
@@ -455,7 +455,7 @@ public class ProgramWorker {
                         preX[row + i] = Double.parseDouble(splits[i].trim());
                     }
                     row += dimension;
-                    System.out.println("**Rank: " + ParallelOps.worldProcRank + " thread 0 is reading row "+ row);
+
                     if (row%100 == 0) {
                         System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 is reading row "+ row);
                     }
