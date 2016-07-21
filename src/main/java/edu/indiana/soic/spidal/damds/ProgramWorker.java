@@ -916,6 +916,10 @@ public class ProgramWorker {
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double stress = refDouble.getValue();
+            // reverting to default MPI call of allreduce<double>
+            stress = ParallelOps.allReduce(stress);
+
+            /*
             // Write thread local reduction to shared memory map
             ParallelOps.mmapSWriteBytes.position(0);
             ParallelOps.mmapSWriteBytes.writeDouble(stress);
@@ -948,7 +952,9 @@ public class ProgramWorker {
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
             ParallelOps.mmapSReadBytes.position(0);
-            stress = ParallelOps.mmapSReadBytes.readDouble();
+            stress = ParallelOps.mmapSReadBytes.readDouble();*/
+
+
             refDouble.setValue(stress);
         }
 
