@@ -346,7 +346,7 @@ public class ProgramWorker {
 
             if (threadId == 0) {
                 if (ParallelOps.worldProcRank == 0){
-                    Utils.writeOutput(preX, ProgramLRT.config.targetDimension, ProgramLRT.config.labelFile, ProgramLRT.config.pointsFile);
+                    Utils.writeOutput(preX, ProgramLRT.config.targetDimension, ProgramLRT.config.pointsFile);
                 }
                 mainTimer.stop();
             }
@@ -474,27 +474,7 @@ public class ProgramWorker {
         return String.format(format, days, hours, minutes, seconds, millis);
     }
 
-    private static void writeOuput(double[] x, int vecLen, String outputFile)
-            throws IOException {
-        PrintWriter writer = new PrintWriter(new FileWriter(outputFile));
-        int N = x.length / vecLen;
 
-        DecimalFormat format = new DecimalFormat("#.##########");
-        for (int i = 0; i < N; i++) {
-            int index = i * vecLen;
-            writer.print(String.valueOf(i) + '\t'); // print ID.
-            for (int j = 0; j < vecLen; j++) {
-                writer.print(format.format(x[index + j]) + '\t'); // print
-                // configuration
-                // of each axis.
-            }
-            writer.println("1"); // print label value, which is ONE for all
-            // data.
-        }
-        writer.flush();
-        writer.close();
-
-    }
 
     private static void writeOuput(double[] X, int vecLen, String labelFile,
                                    String outputFile) throws IOException {

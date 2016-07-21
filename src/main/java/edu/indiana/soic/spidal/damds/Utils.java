@@ -30,44 +30,25 @@ public class Utils {
         System.out.println(msg);
     }
 
-    public static void writeOutput(double[] X, int vecLen, String labelFile,
-                                   String outputFile) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(labelFile));
-        String line;
-        String parts[];
-        Map<String, Integer> labels = new HashMap<>();
-        while ((line = reader.readLine()) != null) {
-            parts = line.split(" ");
-            if (parts.length < 2) {
-                // Don't need to throw an error because this is the last part of
-                // the computation
-                System.out.println("ERROR: Invalid label");
-            }
-            labels.put(parts[0].trim(), Integer.valueOf(parts[1]));
-        }
-        reader.close();
-
-        File file = new File(outputFile);
-        PrintWriter writer = new PrintWriter(new FileWriter(file));
-
-        int N = X.length / 3;
+    public static void writeOutput(double[] x, int vecLen, String outputFile)
+            throws IOException {
+        PrintWriter writer = new PrintWriter(new FileWriter(outputFile));
+        int N = x.length / vecLen;
 
         DecimalFormat format = new DecimalFormat("#.##########");
         for (int i = 0; i < N; i++) {
             int index = i * vecLen;
             writer.print(String.valueOf(i) + '\t'); // print ID.
             for (int j = 0; j < vecLen; j++) {
-                writer.print(format.format(X[index + j]) + '\t'); // print
+                writer.print(format.format(x[index + j]) + '\t'); // print
                 // configuration
                 // of each axis.
             }
-            /* TODO Fix bug here - it's from Ryan's code*/
-            /*writer.println(labels.get(String.valueOf(ids[i]))); // print label*/
-            // value, which
-            // is
-            // ONE for all data.
+            writer.println("1"); // print label value, which is ONE for all
+            // data.
         }
         writer.flush();
         writer.close();
+
     }
 }
