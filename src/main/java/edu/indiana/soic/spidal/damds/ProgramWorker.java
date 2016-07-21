@@ -673,6 +673,11 @@ public class ProgramWorker {
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
+                mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
+                ParallelOps.allGather();
+                mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
+
+                /*
                 // Important barrier here - as we need to make sure writes
                 // are done to the mmap file
 
@@ -693,6 +698,7 @@ public class ProgramWorker {
                 // here,
                 // so will use worldProcsComm instead.
                 ParallelOps.worldProcsComm.barrier();
+                */
             }
             threadComm.barrier();
         }
