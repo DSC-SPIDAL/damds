@@ -146,6 +146,10 @@ public class ProgramLRT {
                         });*/
             }
             else {
+                if (bind) {
+                    BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, 0, ParallelOps.threadCount, (ParallelOps.nodeCount));
+                    Affinity.setAffinity(bitSet);
+                }
                 new ProgramWorker(0, ParallelOps.threadComm, config,
                         byteOrder, BlockSize, mainTimer, null)
                         .run();
