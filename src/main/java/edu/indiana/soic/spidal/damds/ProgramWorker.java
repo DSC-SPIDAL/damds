@@ -189,10 +189,11 @@ public class ProgramWorker {
 
             tCur = config.alpha * tMax;
 
-            if (threadId == 0) {
+            // TODO - turning off barriers
+            /*if (threadId == 0) {
                 ParallelOps.worldProcsComm.barrier();
             }
-            threadComm.barrier();
+            threadComm.barrier();*/
             if (threadId == 0) {
                 mainTimer.stop();
                 utils.printMessage("\nUp to the loop took " + mainTimer.elapsed(
@@ -241,12 +242,13 @@ public class ProgramWorker {
                     stressLoopTimings.endTiming(
                             StressLoopTimings.TimingTask.BC);
 
-                    if (threadId == 0) {
+                    // TODO - turning off barriers
+                    /*if (threadId == 0) {
                         // This barrier was necessary for correctness when using
                         // a single mmap file
                         ParallelOps.worldProcsComm.barrier();
                     }
-                    threadComm.barrier();
+                    threadComm.barrier();*/
 
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.CG);
@@ -568,12 +570,13 @@ public class ProgramWorker {
                 MMr, threadPartialMM);
         cgTimings.endTiming(CGTimings.TimingTask.MM);
 
-        if (threadId == 0) {
+        // TODO - turning off barriers
+        /*if (threadId == 0) {
             // This barrier was necessary for correctness when using
             // a single mmap file
             ParallelOps.worldProcsComm.barrier();
         }
-        threadComm.barrier();
+        threadComm.barrier();*/
 
         int iOffset;
 
@@ -603,10 +606,12 @@ public class ProgramWorker {
             calculateMM(BC, targetDimension, numPoints, weights, blockSize, v,
                     MMAp, threadPartialMM);
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
-            if (threadId == 0) {
+
+            // TODO - turning off barriers
+            /*if (threadId == 0) {
                 ParallelOps.worldProcsComm.barrier();
             }
-            threadComm.barrier();
+            threadComm.barrier();*/
 
             cgLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double alpha = rTr / innerProductCalculation(BC, MMAp);
