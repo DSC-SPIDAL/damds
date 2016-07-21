@@ -455,7 +455,7 @@ public class ProgramWorker {
                     }
                     row += dimension;
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
             System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 done reading");
