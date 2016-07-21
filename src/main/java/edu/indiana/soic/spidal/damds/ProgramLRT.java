@@ -9,6 +9,7 @@ import edu.indiana.soic.spidal.common.TransformationFunction;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.SpidalThreads;
+import edu.indiana.soic.spidal.damds.threads.ThreadBitAssigner;
 import mpi.MPIException;
 import net.openhft.affinity.Affinity;
 import org.apache.commons.cli.*;
@@ -46,6 +47,9 @@ public class ProgramLRT {
         programOptions.addOption(
             Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR, true,
             Constants.CMD_OPTION_DESCRIPTION_MMAP_SCRATCH_DIR);
+        programOptions.addOption(
+                Constants.CMD_OPTION_SHORT_BIND_THREADS, true,
+                Constants.CMD_OPTION_DESCRIPTION_BIND_THREADS);
     }
 
     //Config Settings
@@ -54,6 +58,7 @@ public class ProgramLRT {
 
     public static int BlockSize;
     private static Utils utils = new Utils(0);
+    private static boolean bind;
 
     private static SpidalThreads threads = null;
 
@@ -116,13 +121,10 @@ public class ProgramLRT {
                         0, ParallelOps.threadCount - 1,
                         (threadIdx) -> {
 
-                            BitSet bitSet = new BitSet(48);
-                            // TODO - let's hard code for juliet 12x2 for now
-                            bitSet.set(((ParallelOps.worldProcRank%2) * 12) +
-                                    threadIdx);
-                            bitSet.set(((ParallelOps.worldProcRank%2) * 12) +
-                                    threadIdx + 24);
-                            Affinity.setAffinity(bitSet);
+                            if (bind) {
+                                BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, (ParallelOps.nodeCount));
+                                Affinity.setAffinity(bitSet);
+                            }
 
                             final ProgramWorker worker = new ProgramWorker
                                     (threadIdx,
@@ -518,6 +520,9 @@ public class ProgramLRT {
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
         BlockSize = config.blockSize;
+
+        bind = !cmd.hasOption(Constants.CMD_OPTION_SHORT_BIND_THREADS) ||
+                Boolean.parseBoolean(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_BIND_THREADS));
     }
 
     /**

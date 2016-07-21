@@ -21,6 +21,10 @@ public class Constants {
         "Scratch directory to store memmory mapped files. A node local "
         + "volatile storage like tmpfs is advised for this";
 
+    public static final String CMD_OPTION_SHORT_BIND_THREADS = "bind";
+    public static final String CMD_OPTION_DESCRIPTION_BIND_THREADS = "Bind threads to cores";
+
+
     static final String CMD_OPTION_DESCRIPTION_T = "Thread count";
     static final String
         ERR_PROGRAM_ARGUMENTS_PARSING_FAILED =
