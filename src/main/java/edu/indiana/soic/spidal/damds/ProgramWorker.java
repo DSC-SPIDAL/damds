@@ -442,6 +442,7 @@ public class ProgramWorker {
                 Pattern pattern = Pattern.compile("[\t]");
                 int row = 0;
                 while ((line = br.readLine()) != null) {
+                    System.out.println("**Rank: " + ParallelOps.worldProcRank + " thread 0 is reading row "+ row);
 
                     if (Strings.isNullOrEmpty(line)) {
                         continue; // continue on empty lines - "while" will
