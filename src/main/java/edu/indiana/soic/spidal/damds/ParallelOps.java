@@ -20,6 +20,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
@@ -279,8 +280,27 @@ public class ParallelOps {
 
         boolean status = new File(mmapScratchDir).mkdirs();
 
-        final String mmapXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapX.bin";
-        final String fullXFname = machineName + ".mmapId." + mmapIdLocalToNode +".fullX.bin";
+        // Generate UUID and bcast it
+        byte[] bytes = null;
+        if (worldProcRank == 0){
+            UUID id = UUID.randomUUID();
+            bytes = id.toString().getBytes();
+            intBuffer.put(0, bytes.length);
+        }
+
+        worldProcsComm.bcast(intBuffer, 1, MPI.INT, 0);
+        int length = intBuffer.get(0);
+        if (worldProcRank != 0) {
+            bytes = new byte[length];
+        }
+        worldProcsComm.bcast(bytes, bytes.length, MPI.BYTE, 0);
+        String uuid = new String(bytes);
+
+        mmapLockFileNameOne = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapLockOne." + uuid + ".bin";
+        mmapEntryLockFileName = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapEntryLock." + uuid + ".bin";
+
+        final String mmapXFname = machineName + ".mmapId." + mmapIdLocalToNode + ".mmapX." + uuid +".bin";
+        final String fullXFname = machineName + ".mmapId." + mmapIdLocalToNode +".fullX." + uuid + ".bin";
         try (FileChannel mmapXFc = FileChannel.open(Paths.get(mmapScratchDir,
                                                               mmapXFname),
                                                     StandardOpenOption
