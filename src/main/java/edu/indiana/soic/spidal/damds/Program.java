@@ -1054,6 +1054,11 @@ public class Program {
             mergePartials(threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
+            BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
+            ParallelOps.allGather();
+            BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+
+            /*
             // Important barrier here - as we need to make sure writes are done to the mmap file
             // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
             // if we wait on the whole world
@@ -1070,6 +1075,7 @@ public class Program {
             // However it's cleaner for any timings to have everyone sync here,
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
+            */
 
             BCTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
             extractPoints(ParallelOps.fullXBytes,
@@ -1225,6 +1231,9 @@ public class Program {
         }
 
         if (ParallelOps.worldProcsCount > 1) {
+            // reverting to default MPI call of allreduce<double>
+            stress = ParallelOps.allReduce(stress);
+            /*
             // Write thread local reduction to shared memory map
             ParallelOps.mmapSWriteBytes.position(0);
             ParallelOps.mmapSWriteBytes.writeDouble(stress);
@@ -1258,6 +1267,7 @@ public class Program {
             ParallelOps.worldProcsComm.barrier();
             ParallelOps.mmapSReadBytes.position(0);
             stress = ParallelOps.mmapSReadBytes.readDouble();
+            */
         }
         return stress * invSumOfSquareDist;
     }
