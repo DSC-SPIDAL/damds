@@ -421,10 +421,6 @@ public class ParallelOps {
     }
 
     public static void allGather() throws MPIException {
-
-        // Important barrier here - as we need to make sure writes
-        // are done to the mmap file
-
         /* Safety logic to make sure all procs in the mmap has reached here. Otherwise, it's possible that
             * one (or more) procs from a same mmap may have come here while a previous call to this collective
             * is being carried out by the other procs in the same mmap. Also, note the use of a separate lock for this,
@@ -458,13 +454,6 @@ public class ParallelOps {
         } else {
             busyWaitTillDataReady();
         }
-        // Each process in a memory group waits here.
-        // It's not necessary to wait for a process
-        // in another memory map group, hence the use of
-        // mmapProcComm.
-        // However it's cleaner for any timings to have everyone sync
-        // here, so will use worldProcsComm instead.
-//        ParallelOps.worldProcsComm.barrier();
     }
 
     private static void busyWaitTillDataReady(){
