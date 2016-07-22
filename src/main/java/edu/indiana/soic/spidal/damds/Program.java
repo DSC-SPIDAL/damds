@@ -6,9 +6,11 @@ import com.google.common.base.Strings;
 import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
+import edu.indiana.soic.spidal.damds.threads.ThreadBitAssigner;
 import edu.indiana.soic.spidal.damds.timing.*;
 import mpi.MPI;
 import mpi.MPIException;
+import net.openhft.affinity.Affinity;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
 
@@ -50,6 +52,14 @@ public class Program {
         programOptions.addOption(
             Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR, true,
             Constants.CMD_OPTION_DESCRIPTION_MMAP_SCRATCH_DIR);
+
+        programOptions.addOption(
+                Constants.CMD_OPTION_SHORT_BIND_THREADS, true,
+                Constants.CMD_OPTION_DESCRIPTION_BIND_THREADS);
+
+        programOptions.addOption(
+                Constants.CMD_OPTION_SHORT_CPS, true,
+                Constants.CMD_OPTION_DESCRIPTION_CPS);
     }
 
     // Constants
@@ -78,6 +88,9 @@ public class Program {
     public static WeightsWrap1D weights;
 
     public static int BlockSize;
+
+    private static boolean bind;
+    private static int cps;
 
     /**
      * Weighted SMACOF based on Deterministic Annealing algorithm
@@ -389,33 +402,18 @@ public class Program {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> Arrays.fill(a[threadIdx], 0.0d)));
+                    (threadIdx) -> {
+                        if (bind) {
+                            BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
+                            Affinity.setAffinity(bitSet);
+                        }
+                        Arrays.fill(a[threadIdx], 0.0d);
+                    }));
         }
         else {
             Arrays.fill(a[0],0.0d);
         }
     }
-
-    private static void zeroOutArray(double[][][] a) {
-        if (ParallelOps.threadCount > 1) {
-            launchHabaneroApp(
-                () -> forallChunked(
-                    0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> zeroOutArrayInternal(
-                        ParallelOps.threadRowCounts[threadIdx],
-                        a[threadIdx])));
-        }
-        else {
-            zeroOutArrayInternal(ParallelOps.threadRowCounts[0], a[0]);
-        }
-    }
-
-    private static void zeroOutArrayInternal(int threadRowCount, double[][] a){
-        for (int j = 0; j < threadRowCount; ++j){
-            Arrays.fill(a[j], 0.0d);
-        }
-    }
-
 
     private static void changeZeroDistancesToPostiveMin(
         short[] distances, double positiveMin) {
@@ -803,8 +801,14 @@ public class Program {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> generateVArrayInternal(
-                        threadIdx, distances, weights, vArray[threadIdx])));
+                    (threadIdx) -> {
+                        if (bind) {
+                            BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
+                            Affinity.setAffinity(bitSet);
+                        }
+                        generateVArrayInternal(
+                                threadIdx, distances, weights, vArray[threadIdx]);
+                    }));
         }
         else {
             generateVArrayInternal(0, distances, weights, vArray[0]);
@@ -940,6 +944,10 @@ public class Program {
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
+                        if (bind) {
+                            BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
+                            Affinity.setAffinity(bitSet);
+                        }
                         MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadIdx);
                         calculateMMInternal(threadIdx, x, targetDimension,
                                             numPoints, weights, blockSize,
@@ -1033,6 +1041,10 @@ public class Program {
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
+                        if (bind) {
+                            BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
+                            Affinity.setAffinity(bitSet);
+                        }
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
                         calculateBCInternal(
                             threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
@@ -1211,6 +1223,10 @@ public class Program {
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
                     (threadIdx) -> {
+                        if (bind) {
+                            BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
+                            Affinity.setAffinity(bitSet);
+                        }
                         StressTimings.startTiming(StressTimings.TimingTask.STRESS_INTERNAL, threadIdx);
                         internalPartialSigma[threadIdx] =
                         calculateStressInternal(threadIdx, preX, targetDimension, tCur,
@@ -1382,9 +1398,15 @@ public class Program {
             launchHabaneroApp(
                 () -> forallChunked(
                     0, ParallelOps.threadCount - 1,
-                    (threadIdx) -> threadDistanceSummaries[threadIdx] =
-                        calculateStatisticsInternal(
-                            threadIdx, distances, weights, missingDistCounts)));
+                    (threadIdx) -> {
+                        if (bind) {
+                            BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
+                            Affinity.setAffinity(bitSet);
+                        }
+                        threadDistanceSummaries[threadIdx] =
+                                calculateStatisticsInternal(
+                                        threadIdx, distances, weights, missingDistCounts);
+                    }));
 
             // Sum across threads and accumulate to zeroth entry
             IntStream.range(1, ParallelOps.threadCount).forEach(
@@ -1513,6 +1535,14 @@ public class Program {
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
         BlockSize = config.blockSize;
+
+        bind = !cmd.hasOption(Constants.CMD_OPTION_SHORT_BIND_THREADS) ||
+                Boolean.parseBoolean(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_BIND_THREADS));
+        cps = (cmd.hasOption(Constants.CMD_OPTION_SHORT_CPS)) ? Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_CPS)) : -1;
+        if (cps == -1){
+            Utils.printMessage("Disabling thread binding as cps is not specified");
+            bind = false;
+        }
     }
 
     /**
