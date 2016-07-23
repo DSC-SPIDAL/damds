@@ -129,7 +129,7 @@ public class ProgramLRT {
                                 Affinity.setAffinity(bitSet);
                                 final int threadId = Affinity
                                         .getThreadId();
-                                if (threadIdx == 0){
+                                if (ParallelOps.worldProcRank == 1){
                                     try {
                                         System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 " + threadId + " affinity " + Utils.getProcAffinityMask(threadId));
                                     } catch (IOException e) {
