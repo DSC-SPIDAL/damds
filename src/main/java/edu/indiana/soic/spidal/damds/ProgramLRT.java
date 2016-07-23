@@ -127,6 +127,15 @@ public class ProgramLRT {
                             if (bind) {
                                 BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
                                 Affinity.setAffinity(bitSet);
+                                final int threadId = Affinity
+                                        .getThreadId();
+                                if (threadIdx == 0){
+                                    try {
+                                        System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 " + threadId + " affinity " + Utils.getProcAffinityMask(threadId));
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                             }
 
                             final ProgramWorker worker = new ProgramWorker
