@@ -131,7 +131,7 @@ public class ProgramLRT {
                                         .getThreadId();
                                 if (ParallelOps.worldProcRank == 1){
                                     try {
-                                        System.out.println("Rank: " + ParallelOps.worldProcRank + " thread 0 " + threadId + " affinity " + Utils.getProcAffinityMask(threadId));
+                                        System.out.println("Rank: " + ParallelOps.worldProcRank + " thread " + threadIdx +  "  " + threadId + " affinity " + Utils.getProcAffinityMask(threadId));
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                     }
