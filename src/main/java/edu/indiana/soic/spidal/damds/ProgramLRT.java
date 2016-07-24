@@ -129,10 +129,10 @@ public class ProgramLRT {
                                 Affinity.setAffinity(bitSet);
                                 try {
                                     if (ParallelOps.worldProcRank == 1){
-                                        System.out.println("Rank: " + ParallelOps.worldProcRank + " os.name " + System.getProperty("os.name"));
+                                        System.out.println("Rank: " + ParallelOps.worldProcRank + " os.name " + System.getProperty("os.name") + " " + Affinity.getAffinityImpl().getClass());
                                     }
-//                                    final int threadId = Affinity
-//                                            .getThreadId();
+                                    final int threadId = Affinity
+                                            .getThreadId();
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
