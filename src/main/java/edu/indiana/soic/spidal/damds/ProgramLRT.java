@@ -127,7 +127,7 @@ public class ProgramLRT {
                             if (bind) {
                                 BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
                                 Affinity.setAffinity(bitSet);
-                                final int threadId = Affinity
+                                /*final int threadId = Affinity
                                         .getThreadId();
                                 if (ParallelOps.worldProcRank == 1){
                                     try {
@@ -135,7 +135,7 @@ public class ProgramLRT {
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                     }
-                                }
+                                }*/
                             }
 
                             final ProgramWorker worker = new ProgramWorker
