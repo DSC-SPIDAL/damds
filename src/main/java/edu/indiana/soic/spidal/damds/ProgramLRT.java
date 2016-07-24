@@ -128,8 +128,11 @@ public class ProgramLRT {
                                 BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
                                 Affinity.setAffinity(bitSet);
                                 try {
-                                    final int threadId = Affinity
-                                            .getThreadId();
+                                    if (ParallelOps.worldProcRank == 1){
+                                        System.out.println("Rank: " + ParallelOps.worldProcRank + " os.name " + System.getProperty("os.name"));
+                                    }
+//                                    final int threadId = Affinity
+//                                            .getThreadId();
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
