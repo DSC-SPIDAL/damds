@@ -130,6 +130,13 @@ public class ProgramLRT {
                                 try {
                                     if (ParallelOps.worldProcRank == 1){
                                         System.out.println("Rank: " + ParallelOps.worldProcRank + " os.name " + System.getProperty("os.name") + " " + Affinity.getAffinityImpl().getClass());
+                                        try {
+                                            Class c = Class.forName("com.sun.jna.Platform");
+                                            System.out.println("is c==null " + (c==null));
+                                        } catch (ClassNotFoundException ignored) {
+                                            System.out.println("error");
+                                            ignored.printStackTrace();
+                                        }
                                     }
 //                                    final int threadId = Affinity
 //                                            .getThreadId();
