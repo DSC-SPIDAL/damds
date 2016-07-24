@@ -125,34 +125,8 @@ public class ProgramLRT {
                         (threadIdx) -> {
 
                             if (bind) {
-
-                                try {
-                                    if (ParallelOps.worldProcRank == 1){
-                                        System.out.println("Rank: " + ParallelOps.worldProcRank + " os.name " + System.getProperty("os.name") + " " + Affinity.getAffinityImpl().getClass());
-                                        try {
-                                            Class c = Class.forName("com.sun.jna.Platform");
-                                            System.out.println("is c==null " + (c==null));
-                                        } catch (ClassNotFoundException ignored) {
-                                            System.out.println("error");
-                                            ignored.printStackTrace();
-                                        }
-                                    }
-//                                    final int threadId = Affinity
-//                                            .getThreadId();
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-
-//                                BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
-//                                Affinity.setAffinity(bitSet);
-
-                                /*if (ParallelOps.worldProcRank == 1){
-                                    try {
-                                        System.out.println("Rank: " + ParallelOps.worldProcRank + " thread " + threadIdx +  "  " + threadId + " affinity " + Utils.getProcAffinityMask(threadId));
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
-                                }*/
+                                BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
+                                Affinity.setAffinity(bitSet);
                             }
 
                             final ProgramWorker worker = new ProgramWorker
