@@ -375,6 +375,7 @@ public class ProgramWorker {
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
             printTimingDistributions();
+            threadComm.barrier();
         } catch (MPIException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
         } catch (InterruptedException | BrokenBarrierException e) {
