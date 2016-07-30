@@ -374,7 +374,7 @@ public class ProgramWorker {
             utils.printMessage("  Final Stress:\t" + finalStress);
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
-//            printTimingDistributions();
+            printTimingDistributions();
             threadComm.barrier();
         } catch (MPIException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
@@ -392,14 +392,14 @@ public class ProgramWorker {
 
         double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
 
-        if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+       /* if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double[] tmp = ParallelOps.allGather(mmInternalTimings);
             mmInternalTimings = new double[ParallelOps.threadCount * ParallelOps.worldProcsCount];
             System.arraycopy(tmp, 0, mmInternalTimings, 0, mmInternalTimings.length);
             tmp = ParallelOps.allGather(bcInternalTimings);
             bcInternalTimings = new double[ParallelOps.threadCount * ParallelOps.worldProcsCount];
             System.arraycopy(tmp, 0, bcInternalTimings, 0, bcInternalTimings.length);
-        }
+        }*/
 
         if (ParallelOps.worldProcRank == 0 && threadId == 0){
             /*try (BufferedWriter writer = Files.newBufferedWriter(
