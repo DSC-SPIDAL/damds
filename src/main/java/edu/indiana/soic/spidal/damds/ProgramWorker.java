@@ -7,7 +7,6 @@ import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import edu.indiana.soic.spidal.damds.timing.*;
-import mpi.MPI;
 import mpi.MPIException;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
@@ -18,6 +17,7 @@ import java.nio.LongBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.BrokenBarrierException;
@@ -372,14 +372,57 @@ public class ProgramWorker {
                             (outRealCGIterations.getValue() * 1.0) /
                                     smacofRealIterations));
             utils.printMessage("  Final Stress:\t" + finalStress);
-            // System.exit(0);
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
+            printTimingDistributions();
         } catch (MPIException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
         } catch (InterruptedException | BrokenBarrierException e) {
             e.printStackTrace();
         }
+    }
+
+    private void printTimingDistributions() throws BrokenBarrierException, InterruptedException, MPIException {
+        double [] mmInternalTimings = threadComm.gatherDoublesOverThreads(threadId, mmTimings.getTotalTime(MMTimings.TimingTask.MM_INTERNAL));
+        double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
+
+        if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+            double[] tmp = ParallelOps.allGather(mmInternalTimings);
+            mmInternalTimings = new double[ParallelOps.threadCount * ParallelOps.worldProcsCount];
+            System.arraycopy(tmp, 0, mmInternalTimings, 0, mmInternalTimings.length);
+            tmp = ParallelOps.allGather(bcInternalTimings);
+            bcInternalTimings = new double[ParallelOps.threadCount * ParallelOps.worldProcsCount];
+            System.arraycopy(tmp, 0, bcInternalTimings, 0, bcInternalTimings.length);
+        }
+
+        if (ParallelOps.worldProcRank == 0){
+            try (BufferedWriter writer = Files.newBufferedWriter(
+                    Paths.get(config.timingFile), StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE)) {
+                PrintWriter printWriter = new PrintWriter(writer, true);
+                prettyPrintArray("BCInternalMM Timing Distribution",
+                        bcInternalTimings, printWriter);
+                prettyPrintArray("MMInternal Timing Distribution",
+                        mmInternalTimings, printWriter);
+
+                printWriter.flush();
+                printWriter.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    private static void prettyPrintArray(
+            String title, double[] vals, PrintWriter printWriter) {
+        String str;
+        printWriter.println(title);
+        str = Arrays.toString(vals);
+        printWriter.println(
+                str.substring(1, str.length() - 1).replace(',', '\t'));
+        printWriter.println();
     }
 
     private void allocateArrays() {
@@ -664,23 +707,23 @@ public class ProgramWorker {
             double[] internalPartialMM)
             throws MPIException, BrokenBarrierException, InterruptedException {
 
-        mmTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, threadId);
+        mmTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL);
         calculateMMInternal(x, targetDimension, numPoints, weights,
                 blockSize, v, internalPartialMM);
-        mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, threadId);
+        mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL);
 
-        mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE, 0);
+        mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE);
         threadComm
                 .collect2(0, internalPartialMM,
                         threadLocalMmapXWriteBytes, threadId);
         //threadComm.barrier();
-        mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE, 0);
+        mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE);
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
-                mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
+                mmTimings.startTiming(MMTimings.TimingTask.COMM);
                 ParallelOps.allGather();
-                mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
+                mmTimings.endTiming(MMTimings.TimingTask.COMM);
 
                 /*
                 // Important barrier here - as we need to make sure writes
@@ -707,13 +750,13 @@ public class ProgramWorker {
             }
             threadComm.barrier();
         }
-        mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+        mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? threadLocalFullXBytes
                         : threadLocalMmapXWriteBytes, outMM,
                 ParallelOps.globalColCount * targetDimension, threadId);
         //threadComm.barrier();
-        mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT, 0);
+        mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT);
     }
 
     private void calculateMMInternal(
@@ -758,19 +801,19 @@ public class ProgramWorker {
                 preX, targetDimension, tCur, distances, weights, blockSize,
                 threadPartialBCInternalBofZ, threadPartialBCInternalMM);
         bcTimings.endTiming(
-                BCTimings.TimingTask.BC_INTERNAL, 0);
+                BCTimings.TimingTask.BC_INTERNAL);
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
         //System.out.println(threadId);
         threadComm.collect2(0,
                 threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);
-        bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
+        bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE);
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
                 bcTimings.startTiming(BCTimings.TimingTask.COMM);
                 ParallelOps.allGather();
-                bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+                bcTimings.endTiming(BCTimings.TimingTask.COMM);
                 /*
                 // Important barrier here - as we need to make sure writes
                 // are done to the mmap file
@@ -802,7 +845,7 @@ public class ProgramWorker {
                         : threadLocalMmapXWriteBytes, BC,
                 ParallelOps.globalColCount * targetDimension, threadId);
         //threadComm.barrier();
-        bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
+        bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT);
     }
 
     private void calculateBCInternal(

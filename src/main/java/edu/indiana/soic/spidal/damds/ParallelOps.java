@@ -76,6 +76,7 @@ public class ParallelOps {
     // Buffers for MPI operations
     private static ByteBuffer statBuffer;
     private static DoubleBuffer doubleBuffer;
+    private static double[] doubleArray;
     private static IntBuffer intBuffer;
     public static LongBuffer threadsAndMPIBuffer;
     public static LongBuffer mpiOnlyBuffer;
@@ -115,6 +116,7 @@ public class ParallelOps {
         worldProcsComm = MPI.COMM_WORLD; //initializing MPI world communicator
         worldProcRank = worldProcsComm.getRank();
         worldProcsCount = worldProcsComm.getSize();
+        doubleArray = new double[threadCount*worldProcsCount];
 
         /* Create communicating groups */
         worldProcsPerNode = worldProcsCount / nodeCount;
@@ -418,6 +420,11 @@ public class ParallelOps {
         intBuffer.put(0, value);
         worldProcsComm.allReduce(intBuffer, 1, MPI.INT, MPI.SUM);
         return intBuffer.get(0);
+    }
+
+    public static double[] allGather(double[] vals) throws MPIException {
+        worldProcsComm.allGather(vals, threadCount, MPI.DOUBLE, doubleArray, threadCount, MPI.DOUBLE);
+        return doubleArray;
     }
 
     public static void allGather() throws MPIException {

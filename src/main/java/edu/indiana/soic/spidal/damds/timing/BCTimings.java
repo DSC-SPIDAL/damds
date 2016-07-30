@@ -50,7 +50,7 @@ public class BCTimings {
         }
     }
 
-    public void endTiming(TimingTask task, int threadIdx){
+    public void endTiming(TimingTask task){
         switch (task){
             case BC_INTERNAL:
                 timerBCInternal.stop();

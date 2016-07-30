@@ -16,6 +16,7 @@ public class ThreadCommunicator {
     private int[] intBuffer;
     private double[] doubleBuffer;
     private double[] pointsBuffer;
+    private double[] timingBuffer;
     private DoubleStatistics[] doubleStatisticsBuffer;
     private CyclicBarrier barrier;
     private Lock lock = new ReentrantLock();
@@ -34,6 +35,7 @@ public class ThreadCommunicator {
         intBuffer = new int[threadCount];
         doubleBuffer = new double[threadCount];
         pointsBuffer = new double[numberDataPoints*targetDimension];
+        timingBuffer = new double[threadCount];
         doubleStatisticsBuffer = new DoubleStatistics[threadCount];
         for (int i = 0; i < threadCount; ++i){
             doubleStatisticsBuffer[i] = new DoubleStatistics();
@@ -58,6 +60,22 @@ public class ThreadCommunicator {
             sum += intBuffer[i];
         }
         val.setValue(sum);
+    }
+
+    public double[] gatherDoublesOverThreads(int threadIdx, double val)
+            throws BrokenBarrierException, InterruptedException {
+        sumCount.compareAndSet(threadCount, 0);
+
+        doubleBuffer[threadIdx] = val;
+        sumCount.getAndIncrement();
+        // thread 0 waits for others to update
+        if (threadIdx == 0) {
+            while (sumCount.get() != threadCount) {
+                ;
+                //System.out.println("l1");
+            }
+        }
+        return timingBuffer;
     }
 
     public void sumDoublesOverThreads(int threadIdx, RefObj<Double> val)

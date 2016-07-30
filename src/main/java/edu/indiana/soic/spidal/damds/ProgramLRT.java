@@ -164,53 +164,10 @@ public class ProgramLRT {
 
             /*
              // TODO Fix error handling here
-            if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
-                "NOLABEL")) {
-                try {
-                    writeOuput(preX, config.targetDimension, config.pointsFile);
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                try {
-                    writeOuput(preX, config.targetDimension, config.labelFile, config.pointsFile);
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            Double finalStress = calculateStress(
-                preX, config.targetDimension, tCur, distances, weights,
-                INV_SUM_OF_SQUARE, partialSigma);
-
-            mainTimer.stop();
-
-
-            utils.printMessage("Finishing DAMDS run ...");
-            long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
-            long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
-            utils.printMessage(
-                String.format(
-                    "  Total Time: %s (%d ms) Loop Time: %s (%d ms)",
-                    formatElapsedMillis(totalTime), totalTime,
-                    formatElapsedMillis(temperatureLoopTime), temperatureLoopTime));
-            utils.printMessage("  Total Loops: " + loopNum);
-            utils.printMessage("  Total Iterations: " + smacofRealIterations);
-            utils.printMessage(
-                String.format(
-                    "  Total CG Iterations: %d Avg. CG Iterations: %.5g",
-                    outRealCGIterations.getValue(), (outRealCGIterations.getValue() * 1.0) / smacofRealIterations));
-            utils.printMessage("  Final Stress:\t" + finalStress);
-
             printTimings(totalTime, temperatureLoopTime);*/
 
             utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
-            /*if (ParallelOps.threadCount > 1) {
-                threads.shutDown();
-            }*/
             ParallelOps.tearDownParallelism();
         }
         catch (MPIException | IOException e) {

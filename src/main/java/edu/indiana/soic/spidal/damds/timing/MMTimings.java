@@ -32,7 +32,7 @@ public class MMTimings {
 
 
 
-    public void startTiming(TimingTask task, int threadIdx){
+    public void startTiming(TimingTask task){
         switch (task){
             case MM_INTERNAL:
                 timerMMInternal.start();
@@ -53,7 +53,7 @@ public class MMTimings {
         }
     }
 
-    public void endTiming(TimingTask task, int threadIdx){
+    public void endTiming(TimingTask task){
         switch (task){
             case MM_INTERNAL:
                 timerMMInternal.stop();
