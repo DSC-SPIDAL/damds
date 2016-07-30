@@ -390,7 +390,8 @@ public class ProgramWorker {
             System.out.println("** Rank: " + ParallelOps.worldProcRank + " " + Arrays.toString(mmInternalTimings));
         }
 
-//        double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
+        threadComm.barrier();
+        double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
 
        /* if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double[] tmp = ParallelOps.allGather(mmInternalTimings);
