@@ -385,8 +385,8 @@ public class ProgramWorker {
     private void printTimingDistributions() throws BrokenBarrierException, InterruptedException, MPIException {
         double [] mmInternalTimings = threadComm.gatherDoublesOverThreads(threadId, mmTimings.getTotalTime(MMTimings.TimingTask.MM_INTERNAL));
         // TODO - debugs
-        if (threadId == 0 && ParallelOps.worldProcRank == 0){
-            System.out.println("**" + Arrays.toString(mmInternalTimings));
+        if (threadId == 0){
+            System.out.println("** Rank: " + ParallelOps.worldProcRank + " " + Arrays.toString(mmInternalTimings));
         }
 
         double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
@@ -401,7 +401,7 @@ public class ProgramWorker {
         }
 
         if (ParallelOps.worldProcRank == 0 && threadId == 0){
-            try (BufferedWriter writer = Files.newBufferedWriter(
+            /*try (BufferedWriter writer = Files.newBufferedWriter(
                     Paths.get(config.timingFile), StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE)) {
                 PrintWriter printWriter = new PrintWriter(writer, true);
@@ -415,7 +415,7 @@ public class ProgramWorker {
 
             } catch (IOException e) {
                 e.printStackTrace();
-            }
+            }*/
         }
 
     }
