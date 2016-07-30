@@ -66,7 +66,7 @@ public class ThreadCommunicator {
             throws BrokenBarrierException, InterruptedException {
         sumCount.compareAndSet(threadCount, 0);
 
-        doubleBuffer[threadIdx] = val;
+        timingBuffer[threadIdx] = val;
         sumCount.getAndIncrement();
         // thread 0 waits for others to update
         if (threadIdx == 0) {
