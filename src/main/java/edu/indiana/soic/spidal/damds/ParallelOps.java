@@ -109,9 +109,6 @@ public class ParallelOps {
         worldProcRank = worldProcsComm.getRank();
         worldProcsCount = worldProcsComm.getSize();
 
-        // TODO - debugs
-        System.out.println("Rank: " + worldProcRank + " world size " + worldProcsCount);
-
         /* Create communicating groups */
         worldProcsPerNode = worldProcsCount / nodeCount;
         boolean heterogeneous = (worldProcsPerNode * nodeCount) != worldProcsCount;
