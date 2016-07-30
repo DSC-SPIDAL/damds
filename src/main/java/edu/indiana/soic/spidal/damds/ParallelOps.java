@@ -10,6 +10,7 @@ import mpi.Op;
 import net.openhft.lang.io.ByteBufferBytes;
 import net.openhft.lang.io.Bytes;
 
+import javax.xml.bind.SchemaOutputResolver;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -107,6 +108,9 @@ public class ParallelOps {
         worldProcsComm = MPI.COMM_WORLD; //initializing MPI world communicator
         worldProcRank = worldProcsComm.getRank();
         worldProcsCount = worldProcsComm.getSize();
+
+        // TODO - debugs
+        System.out.println("Rank: " + worldProcRank + " world size " + worldProcsCount);
 
         /* Create communicating groups */
         worldProcsPerNode = worldProcsCount / nodeCount;
