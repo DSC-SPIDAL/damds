@@ -389,7 +389,7 @@ public class ProgramWorker {
             System.out.println("**" + Arrays.toString(mmInternalTimings));
         }
 
-        double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
+        /*double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double[] tmp = ParallelOps.allGather(mmInternalTimings);
@@ -416,7 +416,7 @@ public class ProgramWorker {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
 
     }
 
