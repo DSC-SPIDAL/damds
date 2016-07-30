@@ -400,7 +400,7 @@ public class ProgramWorker {
             System.arraycopy(tmp, 0, bcInternalTimings, 0, bcInternalTimings.length);
         }
 
-        if (ParallelOps.worldProcRank == 0){
+        if (ParallelOps.worldProcRank == 0 && threadId == 0){
             try (BufferedWriter writer = Files.newBufferedWriter(
                     Paths.get(config.timingFile), StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE)) {
