@@ -384,10 +384,12 @@ public class ProgramWorker {
     }
 
     private void printTimingDistributions() throws BrokenBarrierException, InterruptedException, MPIException {
-        double [] mmInternalTimings = threadComm.gatherDoublesOverThreads(threadId, mmTimings.getTotalTime(MMTimings.TimingTask.MM_INTERNAL));
+        double [] mmInternalTimings = new double[ParallelOps.threadCount];
+        System.arraycopy(threadComm.gatherDoublesOverThreads(threadId, mmTimings.getTotalTime(MMTimings.TimingTask.MM_INTERNAL)), 0, mmInternalTimings, 0, ParallelOps.threadCount);
 
         threadComm.barrier();
-        double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
+        double [] bcInternalTimings = new double[ParallelOps.threadCount];
+        System.arraycopy(threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL)), 0, bcInternalTimings, 0, ParallelOps.threadCount);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double[] tmp = ParallelOps.allGather(mmInternalTimings);
