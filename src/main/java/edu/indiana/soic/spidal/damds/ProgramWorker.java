@@ -385,10 +385,6 @@ public class ProgramWorker {
 
     private void printTimingDistributions() throws BrokenBarrierException, InterruptedException, MPIException {
         double [] mmInternalTimings = threadComm.gatherDoublesOverThreads(threadId, mmTimings.getTotalTime(MMTimings.TimingTask.MM_INTERNAL));
-        // TODO - debugs
-        if (threadId == 0){
-            System.out.println("** Rank: " + ParallelOps.worldProcRank + " " + Arrays.toString(mmInternalTimings));
-        }
 
         threadComm.barrier();
         double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
