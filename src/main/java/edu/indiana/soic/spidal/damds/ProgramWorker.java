@@ -393,17 +393,17 @@ public class ProgramWorker {
         threadComm.barrier();
         double [] bcInternalTimings = threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL));
 
-       /* if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+        if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double[] tmp = ParallelOps.allGather(mmInternalTimings);
             mmInternalTimings = new double[ParallelOps.threadCount * ParallelOps.worldProcsCount];
             System.arraycopy(tmp, 0, mmInternalTimings, 0, mmInternalTimings.length);
             tmp = ParallelOps.allGather(bcInternalTimings);
             bcInternalTimings = new double[ParallelOps.threadCount * ParallelOps.worldProcsCount];
             System.arraycopy(tmp, 0, bcInternalTimings, 0, bcInternalTimings.length);
-        }*/
+        }
 
         if (ParallelOps.worldProcRank == 0 && threadId == 0){
-            /*try (BufferedWriter writer = Files.newBufferedWriter(
+            try (BufferedWriter writer = Files.newBufferedWriter(
                     Paths.get(config.timingFile), StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE)) {
                 PrintWriter printWriter = new PrintWriter(writer, true);
@@ -417,7 +417,7 @@ public class ProgramWorker {
 
             } catch (IOException e) {
                 e.printStackTrace();
-            }*/
+            }
         }
 
     }
