@@ -374,7 +374,7 @@ public class ProgramWorker {
             utils.printMessage("  Final Stress:\t" + finalStress);
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
-            printTimingDistributions();
+//            printTimingDistributions();
             threadComm.barrier();
         } catch (MPIException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
