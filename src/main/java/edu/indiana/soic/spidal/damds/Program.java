@@ -1066,11 +1066,13 @@ public class Program {
             mergePartials(threadPartialBCInternalMM, ParallelOps.mmapXWriteBytes);
             BCTimings.endTiming(BCTimings.TimingTask.BC_MERGE, 0);
 
+            /*
             BCTimings.startTiming(BCTimings.TimingTask.COMM, 0);
             ParallelOps.allGather();
             BCTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+            */
 
-            /*
+            
             // Important barrier here - as we need to make sure writes are done to the mmap file
             // it's sufficient to wait on ParallelOps.mmapProcComm, but it's cleaner for timings
             // if we wait on the whole world
@@ -1087,7 +1089,7 @@ public class Program {
             // However it's cleaner for any timings to have everyone sync here,
             // so will use worldProcsComm instead.
             ParallelOps.worldProcsComm.barrier();
-            */
+            
 
             BCTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT, 0);
             extractPoints(ParallelOps.fullXBytes,
