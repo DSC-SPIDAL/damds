@@ -726,11 +726,10 @@ public class ProgramWorker {
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
-                mmTimings.startTiming(MMTimings.TimingTask.COMM);
+                /*mmTimings.startTiming(MMTimings.TimingTask.COMM);
                 ParallelOps.allGather();
-                mmTimings.endTiming(MMTimings.TimingTask.COMM);
+                mmTimings.endTiming(MMTimings.TimingTask.COMM);*/
 
-                /*
                 // Important barrier here - as we need to make sure writes
                 // are done to the mmap file
 
@@ -740,9 +739,9 @@ public class ProgramWorker {
                 ParallelOps.worldProcsComm.barrier();
 
                 if (ParallelOps.isMmapLead) {
-                    mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
+                    //mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                     ParallelOps.partialXAllGather();
-                    mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
+                    //mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
                 }
                 // Each process in a memory group waits here.
                 // It's not necessary to wait for a process
@@ -751,7 +750,6 @@ public class ProgramWorker {
                 // here,
                 // so will use worldProcsComm instead.
                 ParallelOps.worldProcsComm.barrier();
-                */
             }
             threadComm.barrier();
         }
@@ -816,10 +814,10 @@ public class ProgramWorker {
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
-                bcTimings.startTiming(BCTimings.TimingTask.COMM);
+                /*bcTimings.startTiming(BCTimings.TimingTask.COMM);
                 ParallelOps.allGather();
-                bcTimings.endTiming(BCTimings.TimingTask.COMM);
-                /*
+                bcTimings.endTiming(BCTimings.TimingTask.COMM);*/
+
                 // Important barrier here - as we need to make sure writes
                 // are done to the mmap file
 
@@ -829,9 +827,9 @@ public class ProgramWorker {
                 ParallelOps.worldProcsComm.barrier();
 
                 if (ParallelOps.isMmapLead) {
-                    bcTimings.startTiming(BCTimings.TimingTask.COMM);
+                    // bcTimings.startTiming(BCTimings.TimingTask.COMM);
                     ParallelOps.partialXAllGather();
-                    bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+                    // bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
                 }
                 // Each process in a memory group waits here.
                 // It's not necessary to wait for a process
@@ -840,7 +838,6 @@ public class ProgramWorker {
                 // However it's cleaner for any timings to have everyone sync
                 // here, so will use worldProcsComm instead.
                 ParallelOps.worldProcsComm.barrier();
-                */
             }
             threadComm.barrier();
         }
