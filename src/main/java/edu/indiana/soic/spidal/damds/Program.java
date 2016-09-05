@@ -250,6 +250,9 @@ public class Program {
                     }
                     ++itrNum;
                     ++smacofRealIterations;
+                    if (config.maxStressLoops > 0 && itrNum == config.maxStressLoops){
+                        break;
+                    }
                 }
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
