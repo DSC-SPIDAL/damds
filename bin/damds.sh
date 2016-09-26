@@ -5,7 +5,9 @@ x='x'
 opts="-XX:+UseG1GC -Xms512m -Xmx512m"
 tpn=1
 wd=`pwd`
-
-$BUILD/bin/mpirun --report-bindings --mca btl ^tcp -n 1 --hostfile nodes.txt java $opts -cp ../target/damds-1.1-jar-with-dependencies.jar -DNumberDataPoints=$2 -DDistanceMatrixFile=$1 -DPointsFile=$3.txt -DWeightMatrixFile=$4 -DTimingFile=timing.txt -DSummaryFile=summary.txt -DInitialPointsFile=init_points_37.txt edu.indiana.soic.spidal.damds.Program -c config.properties -n 1 -t 1 | tee $4.summary.txt
+summary=summary.txt
+timing=timing.txt
+p=$9
+$BUILD/bin/mpirun --report-bindings --mca btl ^tcp -n $p --hostfile nodes.txt java $opts -cp ../target/damds-1.1-jar-with-dependencies.jar -DDistanceMatrixFile=$1 -DWeightMatrixFile=$2 -DPointsFile=$3.txt -DNumberDataPoints=$4 -DTimingFile=$5 -DSummaryFile=$6 -DInitialPointsFile=$7 edu.indiana.soic.spidal.damds.Program -c $8 -n $p -t $tpn | tee $4.summary.txt
 echo "Finished $0 on `date`" >> status.txt
 

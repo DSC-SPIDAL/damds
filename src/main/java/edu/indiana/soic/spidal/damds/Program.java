@@ -154,8 +154,10 @@ public class Program {
             double tCur = 0.0;
             double tMax = distanceSummary.getMax() / Math.sqrt(2.0 * config.targetDimension);
             double tMin = config.tMinFactor * distanceSummary.getPositiveMin() / Math.sqrt(2.0 * config.targetDimension);
-
+            Utils.printMessage("Tmax: " + tMax);
+            Utils.printMessage("Tmin: " + tMin);
             generateVArray(distances, weights, vArray);
+            writeOuput(vArray[0], 1, "varray.txt");
             double preStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
                 INV_SUM_OF_SQUARE, partialSigma);
@@ -195,11 +197,11 @@ public class Program {
                         loopNum, tCur));
 
                 int itrNum = 0;
-                cgCount.setValue(0);
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
+                int cgTotal = 0;
                 while (diffStress >= config.threshold) {
-
+                    cgCount.setValue(0);
                     zeroOutArray(threadPartialMM);
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
@@ -207,6 +209,8 @@ public class Program {
                         preX, config.targetDimension, tCur, distances,
                         weights, BlockSize, BC, threadPartialBofZ,
                         threadPartialMM);
+                    // writeOuput(BC, config.targetDimension, "bc1.txt");
+
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
                     // This barrier was necessary for correctness when using
@@ -245,7 +249,7 @@ public class Program {
                                 "  Loop %d Iteration %d Avg CG count %.5g " +
                                 "Stress " +
                                 "%.5g", loopNum, itrNum,
-                                (cgCount.getValue() * 1.0 / (itrNum + 1)),
+                                (cgCount.getValue() * 1.0),
                                 stress));
                     }
                     ++itrNum;
@@ -253,6 +257,7 @@ public class Program {
                     if (config.maxStressLoops > 0 && itrNum == config.maxStressLoops){
                         break;
                     }
+                    cgTotal += cgCount.getValue();
                 }
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
@@ -262,10 +267,10 @@ public class Program {
                                                            config.stressIter)) {
                     Utils.printMessage(
                         String.format(
-                            "  Loop %d Iteration %d Avg CG count %.5g " +
+                            "Finally  Loop %d Iteration %d Avg CG count %.5g " +
                             "Stress %.5g",
                             loopNum, itrNum,
-                            (cgCount.getValue() * 1.0 / (itrNum + 1)), stress));
+                            (cgTotal * 1.0 / (itrNum + 1)), stress));
                 }
 
                 Utils.printMessage(
@@ -273,7 +278,7 @@ public class Program {
                         "End of loop %d Total Iterations %d Avg CG count %.5g" +
                         " Stress %.5g",
                         loopNum, (itrNum + 1),
-                        (cgCount.getValue() * 1.0 / (itrNum + 1)), stress));
+                        (cgTotal * 1.0 / (itrNum + 1)), stress));
 
                 if (tCur == 0)
                     break;
@@ -851,8 +856,13 @@ public class Program {
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         calculateMM(preX, targetDimension, numPoints, weights, blockSize,
                     vArray, MMr, threadPartialMM);
+//      try {
+//        writeOuput(MMr, config.targetDimension, "mmr0.txt");
+//      } catch (IOException e) {
+//        e.printStackTrace();
+//      }
 
-        CGTimings.endTiming(CGTimings.TimingTask.MM);
+      CGTimings.endTiming(CGTimings.TimingTask.MM);
         // This barrier was necessary for correctness when using
         // a single mmap file
         ParallelOps.worldProcsComm.barrier();
@@ -868,9 +878,16 @@ public class Program {
             }
         }
 
-        int cgCount = 0;
+//      try {
+//        writeOuput(BC, config.targetDimension, "bc2.txt");
+//        writeOuput(MMr, config.targetDimension, "mmr1.txt");
+//      } catch (IOException e) {
+//        e.printStackTrace();
+//      }
+      int cgCount = 0;
         CGTimings.startTiming(CGTimings.TimingTask.INNER_PROD);
         double rTr = innerProductCalculation(MMr);
+//      System.out.println("Init rtr: " + rTr);
         CGTimings.endTiming(CGTimings.TimingTask.INNER_PROD);
         // Adding relative value test for termination as suggested by Dr. Fox.
         double testEnd = rTr * cgThreshold;
@@ -885,12 +902,22 @@ public class Program {
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             calculateMM(BC, targetDimension, numPoints, weights, blockSize,
                         vArray, MMAp, threadPartialMM);
+//            try {
+//                if (cgCount == 1) {
+//                    writeOuput(MMAp, config.targetDimension, "mmap");
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
             ParallelOps.worldProcsComm.barrier();
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
 
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
+            double innerProduct = innerProductCalculation(BC, MMAp);
+            //System.out.println("Inner product: " + innerProduct);
             double alpha = rTr
-                           /innerProductCalculation(BC, MMAp);
+                           / innerProduct;
+          //System.out.println("Alpha: " + alpha);
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
 
             //update Xi to Xi+1
@@ -900,7 +927,7 @@ public class Program {
                     preX[iOffset+j] += alpha * BC[iOffset+j];
                 }
             }
-
+            System.out.printf("CGcount=%d RTR=%f testEnd=%f\n", (cgCount - 1), rTr, testEnd);
             if (rTr < testEnd) {
                 break;
             }
@@ -916,8 +943,10 @@ public class Program {
             //calculate beta
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double rTr1 = innerProductCalculation(MMr);
+          //System.out.println("rtr1: " + rTr1);
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double beta = rTr1/rTr;
+            //System.out.println("################################### Beta: " + beta);
             rTr = rTr1;
 
             //update pi to pi+1
