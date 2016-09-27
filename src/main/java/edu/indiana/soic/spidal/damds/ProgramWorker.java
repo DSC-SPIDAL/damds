@@ -594,7 +594,11 @@ public class ProgramWorker {
             threadComm.barrier();
 
             cgLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
-            double alpha = rTr / innerProductCalculation(BC, MMAp);
+            double v1 = innerProductCalculation(BC, MMAp);
+            if (v1 == 0) {
+                System.out.println("00000000000000000000000000000000000000000");
+            }
+            double alpha = rTr / v1;
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
 
             //update Xi to Xi+1
