@@ -626,6 +626,9 @@ public class ProgramWorker {
             double rTr1 = innerProductCalculation(MMr);
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double beta = rTr1 / rTr;
+            if (rTr == 0) {
+                System.out.println("00000000000000000000000000000000000000000");
+            }
             rTr = rTr1;
 
             //update pi to pi+1
