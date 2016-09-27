@@ -848,6 +848,9 @@ public class ProgramWorker {
                 if (dist >= 1.0E-10 && diff < origD) {
                     outBofZLocalRow[globalCol] = (weight * vBlockValue *
                             (origD - diff) / dist);
+                    if (dist == 0) {
+                        System.out.println("************************************* 900000000000000000000000000000");
+                    }
                 } else {
                     outBofZLocalRow[globalCol] = 0;
                 }
