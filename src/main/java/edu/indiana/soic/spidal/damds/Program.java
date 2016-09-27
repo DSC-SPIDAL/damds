@@ -327,11 +327,17 @@ public class Program {
             Utils.printMessage("Finishing DAMDS run ...");
             long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
             long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
+            long totalComTime = getTotalCommunicationTime();
+
             Utils.printMessage(
                 String.format(
                     "  Total Time: %s (%d ms) Loop Time: %s (%d ms)",
                     formatElapsedMillis(totalTime), totalTime,
                     formatElapsedMillis(temperatureLoopTime), temperatureLoopTime));
+            Utils.printMessage(
+                String.format(
+                    "  Total comm time: %s (%d ms)",
+                    formatElapsedMillis(totalComTime), totalComTime));
             Utils.printMessage("  Total Loops: " + loopNum);
             Utils.printMessage("  Total Iterations: " + smacofRealIterations);
             Utils.printMessage(
@@ -349,6 +355,14 @@ public class Program {
         catch (MPIException | IOException | InterruptedException e) {
             Utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
+    }
+
+    private static long getTotalCommunicationTime() {
+        long totalComTime = 0;
+        totalComTime += BCTimings.getTotalTime(BCTimings.TimingTask.COMM);
+        totalComTime += StressTimings.getTotalTime(StressTimings.TimingTask.COMM);
+        totalComTime += MMTimings.getTotalTime(MMTimings.TimingTask.COMM);
+        return totalComTime;
     }
 
     private static void allocateArrays() {
@@ -898,7 +912,7 @@ public class Program {
                 }
             }
 
-            if (rTr < testEnd) {
+            if (!config.exactCgIter && rTr < testEnd) {
                 break;
             }
 

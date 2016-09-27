@@ -45,6 +45,7 @@ public class DAMDSSection {
             repetitions = Integer.parseInt(getProperty(p, "Repetitions", "1"));
             maxtemploops = Integer.parseInt(getProperty(p, "MaxTempLoops", "0"));
             isSimpleWeights = Boolean.parseBoolean(getProperty(p, "IsSimpleWeights", "false"));
+            exactCgIter = Boolean.parseBoolean(getProperty(p, "ExactCGIter", "false"));
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
@@ -78,6 +79,7 @@ public class DAMDSSection {
     public double tMinFactor;
     public int stressIter;
     public int cgIter;
+    public boolean exactCgIter;
     public double cgErrorThreshold;
     public boolean isSammon;
     public int blockSize;
