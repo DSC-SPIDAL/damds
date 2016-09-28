@@ -44,6 +44,7 @@ public class DAMDSSection {
 
             repetitions = Integer.parseInt(getProperty(p, "Repetitions", "1"));
             maxtemploops = Integer.parseInt(getProperty(p, "MaxTempLoops", "0"));
+            maxstressloops = Integer.parseInt(getProperty(p, "MaxStressLoops", "0"));
             isSimpleWeights = Boolean.parseBoolean(getProperty(p, "IsSimpleWeights", "false"));
             exactCgIter = Boolean.parseBoolean(getProperty(p, "ExactCGIter", "false"));
         } catch (IOException e) {
@@ -92,6 +93,7 @@ public class DAMDSSection {
 
     public int repetitions;
     public int maxtemploops;
+    public int maxstressloops;
 
     private String getPadding(int count, String prefix){
         StringBuilder sb = new StringBuilder(prefix);

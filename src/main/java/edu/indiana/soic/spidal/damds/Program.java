@@ -198,7 +198,7 @@ public class Program {
                 cgCount.setValue(0);
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
-                while (diffStress >= config.threshold) {
+                while (diffStress >= config.threshold || config.maxstressloops > 0) {
 
                     zeroOutArray(threadPartialMM);
                     StressLoopTimings.startTiming(
@@ -250,6 +250,9 @@ public class Program {
                     }
                     ++itrNum;
                     ++smacofRealIterations;
+                    if (itrNum == config.maxstressloops) {
+                        break;
+                    }
                 }
                 TemperatureLoopTimings.endTiming(
                     TemperatureLoopTimings.TimingTask.STRESS_LOOP);
@@ -271,19 +274,19 @@ public class Program {
                         " Stress %.5g",
                         loopNum, (itrNum + 1),
                         (cgCount.getValue() * 1.0 / (itrNum + 1)), stress));
-
-                if (tCur == 0)
-                    break;
+                if (config.maxtemploops > 0) {
+                    if (loopNum == config.maxtemploops) {
+                        break;
+                    }
+                } else {
+                    if (tCur == 0) {
+                        break;
+                    }
+                }
                 tCur *= config.alpha;
                 if (tCur < tMin)
                     tCur = 0;
                 ++loopNum;
-
-                /* Note - quick way to test programs without running full
-                * number of temperature loops */
-                if (config.maxtemploops > 0 && loopNum == config.maxtemploops){
-                    break;
-                }
             }
             loopTimer.stop();
 
