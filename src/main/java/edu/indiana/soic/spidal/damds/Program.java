@@ -292,7 +292,11 @@ public class Program {
 
             double QoR1 = stress / (config.numberDataPoints * (config.numberDataPoints - 1) / 2);
             double QoR2 = QoR1 / (distanceSummary.getAverage() * distanceSummary.getAverage());
-
+            mainTimer.stop();
+            Utils.printMessage(
+                "\nAfter the loop took " + mainTimer.elapsed(
+                    TimeUnit.MILLISECONDS) + " mili seconds");
+            mainTimer.start();
             Utils.printMessage(
                 String.format(
                     "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
@@ -319,7 +323,11 @@ public class Program {
                     e.printStackTrace();
                 }
             }
-
+            mainTimer.stop();
+            Utils.printMessage(
+                "\nAfter the write points took " + mainTimer.elapsed(
+                    TimeUnit.MILLISECONDS) + " mili seconds");
+            mainTimer.start();
             Double finalStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
                 INV_SUM_OF_SQUARE, partialSigma);
