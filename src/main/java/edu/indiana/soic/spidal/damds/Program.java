@@ -292,42 +292,42 @@ public class Program {
 
             double QoR1 = stress / (config.numberDataPoints * (config.numberDataPoints - 1) / 2);
             double QoR2 = QoR1 / (distanceSummary.getAverage() * distanceSummary.getAverage());
-            mainTimer.stop();
-            Utils.printMessage(
-                "\nAfter the loop took " + mainTimer.elapsed(
-                    TimeUnit.MILLISECONDS) + " mili seconds");
-            mainTimer.start();
-            Utils.printMessage(
-                String.format(
-                    "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
-            Utils.printMessage(
-                String.format(
-                    "Average of Delta(original distance) = %.5g",
-                    distanceSummary.getAverage()));
+            if (ParallelOps.worldProcRank == 0) {
+                mainTimer.stop();
+                Utils.printMessage(
+                    "\nAfter the loop took " + mainTimer.elapsed(
+                        TimeUnit.MILLISECONDS) + " mili seconds");
+                mainTimer.start();
+                Utils.printMessage(
+                    String.format(
+                        "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
+                Utils.printMessage(
+                    String.format(
+                        "Average of Delta(original distance) = %.5g",
+                        distanceSummary.getAverage()));
 
 
-             // TODO Fix error handling here
-            if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
-                "NOLABEL")) {
-                try {
-                    writeOuput(preX, config.targetDimension, config.pointsFile);
+                // TODO Fix error handling here
+                if (Strings.isNullOrEmpty(config.labelFile) || config.labelFile.toUpperCase().endsWith(
+                    "NOLABEL")) {
+                    try {
+                        writeOuput(preX, config.targetDimension, config.pointsFile);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    try {
+                        writeOuput(preX, config.targetDimension, config.labelFile, config.pointsFile);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                try {
-                    writeOuput(preX, config.targetDimension, config.labelFile, config.pointsFile);
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
+                mainTimer.stop();
+                Utils.printMessage(
+                    "\nAfter the write points took " + mainTimer.elapsed(
+                        TimeUnit.MILLISECONDS) + " mili seconds");
+                mainTimer.start();
             }
-            mainTimer.stop();
-            Utils.printMessage(
-                "\nAfter the write points took " + mainTimer.elapsed(
-                    TimeUnit.MILLISECONDS) + " mili seconds");
-            mainTimer.start();
             Double finalStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
                 INV_SUM_OF_SQUARE, partialSigma);
