@@ -274,7 +274,7 @@ public class Program {
                         " Stress %.5g",
                         loopNum, (itrNum + 1),
                         (cgCount.getValue() * 1.0 / (itrNum + 1)), stress));
-                if (config.maxtemploops > 0) {
+                if (config.maxtemploops >= 0) {
                     if (loopNum == config.maxtemploops) {
                         break;
                     }
