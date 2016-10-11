@@ -596,7 +596,7 @@ public class ProgramWorker {
             cgLoopTimings.startTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
             double v1 = innerProductCalculation(BC, MMAp);
             if (v1 == 0) {
-                System.out.println("00000000000000000000000000000000000000000");
+                System.out.println("v1 00000000000000000000000000000000000000000");
             }
             double alpha = rTr / v1;
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_PAP);
@@ -627,7 +627,7 @@ public class ProgramWorker {
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.INNER_PROD_R);
             double beta = rTr1 / rTr;
             if (rTr == 0) {
-                System.out.println("00000000000000000000000000000000000000000");
+                System.out.println("rtr 00000000000000000000000000000000000000000");
             }
             rTr = rTr1;
 
@@ -707,7 +707,7 @@ public class ProgramWorker {
     }
 
 
-    private static double innerProductCalculation(double[] a, double[] b) {
+    private static double   innerProductCalculation(double[] a, double[] b) {
         double sum = 0;
         if (a.length > 0) {
             for (int i = 0; i < a.length; ++i) {
