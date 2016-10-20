@@ -17,11 +17,13 @@ public class DAMDSSection {
             weightMatrixFile = getProperty(p, "WeightMatrixFile", "weights.bin");
             labelFile = getProperty(p, "LabelFile", "labels.txt");
             initialPointsFile = getProperty(p, "InitialPointsFile", "init.txt");
+            fixedPointsFile = getProperty(p, "FixedPointsFile", "fixed.txt");
             pointsFile = getProperty(p, "PointsFile", "points.txt");
             timingFile = getProperty(p, "TimingFile", "timings.txt");
             summaryFile = getProperty(p, "SummaryFile", "summary.txt");
 
             numberDataPoints = Integer.parseInt(getProperty(p, "NumberDataPoints", "-1"));
+            numberFixedDataPoints = Integer.parseInt(getProperty(p, "NumberFixedDataPoints", "-1"));
             targetDimension = Integer.parseInt(
                 getProperty(p, "TargetDimension", "3"));
             distanceTransform = Double.parseDouble(
@@ -66,11 +68,13 @@ public class DAMDSSection {
     public String weightMatrixFile;
     public String labelFile;
     public String initialPointsFile;
+    public String fixedPointsFile;
     public String pointsFile;
     public String timingFile;
     public String summaryFile;
 
     public int numberDataPoints;
+    public int numberFixedDataPoints;
     public int targetDimension;
     public double distanceTransform;
     public double threshold;
@@ -102,10 +106,12 @@ public class DAMDSSection {
                                        "Weight Matrix File",
                                        "Label Data File",
                                        "Initial Points File",
+                                       "Fixed Points File",
                                        "Points File",
                                        "Timing File",
                                        "Summary File",
                                        "Number Data Points",
+                                       "Number Fixed Data Points",
                                        "The Target Dimension",
                                        "Distance Transform (double)",
                                        "Threshold value",
@@ -128,10 +134,12 @@ public class DAMDSSection {
                          weightMatrixFile,
                          labelFile,
                          initialPointsFile,
+                         fixedPointsFile,
                          pointsFile,
                          timingFile,
                          summaryFile,
                          numberDataPoints,
+                         numberFixedDataPoints,
                          targetDimension,
                          distanceTransform,
                          threshold, alpha,

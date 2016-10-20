@@ -3,6 +3,7 @@ package edu.indiana.soic.spidal.damds;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
+import com.sun.tools.javac.util.ArrayUtils;
 import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
@@ -61,6 +62,8 @@ public class Program {
 
     // Arrays
     public static double[] preX;
+    public static double[] preX1;
+    public static double[] preX2;
     public static double[] BC;
     public static double[] MMr;
     public static double[] MMAp;
@@ -147,10 +150,21 @@ public class Program {
 
             if (Strings.isNullOrEmpty(config.initialPointsFile)){
                 generateInitMapping(
-                    config.numberDataPoints, config.targetDimension, preX);
+                    config.numberDataPoints - config.numberFixedDataPoints, config.targetDimension, preX2);
             } else {
-                readInitMapping(config.initialPointsFile, preX, config.targetDimension);
+                readInitMapping(config.initialPointsFile, preX2, config.targetDimension);
             }
+
+            //fixed Point code
+            if (Strings.isNullOrEmpty(config.fixedPointsFile)){
+                generateInitMapping(
+                        config.numberFixedDataPoints, config.targetDimension, preX1);
+            } else {
+                readInitMapping(config.fixedPointsFile, preX1, config.targetDimension);
+            }
+
+            preX = mergePrex(preX1,preX2);
+
             double tCur = 0.0;
             double tMax = distanceSummary.getMax() / Math.sqrt(2.0 * config.targetDimension);
             double tMin = config.tMinFactor * distanceSummary.getPositiveMin() / Math.sqrt(2.0 * config.targetDimension);
@@ -351,13 +365,25 @@ public class Program {
         }
     }
 
+    private static double[] mergePrex(double[] preX1, double[] preX2) {
+        int prex1Len = preX1.length;
+        int prex2Len = preX2.length;
+        double[] preX= new double[prex1Len+prex2Len];
+        System.arraycopy(preX1, 0, preX, 0, prex1Len);
+        System.arraycopy(preX2, 0, preX, prex1Len, prex2Len);
+        return  preX;
+    }
+
     private static void allocateArrays() {
         // Allocating point arrays once for all
         final int numberDataPoints = config.numberDataPoints;
+        final int fixednumberDataPoints = config.numberFixedDataPoints;
         final int targetDimension = config.targetDimension;
         // Note - prex[][] to prex[]
 //        preX = new double[numberDataPoints][targetDimension];
         preX = new double[numberDataPoints*targetDimension];
+        preX1 = new double[fixednumberDataPoints*targetDimension];
+        preX2 = new double[(numberDataPoints - fixednumberDataPoints)*targetDimension];
 
         // Note - BC[][] to BC[]
 //        BC = new double[numberDataPoints][targetDimension];
