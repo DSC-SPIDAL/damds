@@ -64,7 +64,10 @@ public class Program {
     public static double[] preX;
     public static double[] preX1;
     public static double[] preX2;
+    public static double[] X1;
+    public static double[] X2;
     public static double[] BC;
+    public static double[] BC1;
     public static double[] MMr;
     public static double[] MMAp;
 
@@ -156,15 +159,25 @@ public class Program {
             }
 
             //fixed Point code
-            if (Strings.isNullOrEmpty(config.fixedPointsFile)){
-                generateInitMapping(
-                        config.numberFixedDataPoints, config.targetDimension, preX1);
-            } else {
-                readInitMapping(config.fixedPointsFile, preX1, config.targetDimension);
+
+            if(config.hasFixedPoints) {
+                if (Strings.isNullOrEmpty(config.fixedPointsFile)) {
+                    generateInitMapping(
+                            config.numberFixedDataPoints, config.targetDimension, preX1);
+                } else {
+                    readInitMapping(config.fixedPointsFile, preX1, config.targetDimension);
+                }
+                mergePrex(preX1,preX2,preX);
+                System.arraycopy(preX1, 0, X1, 0, preX1.length);
+                System.arraycopy(preX2, 0, X2, preX1.length, preX2.length);
+            }else{
+                preX = preX2;
             }
-
-            preX = mergePrex(preX1,preX2);
-
+            double[] V21X11D = new double[config.numberDataPoints*config.targetDimension];
+            calculateMM(X1,config.targetDimension,config.numberDataPoints,weights,config.blockSize,vArray,V21X11D,
+                    threadPartialMM,config.numberFixedDataPoints,config.hasFixedPoints);
+            // TODO might not need it here
+            zeroOutArray(threadPartialMM);
             double tCur = 0.0;
             double tMax = distanceSummary.getMax() / Math.sqrt(2.0 * config.targetDimension);
             double tMin = config.tMinFactor * distanceSummary.getPositiveMin() / Math.sqrt(2.0 * config.targetDimension);
@@ -218,9 +231,40 @@ public class Program {
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.BC);
                     calculateBC(
+                            preX, config.targetDimension, tCur, distances,
+                            weights, BlockSize, BC1, threadPartialBofZ,
+                            threadPartialMM,config.numberFixedDataPoints,true);
+
+                    calculateBC(
                         preX, config.targetDimension, tCur, distances,
                         weights, BlockSize, BC, threadPartialBofZ,
-                        threadPartialMM);
+                        threadPartialMM,config.numberFixedDataPoints,false);
+
+
+//                    Utils.printMessage("\n\n\n\nBC calc");
+//                    for (int i = 0; i < 200; i++) {
+//                        System.out.print("\t" + BC[i]);
+//                    }
+
+
+
+                    Utils.printMessage("\n\n\n\nBC1 calc");
+                    for (int i = 0; i < 500; i++) {
+                        System.out.print(" " + BC1[i]);
+                    }
+                    //Adds both matrixs to first parameter
+                    addMatrix(BC,BC1);
+                    Utils.printMessage("\n\n\n\nBC calc");
+                    for (int i = 0; i < 500; i++) {
+                        System.out.print(" " + BC[i]);
+                    }
+                    //Subtracts both matrixs to first parameter
+                    subMatrix(BC,V21X11D);
+
+//                    Utils.printMessage("\n\n\n\nBC calc");
+//                    for (int i = 0; i < 500; i++) {
+//                        System.out.print(" " + BC[i]);
+//                    }
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
                     // This barrier was necessary for correctness when using
@@ -230,16 +274,18 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
-                    calculateConjugateGradient(preX, config.targetDimension,
+                    calculateConjugateGradient(X2, config.targetDimension,
                                                config.numberDataPoints,
                                                BC,
                                                config.cgIter,
                                                config.cgErrorThreshold, cgCount,
                                                outRealCGIterations, weights,
-                                               BlockSize, vArray, MMr, MMAp, threadPartialMM);
+                                               BlockSize, vArray, MMr, MMAp, threadPartialMM,config.numberFixedDataPoints);
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.CG);
 
+                    //Add matrix 1 and 2 and set to 3
+                    addMatrix(X1,X2,preX);
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.STRESS);
@@ -365,13 +411,50 @@ public class Program {
         }
     }
 
-    private static double[] mergePrex(double[] preX1, double[] preX2) {
+    private static void addMatrix(double[] bc, double[] bc1) {
+        if(bc.length != bc1.length){
+            Utils.printMessage("Cannot add the two matrices, incompatible sizes");
+            return;
+        }
+
+        for (int i = 0; i < bc.length; i++) {
+            bc[i] += bc1[i];
+        }
+
+    }
+
+    private static void addMatrix(double[] bc, double[] bc1, double[] result) {
+
+        if(bc.length != bc1.length || bc.length != result.length){
+            Utils.printMessage("Cannot add the two matrices, incompatible sizes");
+            Utils.printMessage("bc " + bc.length);
+            Utils.printMessage("bc1 " + bc1.length);
+            Utils.printMessage("Prex " + result.length);
+            return;
+        }
+        for (int i = 0; i < bc.length; i++) {
+            result[i] = bc[i] + bc1[i];
+        }
+
+    }
+
+    private static void subMatrix(double[] bc, double[] bc1) {
+        if(bc.length != bc1.length){
+            Utils.printMessage("Cannot subtract the two matrices, incompatible sizes");
+            return;
+        }
+
+        for (int i = 0; i < bc.length; i++) {
+            bc[i] -= bc1[i];
+        }
+
+    }
+
+    private static void mergePrex(double[] preX1, double[] preX2, double[] preX) {
         int prex1Len = preX1.length;
         int prex2Len = preX2.length;
-        double[] preX= new double[prex1Len+prex2Len];
         System.arraycopy(preX1, 0, preX, 0, prex1Len);
         System.arraycopy(preX2, 0, preX, prex1Len, prex2Len);
-        return  preX;
     }
 
     private static void allocateArrays() {
@@ -382,12 +465,15 @@ public class Program {
         // Note - prex[][] to prex[]
 //        preX = new double[numberDataPoints][targetDimension];
         preX = new double[numberDataPoints*targetDimension];
+        X1 = new double[numberDataPoints*targetDimension];
+        X2 = new double[numberDataPoints*targetDimension];
         preX1 = new double[fixednumberDataPoints*targetDimension];
         preX2 = new double[(numberDataPoints - fixednumberDataPoints)*targetDimension];
 
         // Note - BC[][] to BC[]
 //        BC = new double[numberDataPoints][targetDimension];
         BC = new double[numberDataPoints*targetDimension];
+        BC1 = new double[numberDataPoints*targetDimension];
 
         // Note - MMr[][] to MMr[]
         MMr = new double[numberDataPoints * targetDimension];
@@ -865,7 +951,7 @@ public class Program {
     private static void calculateConjugateGradient(
         double[] preX, int targetDimension, int numPoints, double[] BC, int cgIter, double cgThreshold,
         RefObj<Integer> outCgCount, RefObj<Integer> outRealCGIterations,
-        WeightsWrap1D weights, int blockSize, double[][] vArray, double[] MMr, double[] MMAp, double[][] threadPartialMM)
+        WeightsWrap1D weights, int blockSize, double[][] vArray, double[] MMr, double[] MMAp, double[][] threadPartialMM, int inSampleSize)
 
         throws MPIException {
 
@@ -873,7 +959,7 @@ public class Program {
         zeroOutArray(threadPartialMM);
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         calculateMM(preX, targetDimension, numPoints, weights, blockSize,
-                    vArray, MMr, threadPartialMM);
+                    vArray, MMr, threadPartialMM,inSampleSize,false);
 
         CGTimings.endTiming(CGTimings.TimingTask.MM);
         // This barrier was necessary for correctness when using
@@ -907,7 +993,7 @@ public class Program {
             zeroOutArray(threadPartialMM);
             CGLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
             calculateMM(BC, targetDimension, numPoints, weights, blockSize,
-                        vArray, MMAp, threadPartialMM);
+                        vArray, MMAp, threadPartialMM,inSampleSize,false);
             ParallelOps.worldProcsComm.barrier();
             CGLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
 
@@ -959,7 +1045,7 @@ public class Program {
     private static void calculateMM(
         double[] x, int targetDimension, int numPoints, WeightsWrap1D weights,
         int blockSize, double[][] vArray, double[] outMM,
-        double[][] internalPartialMM) throws MPIException {
+        double[][] internalPartialMM, int inSampleSize, boolean inSample) throws MPIException {
 
         if (ParallelOps.threadCount > 1) {
             launchHabaneroApp(
@@ -970,7 +1056,7 @@ public class Program {
                         calculateMMInternal(threadIdx, x, targetDimension,
                                             numPoints, weights, blockSize,
                                             vArray,
-                                            internalPartialMM[threadIdx]);
+                                            internalPartialMM[threadIdx],inSampleSize,inSample);
                         MMTimings.endTiming(
                             MMTimings.TimingTask.MM_INTERNAL, threadIdx);
                     }));
@@ -978,7 +1064,7 @@ public class Program {
         else {
             MMTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
             calculateMMInternal(0, x, targetDimension, numPoints, weights,
-                                blockSize, vArray, internalPartialMM[0]);
+                                blockSize, vArray, internalPartialMM[0],inSampleSize,inSample);
             MMTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL, 0);
         }
 
@@ -1015,15 +1101,24 @@ public class Program {
 
     private static void calculateMMInternal(
         Integer threadIdx, double[] x, int targetDimension, int numPoints,
-        WeightsWrap1D weights, int blockSize, double[][] vArray, double[] outMM) {
-
-        MatrixUtils
-            .matrixMultiplyWithThreadOffset(weights, vArray[threadIdx], x,
-                ParallelOps.threadRowCounts[threadIdx], targetDimension,
-                numPoints, blockSize,
-                ParallelOps.threadRowStartOffsets[threadIdx],
-                ParallelOps.threadRowStartOffsets[threadIdx]
-                + ParallelOps.procRowStartOffset, outMM);
+        WeightsWrap1D weights, int blockSize, double[][] vArray, double[] outMM, int inSampleSize, boolean inSample) {
+        if(!inSample){
+            MatrixUtils
+                    .matrixMultiplyWithThreadOffset(weights, vArray[threadIdx], x,
+                            ParallelOps.threadRowCounts[threadIdx], targetDimension,
+                            numPoints, blockSize,
+                            ParallelOps.threadRowStartOffsets[threadIdx],
+                            ParallelOps.threadRowStartOffsets[threadIdx]
+                                    + ParallelOps.procRowStartOffset, outMM);
+        }else{
+            MatrixUtils
+                    .matrixMultiplyWithThreadOffsetInSample(weights, vArray[threadIdx], x,
+                            ParallelOps.threadRowCounts[threadIdx], targetDimension,
+                            numPoints, blockSize,
+                            ParallelOps.threadRowStartOffsets[threadIdx],
+                            ParallelOps.threadRowStartOffsets[threadIdx]
+                                    + ParallelOps.procRowStartOffset, outMM,inSampleSize,inSample);
+        }
     }
 
 
@@ -1051,7 +1146,7 @@ public class Program {
         double[] preX, int targetDimension, double tCur, short[] distances,
         WeightsWrap1D weights, int blockSize, double[] BC,
         double[][][] threadPartialBCInternalBofZ,
-        double[][] threadPartialBCInternalMM)
+        double[][] threadPartialBCInternalMM, int inSampleSize, boolean inSample)
         throws MPIException, InterruptedException {
 
         if (ParallelOps.threadCount > 1) {
@@ -1061,7 +1156,7 @@ public class Program {
                     (threadIdx) -> {
                         BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,threadIdx);
                         calculateBCInternal(
-                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx]);
+                            threadIdx, preX, targetDimension, tCur, distances, weights, blockSize, threadPartialBCInternalBofZ[threadIdx], threadPartialBCInternalMM[threadIdx],inSampleSize,inSample);
                         BCTimings.endTiming(
                             BCTimings.TimingTask.BC_INTERNAL, threadIdx);
                     }));
@@ -1070,7 +1165,7 @@ public class Program {
             BCTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL,0);
             calculateBCInternal(
                 0, preX, targetDimension, tCur, distances, weights, blockSize,
-                threadPartialBCInternalBofZ[0], threadPartialBCInternalMM[0]);
+                threadPartialBCInternalBofZ[0], threadPartialBCInternalMM[0],inSampleSize,inSample);
             BCTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL, 0);
         }
@@ -1110,7 +1205,7 @@ public class Program {
     private static void calculateBCInternal(
         Integer threadIdx, double[] preX, int targetDimension, double tCur,
         short[] distances, WeightsWrap1D weights, int blockSize,
-        double[][] internalBofZ, double[] outMM) {
+        double[][] internalBofZ, double[] outMM, int inSampleSize, boolean inSample) {
 
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ, threadIdx);
         calculateBofZ(threadIdx, preX, targetDimension, tCur,
@@ -1119,9 +1214,16 @@ public class Program {
 
         // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
-        MatrixUtils.matrixMultiply(internalBofZ, preX,
-            ParallelOps.threadRowCounts[threadIdx], targetDimension,
-            ParallelOps.globalColCount, blockSize, outMM);
+        if(!inSample){
+            MatrixUtils.matrixMultiply(internalBofZ, preX,
+                    ParallelOps.threadRowCounts[threadIdx], targetDimension,
+                    ParallelOps.globalColCount, blockSize, outMM);
+        }else{
+            MatrixUtils.matrixMultiplyInSample(internalBofZ, preX,
+                    ParallelOps.threadRowCounts[threadIdx], targetDimension,
+                    ParallelOps.globalColCount, blockSize, outMM,inSampleSize,inSample);
+
+        }
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
     }
 

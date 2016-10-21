@@ -23,7 +23,7 @@ public class DAMDSSection {
             summaryFile = getProperty(p, "SummaryFile", "summary.txt");
 
             numberDataPoints = Integer.parseInt(getProperty(p, "NumberDataPoints", "-1"));
-            numberFixedDataPoints = Integer.parseInt(getProperty(p, "NumberFixedDataPoints", "-1"));
+            numberFixedDataPoints = Integer.parseInt(getProperty(p, "NumberFixedDataPoints", "0"));
             targetDimension = Integer.parseInt(
                 getProperty(p, "TargetDimension", "3"));
             distanceTransform = Double.parseDouble(
@@ -37,6 +37,7 @@ public class DAMDSSection {
             cgErrorThreshold = Double.parseDouble(
                 getProperty(p, "CGErrorThreshold", "1"));
             isSammon = Boolean.parseBoolean(getProperty(p, "IsSammon", "false"));
+            hasFixedPoints = Boolean.parseBoolean(getProperty(p, "HasFixedPoints", "false"));
             blockSize = Integer.parseInt(getProperty(p, "BlockSize", "64"));
 
             isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
@@ -84,6 +85,7 @@ public class DAMDSSection {
     public int cgIter;
     public double cgErrorThreshold;
     public boolean isSammon;
+    public boolean hasFixedPoints;
     public int blockSize;
 
     public boolean isBigEndian;
@@ -121,6 +123,7 @@ public class DAMDSSection {
                                        "CG Iterations",
                                        "CG Threshold",
                                        "Sammon mapping (boolean) ",
+                                       "Has Fixed Points",
                                        "Block Size",
                                        "Is BigEndian (boolean)",
                                        "Is Memory mapped (boolean)",
@@ -148,6 +151,7 @@ public class DAMDSSection {
                          cgIter,
                          cgErrorThreshold,
                          isSammon,
+                         hasFixedPoints,
                          blockSize,
                          isBigEndian,
                          isMemoryMapped,
