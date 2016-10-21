@@ -248,16 +248,16 @@ public class Program {
 
 
 
-                    Utils.printMessage("\n\n\n\nBC1 calc");
-                    for (int i = 0; i < 500; i++) {
-                        System.out.print(" " + BC1[i]);
-                    }
-                    //Adds both matrixs to first parameter
-                    addMatrix(BC,BC1);
-                    Utils.printMessage("\n\n\n\nBC calc");
-                    for (int i = 0; i < 500; i++) {
-                        System.out.print(" " + BC[i]);
-                    }
+//                    Utils.printMessage("\n\n\n\nBC1 calc");
+//                    for (int i = 0; i < 500; i++) {
+//                        System.out.print(" " + BC1[i]);
+//                    }
+//                    //Adds both matrixs to first parameter
+//                    addMatrix(BC,BC1);
+//                    Utils.printMessage("\n\n\n\nBC calc");
+//                    for (int i = 0; i < 500; i++) {
+//                        System.out.print(" " + BC[i]);
+//                    }
                     //Subtracts both matrixs to first parameter
                     subMatrix(BC,V21X11D);
 
