@@ -196,6 +196,11 @@ public class Program {
             double tMin = config.tMinFactor * distanceSummary.getPositiveMin() / Math.sqrt(2.0 * config.targetDimension);
 
             generateVArray(distances, weights, vArray);
+
+            if(ParallelOps.worldProcRank == 0){
+                System.out.println("First three vlues of weight : " + weights.getWeight(0,0) + " " + weights.getWeight(0,1) + " " + weights.getWeight(0,2));
+                System.out.println("First three vlues of prex : " + distances[0] + " " + distances[1] + " " + distances[2]);
+            }
             double preStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
                 INV_SUM_OF_SQUARE, partialSigma);
