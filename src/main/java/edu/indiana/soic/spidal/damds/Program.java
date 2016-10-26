@@ -261,31 +261,9 @@ public class Program {
                         weights, BlockSize, BC, threadPartialBofZ,
                         threadPartialMM,config.numberFixedDataPoints,false);
 
-
-//                    Utils.printMessage("\n\n\n\nBC calc");
-//                    for (int i = 0; i < 200; i++) {
-//                        System.out.print("\t" + BC[i]);
-//                    }
-
-
-
-//                    Utils.printMessage("\n\n\n\nBC1 calc");
-//                    for (int i = 0; i < 500; i++) {
-//                        System.out.print(" " + BC1[i]);
-//                    }
-//                    //Adds both matrixs to first parameter
-//                    addMatrix(BC,BC1);
-//                    Utils.printMessage("\n\n\n\nBC calc");
-//                    for (int i = 0; i < 500; i++) {
-//                        System.out.print(" " + BC[i]);
-//                    }
                     //Subtracts both matrixs to first parameter
                     subMatrix(BC,V21X11D);
 
-//                    Utils.printMessage("\n\n\n\nBC calc");
-//                    for (int i = 0; i < 500; i++) {
-//                        System.out.print(" " + BC[i]);
-//                    }
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
                     // This barrier was necessary for correctness when using
@@ -295,31 +273,6 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
-//                    if(ParallelOps.worldProcRank == 0){
-//
-//                        int tempcount = 0;
-//                        for (int i = 300; i < X2.length; i++) {
-//                            double aDouble = X2[i];
-//                            if (aDouble != 0.0){
-//                                System.out.println("X2 Value at  " + Math.floor((double)i/3) + " " + i%3 + " Is " + aDouble );
-//                                tempcount++;
-//                                if(tempcount>10) break;
-//                            }
-//                        }
-//                    }
-//
-//                    if(ParallelOps.worldProcRank == 0){
-//
-//                        int tempcount = 0;
-//                        for (int i = 300; i < BC.length; i++) {
-//                            double aDouble = BC[i];
-//                            if (aDouble != 0.0){
-//                                System.out.println("BC Value at  " + Math.floor((double)i/3) + " " + i%3 + " Is " + aDouble );
-//                                tempcount++;
-//                                if(tempcount>10) break;
-//                            }
-//                        }
-//                    }
                     calculateConjugateGradient(X2, config.targetDimension,
                                                config.numberDataPoints,
                                                BC,
@@ -999,30 +952,6 @@ public class Program {
         WeightsWrap1D weights, int blockSize, double[][] vArray, double[] MMr, double[] MMAp, double[][] threadPartialMM, int inSampleSize)
 
         throws MPIException {
-        if(ParallelOps.worldProcRank == 0){
-
-            int tempcount = 0;
-            for (int i = 0; i < preX.length; i++) {
-                double aDouble = preX[i];
-                if (aDouble != 0.0){
-                    System.out.println("preX Value at  " + Math.floor((double)i/3) + " " + i%3 + " Is " + aDouble );
-                    tempcount++;
-                    if(tempcount>10) break;
-                }
-            }
-        }
-        if(ParallelOps.worldProcRank == 0){
-
-            int tempcount = 0;
-            for (int i = 300; i < preX.length; i++) {
-                double aDouble = preX[i];
-                if (aDouble != 0.0){
-                    System.out.println("preX Value at  " + Math.floor((double)i/3) + " " + i%3 + " Is " + aDouble );
-                    tempcount++;
-                    if(tempcount>10) break;
-                }
-            }
-        }
         zeroOutArray(threadPartialMM);
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         calculateMM(preX, targetDimension, numPoints, weights, blockSize,
