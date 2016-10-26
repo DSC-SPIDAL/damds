@@ -26,6 +26,7 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 
 import static edu.rice.hj.Module0.launchHabaneroApp;
@@ -159,7 +160,7 @@ public class Program {
                 missingDistPercent);
 
             weights.setAvgDistForSammon(distanceSummary.getAverage());
-            changeZeroDistancesToPostiveMin(distances, distanceSummary.getPositiveMin());
+           // changeZeroDistancesToPostiveMin(distances, distanceSummary.getPositiveMin());
 
             // Allocating point arrays once for all
             allocateArrays();
@@ -197,10 +198,7 @@ public class Program {
 
             generateVArray(distances, weights, vArray);
 
-            if(ParallelOps.worldProcRank == 0){
-                System.out.println("First three vlues of weight : " + weights.getWeight(0,0) + " " + weights.getWeight(0,1) + " " + weights.getWeight(0,2));
-                System.out.println("First three vlues of prex : " + distances[0] + " " + distances[1] + " " + distances[2]);
-            }
+
             double preStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
                 INV_SUM_OF_SQUARE, partialSigma);
@@ -222,7 +220,11 @@ public class Program {
             RefObj<Integer> outRealCGIterations = new RefObj<>(0);
             RefObj<Integer> cgCount = new RefObj<>(0);
             int smacofRealIterations = 0;
+            zeroOutArray(BC);
+            zeroOutArray(BC1);
+
             while (true) {
+                Utils.printMessage("\nTemp ###################=" + tMax);
 
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
@@ -233,6 +235,7 @@ public class Program {
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
                 diffStress = config.threshold + 1.0;
+                Utils.printMessage("\nPreStress stress=" + preStress);
 
                 Utils.printMessage(
                     String.format(
@@ -292,6 +295,31 @@ public class Program {
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.CG);
+//                    if(ParallelOps.worldProcRank == 0){
+//
+//                        int tempcount = 0;
+//                        for (int i = 300; i < X2.length; i++) {
+//                            double aDouble = X2[i];
+//                            if (aDouble != 0.0){
+//                                System.out.println("X2 Value at  " + Math.floor((double)i/3) + " " + i%3 + " Is " + aDouble );
+//                                tempcount++;
+//                                if(tempcount>10) break;
+//                            }
+//                        }
+//                    }
+//
+//                    if(ParallelOps.worldProcRank == 0){
+//
+//                        int tempcount = 0;
+//                        for (int i = 300; i < BC.length; i++) {
+//                            double aDouble = BC[i];
+//                            if (aDouble != 0.0){
+//                                System.out.println("BC Value at  " + Math.floor((double)i/3) + " " + i%3 + " Is " + aDouble );
+//                                tempcount++;
+//                                if(tempcount>10) break;
+//                            }
+//                        }
+//                    }
                     calculateConjugateGradient(X2, config.targetDimension,
                                                config.numberDataPoints,
                                                BC,
@@ -304,6 +332,7 @@ public class Program {
 
                     //Add matrix 1 and 2 and set to 3
                     addMatrix(X1,X2,preX);
+
 
                     StressLoopTimings.startTiming(
                         StressLoopTimings.TimingTask.STRESS);
@@ -529,6 +558,13 @@ public class Program {
         }
         else {
             Arrays.fill(a[0],0.0d);
+        }
+    }
+
+    private static void zeroOutArray(double [] a){
+        for (int i = 0; i < a.length; i++) {
+            a[i] = 0.0;
+
         }
     }
 
@@ -963,8 +999,30 @@ public class Program {
         WeightsWrap1D weights, int blockSize, double[][] vArray, double[] MMr, double[] MMAp, double[][] threadPartialMM, int inSampleSize)
 
         throws MPIException {
+        if(ParallelOps.worldProcRank == 0){
 
+            int tempcount = 0;
+            for (int i = 0; i < preX.length; i++) {
+                double aDouble = preX[i];
+                if (aDouble != 0.0){
+                    System.out.println("preX Value at  " + Math.floor((double)i/3) + " " + i%3 + " Is " + aDouble );
+                    tempcount++;
+                    if(tempcount>10) break;
+                }
+            }
+        }
+        if(ParallelOps.worldProcRank == 0){
 
+            int tempcount = 0;
+            for (int i = 300; i < preX.length; i++) {
+                double aDouble = preX[i];
+                if (aDouble != 0.0){
+                    System.out.println("preX Value at  " + Math.floor((double)i/3) + " " + i%3 + " Is " + aDouble );
+                    tempcount++;
+                    if(tempcount>10) break;
+                }
+            }
+        }
         zeroOutArray(threadPartialMM);
         CGTimings.startTiming(CGTimings.TimingTask.MM);
         calculateMM(preX, targetDimension, numPoints, weights, blockSize,
@@ -994,6 +1052,7 @@ public class Program {
         double testEnd = rTr * cgThreshold;
 
         CGTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
+        Utils.printMessage("rTr " + rTr);
         while(cgCount < cgIter){
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
@@ -1047,6 +1106,9 @@ public class Program {
             }
 
         }
+
+        Utils.printMessage("###########################################" + cgCount);
+
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
     }
@@ -1117,12 +1179,12 @@ public class Program {
         WeightsWrap1D weights, int blockSize, double[][] vArray, double[] outMM, int inSampleSize, boolean inSample) {
         if(!inSample){
             MatrixUtils
-                    .matrixMultiplyWithThreadOffset(weights, vArray[threadIdx], x,
+                    .matrixMultiplyWithThreadOffsetInSample(weights, vArray[threadIdx], x,
                             ParallelOps.threadRowCounts[threadIdx], targetDimension,
                             numPoints, blockSize,
                             ParallelOps.threadRowStartOffsets[threadIdx],
                             ParallelOps.threadRowStartOffsets[threadIdx]
-                                    + ParallelOps.procRowStartOffset, outMM);
+                                    + ParallelOps.procRowStartOffset, outMM,inSampleSize,inSample);
         }else{
             MatrixUtils
                     .matrixMultiplyWithThreadOffsetInSample(weights, vArray[threadIdx], x,
@@ -1240,9 +1302,9 @@ public class Program {
         // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
         if(!inSample){
-            MatrixUtils.matrixMultiply(internalBofZ, preX,
+            MatrixUtils.matrixMultiplyInSample(internalBofZ, preX,
                     ParallelOps.threadRowCounts[threadIdx], targetDimension,
-                    ParallelOps.globalColCount, blockSize, outMM);
+                    ParallelOps.globalColCount, blockSize, outMM,inSampleSize,inSample);
         }else{
             MatrixUtils.matrixMultiplyInSample(internalBofZ, preX,
                     ParallelOps.threadRowCounts[threadIdx], targetDimension,
