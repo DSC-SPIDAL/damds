@@ -188,6 +188,7 @@ public class Program {
                 preX = preX2;
             }
             double[] V21X11D = new double[config.numberDataPoints*config.targetDimension];
+            zeroOutArray(V21X11D);
             calculateMM(X1,config.targetDimension,config.numberDataPoints,weights,config.blockSize,vArray,V21X11D,
                     threadPartialMM,config.numberFixedDataPoints,config.hasFixedPoints);
             // TODO might not need it here
@@ -224,7 +225,7 @@ public class Program {
             zeroOutArray(BC1);
 
             while (true) {
-                Utils.printMessage("\nTemp ###################=" + tMax);
+//                Utils.printMessage("\nTemp ###################=" + tMax);
 
                 TemperatureLoopTimings.startTiming(
                     TemperatureLoopTimings.TimingTask.PRE_STRESS);
@@ -981,7 +982,7 @@ public class Program {
         double testEnd = rTr * cgThreshold;
 
         CGTimings.startTiming(CGTimings.TimingTask.CG_LOOP);
-        Utils.printMessage("rTr " + rTr);
+//        Utils.printMessage("rTr " + rTr);
         while(cgCount < cgIter){
             cgCount++;
             outRealCGIterations.setValue(outRealCGIterations.getValue() + 1);
@@ -1036,7 +1037,7 @@ public class Program {
 
         }
 
-        Utils.printMessage("###########################################" + cgCount);
+//        Utils.printMessage("###########################################" + cgCount);
 
         CGTimings.endTiming(CGTimings.TimingTask.CG_LOOP);
         outCgCount.setValue(outCgCount.getValue() + cgCount);
