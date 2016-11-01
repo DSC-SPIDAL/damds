@@ -187,18 +187,19 @@ public class Program {
             }else{
                 preX = preX2;
             }
-            double[] V21X11D = new double[config.numberDataPoints*config.targetDimension];
-            zeroOutArray(V21X11D);
-            calculateMM(X1,config.targetDimension,config.numberDataPoints,weights,config.blockSize,vArray,V21X11D,
-                    threadPartialMM,config.numberFixedDataPoints,config.hasFixedPoints);
-            // TODO might not need it here
-            zeroOutArray(threadPartialMM);
+
             double tCur = 0.0;
             double tMax = distanceSummary.getMax() / Math.sqrt(2.0 * config.targetDimension);
             double tMin = config.tMinFactor * distanceSummary.getPositiveMin() / Math.sqrt(2.0 * config.targetDimension);
 
             generateVArray(distances, weights, vArray);
 
+            double[] V21X11D = new double[config.numberDataPoints*config.targetDimension];
+            zeroOutArray(V21X11D);
+            calculateMM(X1,config.targetDimension,config.numberDataPoints,weights,config.blockSize,vArray,V21X11D,
+                    threadPartialMM,config.numberFixedDataPoints,config.hasFixedPoints);
+            // TODO might not need it here
+            zeroOutArray(threadPartialMM);
 
             double preStress = calculateStress(
                 preX, config.targetDimension, tCur, distances, weights,
@@ -264,7 +265,13 @@ public class Program {
 
                     //Subtracts both matrixs to first parameter
                     subMatrix(BC,V21X11D);
+                    for (int i = 0; i < BC.length; i++) {
+                        double v = BC[i];
+                        if(i%32 == 0){
+                            Utils.printMessage("BC i = " + i + " Value = " + v );
+                        }
 
+                    }
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
                     // This barrier was necessary for correctness when using
