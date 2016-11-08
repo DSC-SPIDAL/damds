@@ -83,6 +83,7 @@ public class Program {
     public static double[] MMAp;
 
     public static double[][][] threadPartialBofZ;
+    public static double[][][] threadPartialBofZ1;
     public static double[][] threadPartialMM;
 
     public static double[] partialSigma;
@@ -258,25 +259,35 @@ public class Program {
                             weights, BlockSize, BC1, threadPartialBofZ,
                             threadPartialMM,config.numberFixedDataPoints,true);
 
+                    zeroOutArray(threadPartialMM);
+
                     calculateBC(
                         preX, config.targetDimension, tCur, distances,
                         weights, BlockSize, BC, threadPartialBofZ,
                         threadPartialMM,config.numberFixedDataPoints,false);
 
-                    //Subtracts both matrixs to first parameter
-                    subMatrix(BC,V21X11D);
-                    for (int i = 0; i < BC.length; i++) {
-                        double v = BC[i];
-                        if(i%32 == 0){
-                            Utils.printMessage("BC i = " + i + " Value = " + v );
-                        }
 
-                    }
+                    //Subtracts both matrixs to first parameter
+                    addMatrix(BC,BC1);
+                    subMatrix(BC,V21X11D);
+//                    int count = 0;
+//                    Utils.printMessage("############## iter" + itrNum );
+//                    for (int i = 0; i < BC.length; i++) {
+//                        double v = BC[i];
+//                        if(v != 0){
+//                            Utils.printMessage("" + v );
+//                            count++;
+//                        }
+//                        if(count>100)
+//                            break;
+//
+//                    }
                     StressLoopTimings.endTiming(
                         StressLoopTimings.TimingTask.BC);
                     // This barrier was necessary for correctness when using
                     // a single mmap file
                     ParallelOps.worldProcsComm.barrier();
+
 
 
                     StressLoopTimings.startTiming(
@@ -490,6 +501,7 @@ public class Program {
         MMAp = new double[numberDataPoints*targetDimension];
         final int threadCount = ParallelOps.threadCount;
         threadPartialBofZ = new double[threadCount][][];
+        threadPartialBofZ1 = new double[threadCount][][];
         // Note - threadPartialMM[][][] to threadPartialMM[][]
 //        threadPartialMM = new double[threadCount][][];
         threadPartialMM = new double[threadCount][];
@@ -498,6 +510,7 @@ public class Program {
         for (int i = 0; i < threadCount; ++i){
             threadRowCount = ParallelOps.threadRowCounts[i];
             threadPartialBofZ[i] = new double[threadRowCount][ParallelOps.globalColCount];
+            threadPartialBofZ1[i] = new double[threadRowCount][ParallelOps.globalColCount];
             threadPartialMM[i] = new double[threadRowCount * config.targetDimension];
             vArray[i] = new double[threadRowCount];
         }
@@ -1238,14 +1251,16 @@ public class Program {
 
         // Next we can calculate the BofZ * preX.
         BCInternalTimings.startTiming(BCInternalTimings.TimingTask.MM, threadIdx);
+        final int globalRowOffset = ParallelOps.threadRowStartOffsets[threadIdx]
+                + ParallelOps.procRowStartOffset;
         if(!inSample){
-            MatrixUtils.matrixMultiplyInSample(internalBofZ, preX,
+            MatrixUtils.matrixMultiplyInSampleWithThreadOffset(internalBofZ, preX,
                     ParallelOps.threadRowCounts[threadIdx], targetDimension,
-                    ParallelOps.globalColCount, blockSize, outMM,inSampleSize,inSample);
+                    ParallelOps.globalColCount, blockSize, outMM,inSampleSize,inSample,globalRowOffset);
         }else{
-            MatrixUtils.matrixMultiplyInSample(internalBofZ, preX,
+            MatrixUtils.matrixMultiplyInSampleWithThreadOffset(internalBofZ, preX,
                     ParallelOps.threadRowCounts[threadIdx], targetDimension,
-                    ParallelOps.globalColCount, blockSize, outMM,inSampleSize,inSample);
+                    ParallelOps.globalColCount, blockSize, outMM,inSampleSize,inSample,globalRowOffset);
 
         }
         BCInternalTimings.endTiming(BCInternalTimings.TimingTask.MM, threadIdx);
