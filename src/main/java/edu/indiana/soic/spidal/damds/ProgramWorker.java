@@ -810,40 +810,43 @@ public class ProgramWorker {
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
         //System.out.println(threadId);
+        // TODO: VT DEBUG
         /*threadComm.collect2(0,
                 threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);*/
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE);
 
-        if (ParallelOps.worldProcsCount > 1) {
-            if (threadId == 0) {
-                /*bcTimings.startTiming(BCTimings.TimingTask.COMM);
-                ParallelOps.allGather();
-                bcTimings.endTiming(BCTimings.TimingTask.COMM);*/
-
-                // Important barrier here - as we need to make sure writes
-                // are done to the mmap file
-
-                // it's sufficient to wait on ParallelOps.mmapProcComm, but
-                // it's cleaner for timings
-                // if we wait on the whole world
-                ParallelOps.worldProcsComm.barrier();
-
-                if (ParallelOps.isMmapLead) {
-                    // bcTimings.startTiming(BCTimings.TimingTask.COMM);
-                    ParallelOps.partialXAllGather();
-                    // bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
-                }
-                // Each process in a memory group waits here.
-                // It's not necessary to wait for a process
-                // in another memory map group, hence the use of
-                // mmapProcComm.
-                // However it's cleaner for any timings to have everyone sync
-                // here, so will use worldProcsComm instead.
-                ParallelOps.worldProcsComm.barrier();
-            }
-            threadComm.barrier();
-        }
+        // TODO: VT DEBUG
+//        if (ParallelOps.worldProcsCount > 1) {
+//            if (threadId == 0) {
+//                /*bcTimings.startTiming(BCTimings.TimingTask.COMM);
+//                ParallelOps.allGather();
+//                bcTimings.endTiming(BCTimings.TimingTask.COMM);*/
+//
+//                // Important barrier here - as we need to make sure writes
+//                // are done to the mmap file
+//
+//                // it's sufficient to wait on ParallelOps.mmapProcComm, but
+//                // it's cleaner for timings
+//                // if we wait on the whole world
+//                ParallelOps.worldProcsComm.barrier();
+//
+//                if (ParallelOps.isMmapLead) {
+//                    // bcTimings.startTiming(BCTimings.TimingTask.COMM);
+//                    ParallelOps.partialXAllGather();
+//                    // bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+//                }
+//                // Each process in a memory group waits here.
+//                // It's not necessary to wait for a process
+//                // in another memory map group, hence the use of
+//                // mmapProcComm.
+//                // However it's cleaner for any timings to have everyone sync
+//                // here, so will use worldProcsComm instead.
+//                ParallelOps.worldProcsComm.barrier();
+//            }
+//            threadComm.barrier();
+//        }
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
+        // TODO: VT DEBUG
         /*threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? threadLocalFullXBytes
                         : threadLocalMmapXWriteBytes, BC,
