@@ -113,8 +113,6 @@ public class ProgramWorker {
                     "here ");*/
 
             RefObj<Integer> missingDistCount = new RefObj<>();
-            double missingDistPercent = missingDistCount.getValue() /
-                    (Math.pow(config.numberDataPoints, 2));
 
 
             // Allocating point arrays once for all
