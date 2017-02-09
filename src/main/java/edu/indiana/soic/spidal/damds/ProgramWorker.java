@@ -263,14 +263,14 @@ public class ProgramWorker {
                             StressLoopTimings.TimingTask.CG);*/
 
 
-                    /*stressLoopTimings.startTiming(
+                    stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
                             preX, config.targetDimension, tCur, distances,
                             weights,
                             INV_SUM_OF_SQUARE);
                     stressLoopTimings.endTiming(
-                            StressLoopTimings.TimingTask.STRESS);*/
+                            StressLoopTimings.TimingTask.STRESS);
 
                     diffStress = preStress - stress;
                     preStress = stress;
