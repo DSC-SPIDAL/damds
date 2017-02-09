@@ -270,9 +270,6 @@ public class ProgramWorker {
             utils.printMessage(
                     String.format(
                             "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
-            utils.printMessage(
-                    String.format(
-                            "Average of Delta(original distance) = %.5g"));
 
 
 
