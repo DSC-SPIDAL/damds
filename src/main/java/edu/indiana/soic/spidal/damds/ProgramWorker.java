@@ -882,8 +882,6 @@ public class ProgramWorker {
             distances, WeightsWrap1D weights,
             double[][] outBofZ) {
 
-        // TODO: VT DEBUG
-
         int threadRowCount = globalThreadRowRange.getLength();
 
         double vBlockValue = -1;
@@ -930,15 +928,15 @@ public class ProgramWorker {
                     continue;
                 }
 
-//                dist = calculateEuclideanDist(preX, globalRow, globalCol,
-//                        targetDimension);
-//                if (dist >= 1.0E-10 && diff < origD) {
-//                    outBofZLocalRow[globalCol] = (weight * vBlockValue *
-//                            (origD - diff) / dist);
-//                } else {
-//                    outBofZLocalRow[globalCol] = 0;
-//                }
-//                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
+                dist = calculateEuclideanDist(preX, globalRow, globalCol,
+                        targetDimension);
+                if (dist >= 1.0E-10 && diff < origD) {
+                    outBofZLocalRow[globalCol] = (weight * vBlockValue *
+                            (origD - diff) / dist);
+                } else {
+                    outBofZLocalRow[globalCol] = 0;
+                }
+                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
             }
         }
     }
