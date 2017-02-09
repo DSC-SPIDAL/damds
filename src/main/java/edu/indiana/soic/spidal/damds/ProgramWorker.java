@@ -121,7 +121,7 @@ public class ProgramWorker {
             allocateArrays();
 
             if (Strings.isNullOrEmpty(config.initialPointsFile)) {
-
+                System.out.println("***********ERROR initial point file null");
             } else {
                 readInitMapping(config.initialPointsFile, preX, config
                         .targetDimension);
