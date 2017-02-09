@@ -930,14 +930,14 @@ public class ProgramWorker {
                     continue;
                 }
 
-                dist = calculateEuclideanDist(preX, globalRow, globalCol,
-                        targetDimension);
-                if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZLocalRow[globalCol] = (weight * vBlockValue *
-                            (origD - diff) / dist);
-                } else {
-                    outBofZLocalRow[globalCol] = 0;
-                }
+//                dist = calculateEuclideanDist(preX, globalRow, globalCol,
+//                        targetDimension);
+//                if (dist >= 1.0E-10 && diff < origD) {
+//                    outBofZLocalRow[globalCol] = (weight * vBlockValue *
+//                            (origD - diff) / dist);
+//                } else {
+//                    outBofZLocalRow[globalCol] = 0;
+//                }
                 outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
             }
         }
