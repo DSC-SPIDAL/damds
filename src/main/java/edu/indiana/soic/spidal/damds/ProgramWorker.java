@@ -800,9 +800,10 @@ public class ProgramWorker {
             throws MPIException, InterruptedException, BrokenBarrierException {
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL);
-        calculateBCInternal(
-                preX, targetDimension, tCur, distances, weights, blockSize,
-                threadPartialBCInternalBofZ, threadPartialBCInternalMM);
+        // TODO: VT DEBUG
+//        calculateBCInternal(
+//                preX, targetDimension, tCur, distances, weights, blockSize,
+//                threadPartialBCInternalBofZ, threadPartialBCInternalMM);
         bcTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL);
 
