@@ -881,10 +881,10 @@ public class ProgramWorker {
             double[] preX, int targetDimension, double tCur, short[]
             distances, WeightsWrap1D weights,
             double[][] outBofZ) {
-        
+
         // TODO: VT DEBUG
 
-//        int threadRowCount = globalThreadRowRange.getLength();
+        int threadRowCount = globalThreadRowRange.getLength();
 //
 //        double vBlockValue = -1;
 //
