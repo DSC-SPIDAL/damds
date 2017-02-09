@@ -919,10 +919,10 @@ public class ProgramWorker {
                 // this is for the i!=j case. For i==j case will be calculated
                 // separately (see above).
                 if (globalRow == globalCol) continue;
-//
-//
-//                origD = distances[threadLocalRow * globalColCount +
-//                        globalCol] * INV_SHORT_MAX;
+
+
+                origD = distances[threadLocalRow * globalColCount +
+                        globalCol] * INV_SHORT_MAX;
 ////                weight = weights.getWeight(threadLocalRow, globalCol);
 //                weight = 1.0;
 //
