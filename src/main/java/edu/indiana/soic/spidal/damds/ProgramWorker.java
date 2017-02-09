@@ -924,12 +924,12 @@ public class ProgramWorker {
                 origD = distances[threadLocalRow * globalColCount +
                         globalCol] * INV_SHORT_MAX;
 ////                weight = weights.getWeight(threadLocalRow, globalCol);
-//                weight = 1.0;
+                weight = 1.0;
 //
-//                if (origD < 0 || weight == 0) {
-//                    continue;
-//                }
-//
+                if (origD < 0 || weight == 0) {
+                    continue;
+                }
+
 //                dist = calculateEuclideanDist(preX, globalRow, globalCol,
 //                        targetDimension);
 //                if (dist >= 1.0E-10 && diff < origD) {
