@@ -801,9 +801,9 @@ public class ProgramWorker {
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL);
         // TODO: VT DEBUG
-//        calculateBCInternal(
-//                preX, targetDimension, tCur, distances, weights, blockSize,
-//                threadPartialBCInternalBofZ, threadPartialBCInternalMM);
+        calculateBCInternal(
+                preX, targetDimension, tCur, distances, weights, blockSize,
+                threadPartialBCInternalBofZ, threadPartialBCInternalMM);
         bcTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL);
 
