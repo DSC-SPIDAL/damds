@@ -806,6 +806,8 @@ public class ProgramWorker {
         bcTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL);
 
+
+
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
         //System.out.println(threadId);
         threadComm.collect2(0,
@@ -842,12 +844,14 @@ public class ProgramWorker {
             threadComm.barrier();
         }
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
-        threadComm.copy2(ParallelOps.worldProcsCount > 1
+        /*threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? threadLocalFullXBytes
                         : threadLocalMmapXWriteBytes, BC,
-                ParallelOps.globalColCount * targetDimension, threadId);
+                ParallelOps.globalColCount * targetDimension, threadId);*/
         //threadComm.barrier();
         bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT);
+
+
     }
 
     private void calculateBCInternal(
