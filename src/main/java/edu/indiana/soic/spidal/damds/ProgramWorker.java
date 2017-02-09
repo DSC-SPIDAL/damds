@@ -250,7 +250,7 @@ public class ProgramWorker {
                     }
                     threadComm.barrier();*/
 
-                    /*stressLoopTimings.startTiming(
+                    stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.CG);
                     calculateConjugateGradient(preX, config.targetDimension,
                             config.numberDataPoints,
@@ -260,7 +260,7 @@ public class ProgramWorker {
                             outRealCGIterations, weights,
                             BlockSize, v, MMr, MMAp, threadPartialMM);
                     stressLoopTimings.endTiming(
-                            StressLoopTimings.TimingTask.CG);*/
+                            StressLoopTimings.TimingTask.CG);
 
 
                     stressLoopTimings.startTiming(
