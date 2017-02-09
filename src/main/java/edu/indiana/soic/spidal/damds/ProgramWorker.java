@@ -870,9 +870,10 @@ public class ProgramWorker {
 
         // Next we can calculate the BofZ * preX.
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.MM);
-        MatrixUtils.matrixMultiply(internalBofZ, preX,
-                globalThreadRowRange.getLength(), targetDimension,
-                ParallelOps.globalColCount, blockSize, outMM);
+        // TODO: VT DEBUG
+//        MatrixUtils.matrixMultiply(internalBofZ, preX,
+//                globalThreadRowRange.getLength(), targetDimension,
+//                ParallelOps.globalColCount, blockSize, outMM);
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.MM);
     }
 
