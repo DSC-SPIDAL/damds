@@ -885,13 +885,13 @@ public class ProgramWorker {
         // TODO: VT DEBUG
 
         int threadRowCount = globalThreadRowRange.getLength();
-//
-//        double vBlockValue = -1;
-//
-//        double diff = 0.0;
-//        if (tCur > 10E-10) {
-//            diff = Math.sqrt(2.0 * targetDimension) * tCur;
-//        }
+
+        double vBlockValue = -1;
+
+        double diff = 0.0;
+        if (tCur > 10E-10) {
+            diff = Math.sqrt(2.0 * targetDimension) * tCur;
+        }
 //
 //        double[] outBofZLocalRow;
 //        double origD, weight, dist;
