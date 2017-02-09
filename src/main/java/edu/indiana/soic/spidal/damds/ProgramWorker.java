@@ -233,14 +233,14 @@ public class ProgramWorker {
                 while (diffStress >= config.threshold) {
 
                     zeroOutArray(threadPartialMM);
-                    stressLoopTimings.startTiming(
+                    /*stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.BC);
                     calculateBC(
                             preX, config.targetDimension, tCur, distances,
                             weights, BlockSize, BC, threadPartialBofZ,
                             threadPartialMM);
                     stressLoopTimings.endTiming(
-                            StressLoopTimings.TimingTask.BC);
+                            StressLoopTimings.TimingTask.BC);*/
 
                     // TODO - turning off barriers
                     /*if (threadId == 0) {
