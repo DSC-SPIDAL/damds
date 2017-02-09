@@ -938,7 +938,7 @@ public class ProgramWorker {
 //                } else {
 //                    outBofZLocalRow[globalCol] = 0;
 //                }
-                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
+//                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
             }
         }
     }
