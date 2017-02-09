@@ -24,7 +24,7 @@ public class Utils {
     }
 
     public void printMessage(String msg) {
-        if (ParallelOps.worldProcRank != 0 || threadId != 0) {
+        if (0 != 0 || threadId != 0) {
             return;
         }
         System.out.println(msg);

@@ -6,7 +6,7 @@ import edu.indiana.soic.spidal.configuration.ConfigurationMgr;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.SpidalThreads;
 import edu.indiana.soic.spidal.damds.threads.ThreadBitAssigner;
-import mpi.MPIException;
+import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import net.openhft.affinity.Affinity;
 import org.apache.commons.cli.*;
 
@@ -101,62 +101,27 @@ public class ProgramLRT {
             readConfiguration(cmd);
 
             //  Set up MPI and threads parallelism
-            ParallelOps.setupParallelism(args);
-            ParallelOps.setParallelDecomposition(
-                config.numberDataPoints, config.targetDimension);
 
             /*if (ParallelOps.threadCount > 1) {
                 threads = new SpidalThreads(ParallelOps.threadCount, false, true,
                         48, ParallelOps.worldProcRank * 12 + 1);
             }*/
             // Note - a barrier to get cleaner timings
-            ParallelOps.worldProcsComm.barrier();
             Stopwatch mainTimer = Stopwatch.createStarted();
 
             utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
             utils.printMessage(config.toString(false));
 
             /* TODO - Fork - join starts here */
-            if (ParallelOps.threadCount > 1) {
-                Lock lock = new ReentrantLock();
-                launchHabaneroApp(
-                    () -> forallChunked(
-                        0, ParallelOps.threadCount - 1,
-                        (threadIdx) -> {
 
-                            if (bind) {
-                                BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, threadIdx, ParallelOps.threadCount, cps);
-                                Affinity.setAffinity(bitSet);
-                            }
-
-                            final ProgramWorker worker = new ProgramWorker
-                                    (threadIdx,
-                                    ParallelOps
-                                    .threadComm, config, byteOrder,
-                                            BlockSize, mainTimer,
-                                            lock);
-                            try {
-                                worker.run();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }));
-                /*threads.forall(
-                        (threadIdx) -> {
-                            new ProgramWorker(threadIdx, ParallelOps
-                                    .threadComm, config, byteOrder,
-                                    BlockSize, mainTimer,lock).run();
-                        });*/
-            }
-            else {
                 if (bind) {
-                    BitSet bitSet = ThreadBitAssigner.getBitSet(ParallelOps.worldProcRank, 0, ParallelOps.threadCount, cps);
+                    BitSet bitSet = ThreadBitAssigner.getBitSet(0, 0, 1, cps);
                     Affinity.setAffinity(bitSet);
                 }
-                new ProgramWorker(0, ParallelOps.threadComm, config,
+                new ProgramWorker(0, new ThreadCommunicator(1, config.numberDataPoints, config.targetDimension), config,
                         byteOrder, BlockSize, mainTimer, null)
                         .run();
-            }
+
 
 
             /* TODO - Fork-join should end here */
@@ -168,9 +133,8 @@ public class ProgramLRT {
 
             utils.printMessage("== DAMDS run completed on " + new Date() + " ==");
 
-            ParallelOps.tearDownParallelism();
         }
-        catch (MPIException | IOException e) {
+        catch (Exception e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
         }
     }
@@ -422,17 +386,7 @@ public class ProgramLRT {
         printWriter.println();
     }
 
-    private static long[] getTemperatureLoopTimeDistribution(
-        long temperatureLoopTime) throws MPIException {
-        LongBuffer mpiOnlyTimingBuffer = ParallelOps.mpiOnlyBuffer;
-        mpiOnlyTimingBuffer.position(0);
-        mpiOnlyTimingBuffer.put(temperatureLoopTime);
-        ParallelOps.gather(mpiOnlyTimingBuffer, 1, 0);
-        long [] mpiOnlyTimingArray = new long[ParallelOps.worldProcsCount];
-        mpiOnlyTimingBuffer.position(0);
-        mpiOnlyTimingBuffer.get(mpiOnlyTimingArray);
-        return mpiOnlyTimingArray;
-    }
+
 
     public static String formatElapsedMillis(long elapsed){
         String format = "%dd:%02dH:%02dM:%02dS:%03dmS";
@@ -474,12 +428,6 @@ public class ProgramLRT {
     private static void readConfiguration(CommandLine cmd) {
         config = ConfigurationMgr.LoadConfiguration(
             cmd.getOptionValue(Constants.CMD_OPTION_LONG_C)).damdsSection;
-        ParallelOps.nodeCount =
-            Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_N));
-        ParallelOps.threadCount =
-            Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_LONG_T));
-        ParallelOps.mmapsPerNode = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAPS) ? Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAPS)) : 1;
-        ParallelOps.mmapScratchDir = cmd.hasOption(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) ? cmd.getOptionValue(Constants.CMD_OPTION_SHORT_MMAP_SCRATCH_DIR) : ".";
 
         byteOrder =
             config.isBigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;

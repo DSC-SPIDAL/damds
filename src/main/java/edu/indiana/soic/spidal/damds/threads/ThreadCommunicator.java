@@ -2,7 +2,6 @@ package edu.indiana.soic.spidal.damds.threads;
 
 import edu.indiana.soic.spidal.common.DoubleStatistics;
 import edu.indiana.soic.spidal.common.RefObj;
-import edu.indiana.soic.spidal.damds.ParallelOps;
 import net.openhft.lang.io.Bytes;
 
 import java.util.concurrent.BrokenBarrierException;
