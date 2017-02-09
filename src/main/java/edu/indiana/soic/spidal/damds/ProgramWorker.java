@@ -810,8 +810,8 @@ public class ProgramWorker {
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
         //System.out.println(threadId);
-        threadComm.collect2(0,
-                threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);
+        /*threadComm.collect2(0,
+                threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);*/
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE);
 
         if (ParallelOps.worldProcsCount > 1) {
