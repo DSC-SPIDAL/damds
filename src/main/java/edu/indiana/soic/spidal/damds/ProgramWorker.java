@@ -892,18 +892,18 @@ public class ProgramWorker {
         if (tCur > 10E-10) {
             diff = Math.sqrt(2.0 * targetDimension) * tCur;
         }
-//
-//        double[] outBofZLocalRow;
-//        double origD, weight, dist;
-//
-//        final int globalColCount = ParallelOps.globalColCount;
-//        final int globalRowOffset = globalThreadRowRange.getStartIndex();
-//        int globalRow;
-//        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
-//             ++threadLocalRow) {
-//            globalRow = threadLocalRow + globalRowOffset;
-//            outBofZLocalRow = outBofZ[threadLocalRow];
-//            outBofZLocalRow[globalRow] = 0;
+
+        double[] outBofZLocalRow;
+        double origD, weight, dist;
+
+        final int globalColCount = ParallelOps.globalColCount;
+        final int globalRowOffset = globalThreadRowRange.getStartIndex();
+        int globalRow;
+        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
+             ++threadLocalRow) {
+            globalRow = threadLocalRow + globalRowOffset;
+            outBofZLocalRow = outBofZ[threadLocalRow];
+            outBofZLocalRow[globalRow] = 0;
 //            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
 //                 globalCol++) {
 //                 /* B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
@@ -940,7 +940,7 @@ public class ProgramWorker {
 //                }
 //                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
 //            }
-//        }
+        }
     }
 
     private static void extractPoints(
