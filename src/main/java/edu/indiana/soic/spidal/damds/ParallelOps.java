@@ -3,6 +3,8 @@ package edu.indiana.soic.spidal.damds;
 import edu.indiana.soic.spidal.common.DoubleStatistics;
 import edu.indiana.soic.spidal.common.Range;
 import edu.indiana.soic.spidal.common.RangePartitioner;
+import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
+import edu.indiana.soic.spidal.damds.timing.BCTimings;
 import mpi.Intracomm;
 import mpi.MPI;
 import mpi.MPIException;
@@ -10,7 +12,6 @@ import mpi.Op;
 import net.openhft.lang.io.ByteBufferBytes;
 import net.openhft.lang.io.Bytes;
 
-import javax.xml.bind.SchemaOutputResolver;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -75,6 +76,7 @@ public class ParallelOps {
     // Buffers for MPI operations
     private static ByteBuffer statBuffer;
     private static DoubleBuffer doubleBuffer;
+    private static double[] doubleArray;
     private static IntBuffer intBuffer;
     public static LongBuffer threadsAndMPIBuffer;
     public static LongBuffer mpiOnlyBuffer;
@@ -96,6 +98,12 @@ public class ParallelOps {
     public static ByteBuffer mmapSReadByteBuffer;
     public static Bytes mmapSWriteBytes;
 
+    public static ThreadCommunicator threadComm;
+    
+    private static Utils utils = new Utils(0);
+
+    private static boolean isHeterogeneous;
+
     public static void setupParallelism(String[] args) throws MPIException {
         MPI.Init(args);
         machineName = MPI.getProcessorName();
@@ -108,71 +116,24 @@ public class ParallelOps {
         worldProcsComm = MPI.COMM_WORLD; //initializing MPI world communicator
         worldProcRank = worldProcsComm.getRank();
         worldProcsCount = worldProcsComm.getSize();
+        doubleArray = new double[threadCount*worldProcsCount];
 
         /* Create communicating groups */
         worldProcsPerNode = worldProcsCount / nodeCount;
-        boolean heterogeneous = (worldProcsPerNode * nodeCount) != worldProcsCount;
-        if (heterogeneous) {
-            Utils.printMessage("Running in heterogeneous mode");
+        isHeterogeneous = (worldProcsPerNode * nodeCount) != worldProcsCount;
+        if (isHeterogeneous) {
+            utils.printMessage("Running in heterogeneous mode");
         }
 
-        int q,r;
-        if (!heterogeneous) {
-            worldProcRankLocalToNode = worldProcRank % worldProcsPerNode;
-            nodeId = worldProcRank / worldProcsPerNode;
-            q = worldProcsPerNode / mmapsPerNode;
-            r = worldProcsPerNode % mmapsPerNode;
-        } else {
-            String str = worldProcRank+ "@" +machineName +'#';
-            intBuffer.put(0, str.length());
-            worldProcsComm.allReduce(intBuffer, 1, MPI.INT, MPI.MAX);
-            int maxLength = intBuffer.get(0);
-            CharBuffer buffer = MPI.newCharBuffer(maxLength*worldProcsCount);
-            buffer.position(maxLength*worldProcRank);
-            buffer.put(str);
-            for (int i = str.length(); i < maxLength; ++i){
-                buffer.put(i, '~');
-            }
-
-            worldProcsComm.allGather(buffer, maxLength, MPI.CHAR);
-            buffer.position(0);
-            Pattern nodeSep = Pattern.compile("#~*");
-            Pattern nameSep = Pattern.compile("@");
-            String[] nodeSplits = nodeSep.split(buffer.toString());
-            HashMap<String, Integer> nodeToProcCount = new HashMap<>();
-            HashMap<Integer, String> rankToNode = new HashMap<>();
-            String node;
-            int rank;
-            String[] splits;
-            for(String s: nodeSplits){
-                splits = nameSep.split(s);
-                rank = Integer.parseInt(splits[0].trim());
-                node = splits[1].trim();
-                if (nodeToProcCount.containsKey(node)){
-                    nodeToProcCount.put(node, nodeToProcCount.get(node)+1);
-                } else {
-                    nodeToProcCount.put(node, 1);
-                }
-                rankToNode.put(rank, node);
-            }
-
-            String myNode = rankToNode.get(worldProcRank);
-            HashSet<String> visited = new HashSet<>();
-            int rankOffset=0;
-            nodeId = 0;
-            for (int i = 0; i < worldProcRank; ++i){
-                node = rankToNode.get(i);
-                if (visited.contains(node)) continue;
-                visited.add(node);
-                if (node.equals(myNode)) break;
-                ++nodeId;
-                rankOffset += nodeToProcCount.get(node);
-            }
-            worldProcRankLocalToNode = worldProcRank - rankOffset;
-            final int procCountOnMyNode = nodeToProcCount.get(myNode);
-            q = procCountOnMyNode / mmapsPerNode;
-            r = procCountOnMyNode % mmapsPerNode;
-        }
+        /* Logic to identify how many processes are within a node and
+        *  the q and r values. These are used to processes to mmap groups
+        *  within a node.
+        *
+        *  Important: the code assumes continues rank distribution
+        *  within a node. */
+        int[] qr = findQandR();
+        int q = qr[0];
+        int r = qr[1];
 
         // Memory mapped groups and communicating groups
         mmapIdLocalToNode =
@@ -196,6 +157,7 @@ public class ParallelOps {
                                                 : r));
         mmapLeadWorldRank = worldProcRank - (worldProcRankLocalToNode
                                              - mmapLeadWorldRankLocalToNode);
+        // Assumes continues ranks within a node
         for (int i = 0; i < mmapProcsCount; ++i){
             mmapProcsWorldRanks[i] = mmapLeadWorldRank +i;
         }
@@ -211,7 +173,63 @@ public class ParallelOps {
             "---------------------------------------------------------\n"
             + "Machine:" + machineName + ' ' + threadCount + 'x'
             + worldProcsPerNode + 'x' + nodeCount;
-        Utils.printMessage(parallelPattern);
+        utils.printMessage(parallelPattern);
+    }
+
+    private static int[] findQandR() throws MPIException {
+        int q,r;
+        String str = worldProcRank+ "@" +machineName +'#';
+        intBuffer.put(0, str.length());
+        worldProcsComm.allReduce(intBuffer, 1, MPI.INT, MPI.MAX);
+        int maxLength = intBuffer.get(0);
+        CharBuffer buffer = MPI.newCharBuffer(maxLength*worldProcsCount);
+        buffer.position(maxLength*worldProcRank);
+        buffer.put(str);
+        for (int i = str.length(); i < maxLength; ++i){
+            buffer.put(i, '~');
+        }
+
+        worldProcsComm.allGather(buffer, maxLength, MPI.CHAR);
+        buffer.position(0);
+        Pattern nodeSep = Pattern.compile("#~*");
+        Pattern nameSep = Pattern.compile("@");
+        String[] nodeSplits = nodeSep.split(buffer.toString());
+        HashMap<String, Integer> nodeToProcCount = new HashMap<>();
+        HashMap<Integer, String> rankToNode = new HashMap<>();
+        String node;
+        int rank;
+        String[] splits;
+        for(String s: nodeSplits){
+            splits = nameSep.split(s);
+            rank = Integer.parseInt(splits[0].trim());
+            node = splits[1].trim();
+            if (nodeToProcCount.containsKey(node)){
+                nodeToProcCount.put(node, nodeToProcCount.get(node)+1);
+            } else {
+                nodeToProcCount.put(node, 1);
+            }
+            rankToNode.put(rank, node);
+        }
+
+        // The following logic assumes MPI ranks are continuous within a node
+        String myNode = rankToNode.get(worldProcRank);
+        HashSet<String> visited = new HashSet<>();
+        int rankOffset=0;
+        nodeId = 0;
+        for (int i = 0; i < worldProcRank; ++i){
+            node = rankToNode.get(i);
+            if (visited.contains(node)) continue;
+            visited.add(node);
+            if (node.equals(myNode)) break;
+            ++nodeId;
+            rankOffset += nodeToProcCount.get(node);
+        }
+        worldProcRankLocalToNode = worldProcRank - rankOffset;
+        final int procCountOnMyNode = nodeToProcCount.get(myNode);
+        q = procCountOnMyNode / mmapsPerNode;
+        r = procCountOnMyNode % mmapsPerNode;
+
+        return new int[]{q,r};
     }
 
     public static void tempBreak() throws MPIException {
@@ -231,6 +249,8 @@ public class ParallelOps {
 
     public static void setParallelDecomposition(int globalRowCount, int targetDimension)
         throws IOException, MPIException {
+
+        threadComm = new ThreadCommunicator(threadCount, globalRowCount, targetDimension);
         //	First divide points among processes
         procRowRanges = RangePartitioner.partition(globalRowCount,
                                                        worldProcsCount);
@@ -402,8 +422,12 @@ public class ParallelOps {
         return intBuffer.get(0);
     }
 
-    public static void allGather() throws MPIException {
+    public static double[] allGather(double[] vals) throws MPIException {
+        worldProcsComm.allGather(vals, threadCount, MPI.DOUBLE, doubleArray, threadCount, MPI.DOUBLE);
+        return doubleArray;
+    }
 
+    public static void allGather() throws MPIException {
         /* Safety logic to make sure all procs in the mmap has reached here. Otherwise, it's possible that
             * one (or more) procs from a same mmap may have come here while a previous call to this collective
             * is being carried out by the other procs in the same mmap. Also, note the use of a separate lock for this,

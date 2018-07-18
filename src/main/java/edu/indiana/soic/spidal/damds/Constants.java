@@ -27,6 +27,7 @@ public class Constants {
     public static final String CMD_OPTION_SHORT_CPS = "cps";
     public static final String CMD_OPTION_DESCRIPTION_CPS = "Cores per socket";
 
+
     static final String CMD_OPTION_DESCRIPTION_T = "Thread count";
     static final String
         ERR_PROGRAM_ARGUMENTS_PARSING_FAILED =

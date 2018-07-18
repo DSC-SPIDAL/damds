@@ -12,19 +12,19 @@ public class CGLoopTimings {
         MM, INNER_PROD_PAP, INNER_PROD_R
     }
 
-    private static Stopwatch timerMM = Stopwatch.createUnstarted();
-    private static Stopwatch timerInnerProdPAP = Stopwatch.createUnstarted();
-    private static Stopwatch timerInnerProdR = Stopwatch.createUnstarted();
+    private Stopwatch timerMM = Stopwatch.createUnstarted();
+    private Stopwatch timerInnerProdPAP = Stopwatch.createUnstarted();
+    private Stopwatch timerInnerProdR = Stopwatch.createUnstarted();
 
-    private static long tMM;
-    private static long tInnerProdPAP;
-    private static long tInnerProdR;
+    private long tMM;
+    private long tInnerProdPAP;
+    private long tInnerProdR;
 
-    private static long countMM;
-    private static long countInnerProdPAP;
-    private static long countInnerProdR;
+    private long countMM;
+    private long countInnerProdPAP;
+    private long countInnerProdR;
 
-    public static void startTiming(TimingTask task){
+    public void startTiming(TimingTask task){
         switch (task){
             case MM:
                 timerMM.start();
@@ -41,7 +41,7 @@ public class CGLoopTimings {
         }
     }
 
-    public static void endTiming(TimingTask task){
+    public void endTiming(TimingTask task){
         switch (task){
             case MM:
                 timerMM.stop();
@@ -61,7 +61,7 @@ public class CGLoopTimings {
         }
     }
 
-    public static double getTotalTime(TimingTask task){
+    public double getTotalTime(TimingTask task){
         switch (task){
             case MM:
                 return tMM;
@@ -73,7 +73,7 @@ public class CGLoopTimings {
         return  0.0;
     }
 
-    public static double getAverageTime(TimingTask task){
+    public double getAverageTime(TimingTask task){
         switch (task){
             case MM:
                 return tMM *1.0/ countMM;
@@ -85,7 +85,7 @@ public class CGLoopTimings {
         return  0.0;
     }
 
-    public static long[] getCountDistribution(TimingTask task) throws
+    public long[] getCountDistribution(TimingTask task) throws
         MPIException {
         LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         mpiOnlyTimingBuffer.position(0);

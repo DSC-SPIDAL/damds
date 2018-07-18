@@ -10,39 +10,30 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 public class StressTimings {
-    public static enum TimingTask{
+    public enum TimingTask{
         STRESS_INTERNAL,COMM, STRESS_MERGE, STRESS_EXTRACT
     }
 
-    private static int numThreads;
-    public static void init(int numThreads){
-        timerStressInternal = new Stopwatch[numThreads];
-        IntStream.range(0,numThreads).forEach(i -> timerStressInternal[i] = Stopwatch.createUnstarted());
-        tStressInternal = new long[numThreads];
-        countStressInternal = new long[numThreads];
-        StressTimings.numThreads = numThreads;
-    }
+    private Stopwatch timerStressInternal = Stopwatch.createUnstarted();
+    private Stopwatch timerComm = Stopwatch.createUnstarted();
+    private Stopwatch timerBCMerge = Stopwatch.createUnstarted();
+    private Stopwatch timerBCExtract = Stopwatch.createUnstarted();
 
-    private static Stopwatch [] timerStressInternal;
-    private static Stopwatch timerComm = Stopwatch.createUnstarted();
-    private static Stopwatch timerBCMerge = Stopwatch.createUnstarted();
-    private static Stopwatch timerBCExtract = Stopwatch.createUnstarted();
+    private long tStressInternal;
+    private long tComm;
+    private long tBCMerge;
+    private long tBCExtract;
 
-    private static long [] tStressInternal;
-    private static long tComm;
-    private static long tBCMerge;
-    private static long tBCExtract;
+    private long countStressInternal;
+    private long countComm;
+    private long countBCMerge;
+    private long countBCExtract;
 
-    private static long [] countStressInternal;
-    private static long countComm;
-    private static long countBCMerge;
-    private static long countBCExtract;
-
-    public static void startTiming(TimingTask task, int threadIdx){
+    public void startTiming(TimingTask task, int threadIdx){
         switch (task){
             case STRESS_INTERNAL:
-                timerStressInternal[threadIdx].start();
-                ++countStressInternal[threadIdx];
+                timerStressInternal.start();
+                ++countStressInternal;
                 break;
             case COMM:
                 timerComm.start();
@@ -59,12 +50,12 @@ public class StressTimings {
         }
     }
 
-    public static void endTiming(TimingTask task, int threadIdx){
+    public void endTiming(TimingTask task, int threadIdx){
         switch (task){
             case STRESS_INTERNAL:
-                timerStressInternal[threadIdx].stop();
-                tStressInternal[threadIdx] += timerStressInternal[threadIdx].elapsed(TimeUnit.MILLISECONDS);
-                timerStressInternal[threadIdx].reset();
+                timerStressInternal.stop();
+                tStressInternal += timerStressInternal.elapsed(TimeUnit.MILLISECONDS);
+                timerStressInternal.reset();
                 break;
             case COMM:
                 timerComm.stop();
@@ -84,10 +75,10 @@ public class StressTimings {
         }
     }
 
-    public static double getTotalTime(TimingTask task){
+    public double getTotalTime(TimingTask task){
         switch (task){
             case STRESS_INTERNAL:
-                return Arrays.stream(tStressInternal).reduce(0, (i, j) -> i + j);
+                return tStressInternal;
             case COMM:
                 return tComm;
             case STRESS_MERGE:
@@ -98,13 +89,10 @@ public class StressTimings {
         return  0.0;
     }
 
-    public static double getAverageTime(TimingTask task){
+    public double getAverageTime(TimingTask task){
         switch (task){
             case STRESS_INTERNAL:
-                return Arrays.stream(tStressInternal).reduce(0, (i, j) -> i + j) * 1.0 / Arrays.stream(
-
-
-                    countStressInternal).reduce(0, (i, j)-> i + j);
+                return tStressInternal * 1.0 / countStressInternal;
             case COMM:
                 return tComm *1.0/ countComm;
             case STRESS_MERGE:
@@ -115,7 +103,7 @@ public class StressTimings {
         return  0.0;
     }
 
-    public static long[] getTotalTimeDistribution(TimingTask task)
+    /*public long[] getTotalTimeDistribution(TimingTask task)
         throws MPIException {
         LongBuffer threadsAndMPITimingBuffer =
             ParallelOps.threadsAndMPIBuffer;
@@ -151,7 +139,7 @@ public class StressTimings {
                 return mpiOnlyTimingArray;
         }
         return null;
-    }
+    }*/
 
 
 }

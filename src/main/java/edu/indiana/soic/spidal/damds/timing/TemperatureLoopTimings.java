@@ -12,16 +12,16 @@ public class TemperatureLoopTimings {
         PRE_STRESS, STRESS_LOOP
     }
 
-    private static Stopwatch timerPreStress = Stopwatch.createUnstarted();
-    private static Stopwatch timerStressLoop = Stopwatch.createUnstarted();
+    private Stopwatch timerPreStress = Stopwatch.createUnstarted();
+    private Stopwatch timerStressLoop = Stopwatch.createUnstarted();
 
-    private static long tPreStress;
-    private static long tStressLoop;
+    private long tPreStress;
+    private long tStressLoop;
 
-    private static long countPreStress;
-    private static long countStressLoop;
+    private long countPreStress;
+    private long countStressLoop;
 
-    public static void startTiming(TimingTask task){
+    public void startTiming(TimingTask task){
         switch (task){
             case PRE_STRESS:
                 timerPreStress.start();
@@ -34,7 +34,7 @@ public class TemperatureLoopTimings {
         }
     }
 
-    public static void endTiming(TimingTask task){
+    public void endTiming(TimingTask task){
         switch (task){
             case PRE_STRESS:
                 timerPreStress.stop();
@@ -49,7 +49,7 @@ public class TemperatureLoopTimings {
         }
     }
 
-    public static double getTotalTime(TimingTask task){
+    public double getTotalTime(TimingTask task){
         switch (task){
             case PRE_STRESS:
                 return tPreStress;
@@ -59,7 +59,7 @@ public class TemperatureLoopTimings {
         return  0.0;
     }
 
-    public static double getAverageTime(TimingTask task){
+    public double getAverageTime(TimingTask task){
         switch (task){
             case PRE_STRESS:
                 return tPreStress *1.0/ countPreStress;
@@ -69,7 +69,7 @@ public class TemperatureLoopTimings {
         return  0.0;
     }
 
-    public static long[] getCountDistribution(TimingTask task) throws MPIException{
+    public long[] getCountDistribution(TimingTask task) throws MPIException{
         LongBuffer mpiOnlyTimingBuffer =  ParallelOps.mpiOnlyBuffer;
         mpiOnlyTimingBuffer.position(0);
         switch (task){
