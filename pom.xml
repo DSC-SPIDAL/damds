@@ -53,7 +53,7 @@
         <repository>
             <id>rice-habanero</id>
             <name>Habanero Repository - Rice University</name>
-            <url>http://www.cs.rice.edu/~vs3/hjlib/code/maven-repo</url>
+            <url>https://www.cs.rice.edu/~vs3/hjlib/code/maven-repo</url>
         </repository>
     </repositories>
 
