@@ -587,8 +587,8 @@ public class ProgramWorker {
 
                 double origD = distances[threadLocalRow * ParallelOps
                         .globalColCount + globalCol] * INV_SHORT_MAX;
-//                double weight = weights.getWeight(threadLocalRow, globalCol);
-                double weight = 1.0;
+                double weight = weights.getWeight(threadLocalRow, globalCol);
+//                double weight = 1.0;
 
                 if (origD < 0 || weight == 0) {
                     continue;
@@ -912,8 +912,8 @@ public class ProgramWorker {
 
                 origD = distances[threadLocalRow * globalColCount +
                         globalCol] * INV_SHORT_MAX;
-//                weight = weights.getWeight(threadLocalRow, globalCol);
-                weight = 1.0;
+                weight = weights.getWeight(threadLocalRow, globalCol);
+//                weight = 1.0;
 
                 if (origD < 0 || weight == 0) {
                     continue;
@@ -1048,8 +1048,8 @@ public class ProgramWorker {
             for (int globalCol = 0; globalCol < globalColCount; globalCol++) {
                 origD = distances[threadLocalRow * globalColCount + globalCol]
                         * INV_SHORT_MAX;
-//                weight = weights.getWeight(threadLocalRow, globalCol);
-                weight = 1.0;
+                weight = weights.getWeight(threadLocalRow, globalCol);
+//                weight = 1.0;
 
                 if (origD < 0 || weight == 0) {
                     continue;
@@ -1239,8 +1239,8 @@ public class ProgramWorker {
                  globalCol++) {
                 origD = distances[localRow * ParallelOps.globalColCount +
                         globalCol] * INV_SHORT_MAX;
-//                weight = weights.getWeight(localRow, globalCol);
-                weight = 1.0;
+                weight = weights.getWeight(localRow, globalCol);
+//                weight = 1.0;
                 if (origD < 0) {
                     // Missing distance
                     ++missingDistCount;
