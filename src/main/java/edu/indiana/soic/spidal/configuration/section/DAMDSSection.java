@@ -23,17 +23,17 @@ public class DAMDSSection {
 
             numberDataPoints = Integer.parseInt(getProperty(p, "NumberDataPoints", "-1"));
             targetDimension = Integer.parseInt(
-                getProperty(p, "TargetDimension", "3"));
+                    getProperty(p, "TargetDimension", "3"));
             distanceTransform = Double.parseDouble(
-                getProperty(p, "DistanceTransform", "1.0"));
+                    getProperty(p, "DistanceTransform", "1.0"));
             threshold = Double.parseDouble(getProperty(p, "Threshold", "0.000001"));
             alpha = Double.parseDouble(getProperty(p, "Alpha", "0.95"));
             tMinFactor = Double.parseDouble(getProperty(p, "TminFactor", "0.5"));
             stressIter = Integer.parseInt(
-                getProperty(p, "StressIterations", "10000"));
+                    getProperty(p, "StressIterations", "10000"));
             cgIter = Integer.parseInt(getProperty(p, "CGIterations", "20"));
             cgErrorThreshold = Double.parseDouble(
-                getProperty(p, "CGErrorThreshold", "1"));
+                    getProperty(p, "CGErrorThreshold", "1"));
             isSammon = Boolean.parseBoolean(getProperty(p, "IsSammon", "false"));
             blockSize = Integer.parseInt(getProperty(p, "BlockSize", "64"));
 
@@ -45,6 +45,9 @@ public class DAMDSSection {
             repetitions = Integer.parseInt(getProperty(p, "Repetitions", "1"));
             maxtemploops = Integer.parseInt(getProperty(p, "MaxTempLoops", "0"));
             isSimpleWeights = Boolean.parseBoolean(getProperty(p, "IsSimpleWeights", "false"));
+            sparseDistanceIndexFile = getProperty(p, "SparseScoreMatrixIndices", "");
+            sparseDistanceDataFile = getProperty(p, "SparseScoreMatrixData", "");
+            scoreWeight = Double.parseDouble(getProperty(p, "ScoreWeight", "0.998"));
         } catch (IOException e) {
             throw new RuntimeException("IO exception occurred while reading configuration properties file", e);
         }
@@ -70,6 +73,12 @@ public class DAMDSSection {
     public String timingFile;
     public String summaryFile;
 
+    public String sparseDistanceIndexFile;
+    public String sparseDistanceDataFile;
+    public String sparseWeightIndexFile;
+    public String sparseWeightDataFile;
+    public double scoreWeight;
+
     public int numberDataPoints;
     public int targetDimension;
     public double distanceTransform;
@@ -91,84 +100,95 @@ public class DAMDSSection {
     public int repetitions;
     public int maxtemploops;
 
-    private String getPadding(int count, String prefix){
+    private String getPadding(int count, String prefix) {
         StringBuilder sb = new StringBuilder(prefix);
-        IntStream.range(0,count).forEach(i -> sb.append(' '));
+        IntStream.range(0, count).forEach(i -> sb.append(' '));
         return sb.toString();
     }
 
     public String toString(boolean centerAligned) {
-        String[] params = {"DistanceMatrixFile",
-                                       "Weight Matrix File",
-                                       "Label Data File",
-                                       "Initial Points File",
-                                       "Points File",
-                                       "Timing File",
-                                       "Summary File",
-                                       "Number Data Points",
-                                       "The Target Dimension",
-                                       "Distance Transform (double)",
-                                       "Threshold value",
-                                       "Cooling parameter (alpha)",
-                                       "TminFactor",
-                                       "Stress Iterations",
-                                       "CG Iterations",
-                                       "CG Threshold",
-                                       "Sammon mapping (boolean) ",
-                                       "Block Size",
-                                       "Is BigEndian (boolean)",
-                                       "Is Memory mapped (boolean)",
-                                       "Transformation Function",
-                                       "Weight Transformation Function",
-                                       "Repetitions",
-                                       "Max Temp Loops",
-                                       "Is Simple Weights"};
-        Object[] args =
-            new Object[]{distanceMatrixFile,
-                         weightMatrixFile,
-                         labelFile,
-                         initialPointsFile,
-                         pointsFile,
-                         timingFile,
-                         summaryFile,
-                         numberDataPoints,
-                         targetDimension,
-                         distanceTransform,
-                         threshold, alpha,
-                         tMinFactor,
-                         stressIter,
-                         cgIter,
-                         cgErrorThreshold,
-                         isSammon,
-                         blockSize,
-                         isBigEndian,
-                         isMemoryMapped,
-                         transformationFunction,
-                         weightTransformationFunction,
-                         repetitions, maxtemploops, isSimpleWeights};
+        String[] params = {
+                "DistanceMatrixFile",
+                "Weight Matrix File",
+                "Label Data File",
+                "Initial Points File",
+                "Points File",
+                "Timing File",
+                "Summary File",
+                "Number Data Points",
+                "The Target Dimension",
+                "Distance Transform (double)",
+                "Threshold value",
+                "Cooling parameter (alpha)",
+                "TminFactor",
+                "Stress Iterations",
+                "CG Iterations",
+                "CG Threshold",
+                "Sammon mapping (boolean) ",
+                "Block Size",
+                "Is BigEndian (boolean)",
+                "Is Memory mapped (boolean)",
+                "Transformation Function",
+                "Weight Transformation Function",
+                "Repetitions",
+                "Max Temp Loops",
+                "Is Simple Weights",
+                "Score Matrix Indices",
+                "Score Matrix Data",
+                "Score Weight"
+        };
+        Object[] args = new Object[]{
+                distanceMatrixFile,
+                weightMatrixFile,
+                labelFile,
+                initialPointsFile,
+                pointsFile,
+                timingFile,
+                summaryFile,
+                numberDataPoints,
+                targetDimension,
+                distanceTransform,
+                threshold, alpha,
+                tMinFactor,
+                stressIter,
+                cgIter,
+                cgErrorThreshold,
+                isSammon,
+                blockSize,
+                isBigEndian,
+                isMemoryMapped,
+                transformationFunction,
+                weightTransformationFunction,
+                repetitions,
+                maxtemploops,
+                isSimpleWeights,
+                sparseDistanceIndexFile,
+                sparseDistanceDataFile,
+                scoreWeight
+        };
 
-        java.util.Optional<Integer> maxLength =
-            Arrays.stream(params).map(String::length).reduce(Math::max);
-        if (!maxLength.isPresent()) { return ""; }
+        java.util.Optional<Integer> maxLength = Arrays.stream(params).map(String::length).reduce(Math::max);
+        if (!maxLength.isPresent()) {
+            return "";
+        }
         final int max = maxLength.get();
         final String prefix = "  ";
         StringBuilder sb = new StringBuilder("Parameters...\n");
         if (centerAligned) {
             IntStream.range(0, params.length).forEach(
-                i -> {
-                    String param = params[i];
-                    sb.append(getPadding(max - param.length(), prefix))
-                      .append(param).append(": ").append(args[i]).append('\n');
-                });
-        }
-        else {
+                    i -> {
+                        String param = params[i];
+                        sb.append(getPadding(max - param.length(), prefix))
+                                .append(param).append(": ").append(args[i]).append('\n');
+                    });
+        } else {
             IntStream.range(0, params.length).forEach(
-                i -> {
-                    String param = params[i];
-                    sb.append(prefix).append(param).append(':')
-                      .append(getPadding(max - param.length(), ""))
-                      .append(args[i]).append('\n');
-                });
+                    i -> {
+                        String param = params[i];
+                        sb.append(prefix).append(param).append(':')
+                                .append(getPadding(max - param.length(), ""))
+                                .append(args[i]).append('\n');
+                    });
         }
         return sb.toString();
     }

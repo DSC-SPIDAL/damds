@@ -7,6 +7,9 @@ import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import edu.indiana.soic.spidal.damds.timing.*;
+import edu.indiana.soic.spidal.sparse.SparseMatrix;
+import edu.indiana.soic.spidal.sparse.SparseMatrixFile;
+import edu.indiana.soic.spidal.sparse.SparseMatrixWeightWrap;
 import mpi.MPIException;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
@@ -19,13 +22,16 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.regex.Pattern;
 
-public class ProgramWorker {
+public class SparseProgramWorker {
     // Constants
     private final double INV_SHORT_MAX = 1.0 / Short.MAX_VALUE;
     private final double SHORT_MAX = Short.MAX_VALUE;
@@ -49,6 +55,9 @@ public class ProgramWorker {
     private ByteOrder byteOrder;
     private short[] distances;
     private WeightsWrap1D weights;
+    private SparseMatrix distanceMatrix;
+    private SparseMatrix weightMatrix;
+    private SparseMatrixWeightWrap weightMatrixWrap;
 
     private int BlockSize;
 
@@ -78,9 +87,9 @@ public class ProgramWorker {
 
     private Lock lock;
 
-    public ProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection
+    public SparseProgramWorker(int threadId, ThreadCommunicator comm, DAMDSSection
             config, ByteOrder byteOrder, int blockSize, Stopwatch mainTimer,
-                         Lock lock) {
+                               Lock lock) {
         this.threadId = threadId;
         this.threadComm = comm;
         this.config = config;
@@ -143,7 +152,7 @@ public class ProgramWorker {
     public void run() throws IOException {
         try {
             setup();
-            readDistancesAndWeights(config.isSammon);
+            readScoreMatrixAndWeight(config.isSammon);
             /*System.out.println("Rank " + ParallelOps.worldProcRank + " " +
                     "TID " + threadId + "Came " +
                     "here ");*/
@@ -1230,6 +1239,16 @@ public class ProgramWorker {
                     null, distances, isSammon, ParallelOps.globalColCount);
         }
 
+    }
+
+    private void readScoreMatrixAndWeight(boolean isSammon) throws MPIException {
+//        Utils.allPrintln(String.format("startIdx=%d, endIdx=%d, length=%d", startIdx, endIdx, length));
+
+
+        // load score matrix
+        distanceMatrix = SparseMatrixFile.loadIntoMemory(config.sparseDistanceIndexFile, config.sparseDistanceDataFile, globalThreadRowRange, config.numberDataPoints);
+        weightMatrix = SparseMatrixFile.loadIntoMemory(config.sparseWeightIndexFile, config.sparseWeightDataFile, globalThreadRowRange, config.numberDataPoints);
+        weightMatrixWrap = new SparseMatrixWeightWrap(weightMatrix, distanceMatrix, config.isSammon);
     }
 
     private DoubleStatistics calculateStatisticsInternal(

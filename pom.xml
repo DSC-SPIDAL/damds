@@ -32,6 +32,11 @@
             <version>1.2</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.8.1</version>
+        </dependency>
+        <dependency>
             <groupId>net.openhft</groupId>
             <artifactId>affinity</artifactId>
             <version>3.0.6</version>
@@ -45,7 +50,7 @@
         <dependency>
             <groupId>ompi</groupId>
             <artifactId>ompijavabinding</artifactId>
-            <version>1.10.1</version>
+            <version>3.1.2</version>
         </dependency>
     </dependencies>
 
