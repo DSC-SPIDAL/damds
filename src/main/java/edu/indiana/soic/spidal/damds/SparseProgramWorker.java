@@ -469,10 +469,10 @@ public class SparseProgramWorker {
     private void changeZeroDistancesToPostiveMin(
             short[] distances, double positiveMin) {
         double tmpD;
-        for (int i = 0; i < distances.length; ++i) {
-            tmpD = distances[i] * INV_SHORT_MAX;
+        for (int i = 0; i < distanceMatrix.getValues().length; ++i) {
+            tmpD = distanceMatrix.getValues()[i];
             if (tmpD < positiveMin && tmpD >= 0.0) {
-                distances[i] = (short) (positiveMin * SHORT_MAX);
+                distanceMatrix.getValues()[i] = positiveMin;
             }
         }
     }
@@ -584,29 +584,52 @@ public class SparseProgramWorker {
             short[] distances, WeightsWrap1D weights, double[] v) {
         zeroOutArray(v);
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
-
+        double[] distTemp = distanceMatrix.getValues();
+        int[] rows = distanceMatrix.getRowPointers();
         int rowOffset = ParallelOps.threadRowStartOffsets[threadId] +
                 ParallelOps.procRowStartOffset;
-        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
-             ++threadLocalRow) {
+        double origD, weight;
+        for (int threadLocalRow = 0; threadLocalRow < rows.length; threadLocalRow++) {
+            int rowPointer = rows[threadLocalRow];
+            int colCount = (threadRowCount == rows.length - 1) ? distTemp.length - rowPointer
+                    : rows[threadLocalRow + 1] - rowPointer;
             int globalRow = threadLocalRow + rowOffset;
-            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
-                 ++globalCol) {
-                if (globalRow == globalCol) continue;
 
-                double origD = distances[threadLocalRow * ParallelOps
-                        .globalColCount + globalCol] * INV_SHORT_MAX;
-                double weight = weights.getWeight(threadLocalRow, globalCol);
-//                double weight = 1.0;
+            for (int i = 0; i < colCount; i++) {
+                int globalCol = distanceMatrix.getColumns()[rowPointer + i];
+                if (globalRow == globalCol) continue;
+                origD = distTemp[rowPointer + i];
+                weight = weightMatrixWrap.getWeight(rowPointer + i);
 
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
-
                 v[threadLocalRow] += weight;
+
             }
             v[threadLocalRow] += 1;
         }
+
+//        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
+//             ++threadLocalRow) {
+//            int globalRow = threadLocalRow + rowOffset;
+//            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
+//                 ++globalCol) {
+//                if (globalRow == globalCol) continue;
+//
+//                double origD = distances[threadLocalRow * ParallelOps
+//                        .globalColCount + globalCol] * INV_SHORT_MAX;
+//                double weight = weights.getWeight(threadLocalRow, globalCol);
+////                double weight = 1.0;
+//
+//                if (origD < 0 || weight == 0) {
+//                    continue;
+//                }
+//
+//                v[threadLocalRow] += weight;
+//            }
+//            v[threadLocalRow] += 1;
+//        }
 
     }
 
@@ -1260,24 +1283,45 @@ public class SparseProgramWorker {
 
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
 
-        double origD, weight;
-        for (int localRow = 0; localRow < threadRowCount; ++localRow) {
-            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
-                 globalCol++) {
-                origD = distances[localRow * ParallelOps.globalColCount +
-                        globalCol] * INV_SHORT_MAX;
-                weight = weights.getWeight(localRow, globalCol);
-//                weight = 1.0;
-                if (origD < 0) {
-                    // Missing distance
-                    ++missingDistCount;
-                    continue;
-                }
-                if (weight == 0) continue; // Ignore zero weights
+        double origD, weight, rowPointer;
+        double[] distTemp = distanceMatrix.getValues();
 
-                stat.accept(origD);
+        for (int i = 0; i < distTemp.length; i++) {
+            origD = distTemp[i];
+            weight = weightMatrixWrap.getWeight(i);
+            if (origD < 0) {
+                // Missing distance
+                ++missingDistCount;
+                continue;
             }
+            if(weight == 0) continue;
+
+            stat.accept(origD);
         }
+        //Adding all the missing values
+        missingDistCount += threadRowCount*config.numberDataPoints - distTemp.length;
+        refMissingDistCount.setValue(missingDistCount);
+
+//        for (int localRow = 0; localRow < threadRowCount; ++localRow) {
+//            rowPointer = distanceMatrix.getRowPointers()[localRow];
+//
+//
+//            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
+//                 globalCol++) {
+//                origD = distances[localRow * ParallelOps.globalColCount +
+//                        globalCol] * INV_SHORT_MAX;
+//                weight = weights.getWeight(localRow, globalCol);
+////                weight = 1.0;
+//                if (origD < 0) {
+//                    // Missing distance
+//                    ++missingDistCount;
+//                    continue;
+//                }
+//                if (weight == 0) continue; // Ignore zero weights
+//
+//                stat.accept(origD);
+//            }
+//        }
         refMissingDistCount.setValue(missingDistCount);
         return stat;
     }
