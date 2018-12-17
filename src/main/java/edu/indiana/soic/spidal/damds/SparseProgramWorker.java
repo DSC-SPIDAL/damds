@@ -1078,18 +1078,23 @@ public class SparseProgramWorker {
         int threadRowCount = globalThreadRowRange.getLength();
         final int globalRowOffset = globalThreadRowRange.getStartIndex();
 
-        int globalColCount = ParallelOps.globalColCount;
-        int globalRow;
+        double[] distTemp = distanceMatrix.getValues();
+        int[] rows = distanceMatrix.getRowPointers();
+        int rowOffset = ParallelOps.threadRowStartOffsets[threadId] +
+                ParallelOps.procRowStartOffset;
         double origD, weight, euclideanD;
         double heatD, tmpD;
-        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
-             ++threadLocalRow) {
-            globalRow = threadLocalRow + globalRowOffset;
-            for (int globalCol = 0; globalCol < globalColCount; globalCol++) {
-                origD = distances[threadLocalRow * globalColCount + globalCol]
-                        * INV_SHORT_MAX;
-                weight = weights.getWeight(threadLocalRow, globalCol);
-//                weight = 1.0;
+
+        for (int threadLocalRow = 0; threadLocalRow < rows.length; threadLocalRow++) {
+            int rowPointer = rows[threadLocalRow];
+            int colCount = (threadRowCount == rows.length - 1) ? distTemp.length - rowPointer
+                    : rows[threadLocalRow + 1] - rowPointer;
+            int globalRow = threadLocalRow + rowOffset;
+
+            for (int i = 0; i < colCount; i++) {
+                int globalCol = distanceMatrix.getColumns()[rowPointer + i];
+                origD = distTemp[rowPointer + i];
+                weight = weightMatrixWrap.getWeight(rowPointer + i);
 
                 if (origD < 0 || weight == 0) {
                     continue;
@@ -1101,8 +1106,33 @@ public class SparseProgramWorker {
                 heatD = origD - diff;
                 tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
                 sigma += weight * tmpD * tmpD;
+
             }
         }
+
+//        int globalColCount = ParallelOps.globalColCount;
+//        int globalRow;
+//        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
+//             ++threadLocalRow) {
+//            globalRow = threadLocalRow + globalRowOffset;
+//            for (int globalCol = 0; globalCol < globalColCount; globalCol++) {
+//                origD = distances[threadLocalRow * globalColCount + globalCol]
+//                        * INV_SHORT_MAX;
+//                weight = weights.getWeight(threadLocalRow, globalCol);
+////                weight = 1.0;
+//
+//                if (origD < 0 || weight == 0) {
+//                    continue;
+//                }
+//
+//                euclideanD = globalRow != globalCol ? calculateEuclideanDist(
+//                        preX, globalRow, globalCol, targetDim) : 0.0;
+//
+//                heatD = origD - diff;
+//                tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
+//                sigma += weight * tmpD * tmpD;
+//            }
+//        }
         stressInternalTimings.endTiming(StressInternalTimings.TimingTask
                 .COMP, threadIdx);
         return sigma;
