@@ -593,7 +593,7 @@ public class SparseProgramWorker {
         double origD, weight;
         for (int threadLocalRow = 0; threadLocalRow < rows.length; threadLocalRow++) {
             int rowPointer = rows[threadLocalRow];
-            int colCount = (threadRowCount == rows.length - 1) ? distTemp.length - rowPointer
+            int colCount = (threadLocalRow == rows.length - 1) ? distTemp.length - rowPointer
                     : rows[threadLocalRow + 1] - rowPointer;
             int globalRow = threadLocalRow + rowOffset;
 
@@ -1120,7 +1120,7 @@ public class SparseProgramWorker {
 
         for (int threadLocalRow = 0; threadLocalRow < rows.length; threadLocalRow++) {
             int rowPointer = rows[threadLocalRow];
-            int colCount = (threadRowCount == rows.length - 1) ? distTemp.length - rowPointer
+            int colCount = (threadLocalRow == rows.length - 1) ? distTemp.length - rowPointer
                     : rows[threadLocalRow + 1] - rowPointer;
             int globalRow = threadLocalRow + rowOffset;
 

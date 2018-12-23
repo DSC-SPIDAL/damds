@@ -1242,6 +1242,7 @@ public class ProgramWorker {
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
 
         double origD, weight;
+        int count = 0;
         for (int localRow = 0; localRow < threadRowCount; ++localRow) {
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
                  globalCol++) {
