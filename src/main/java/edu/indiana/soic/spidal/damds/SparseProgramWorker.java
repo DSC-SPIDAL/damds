@@ -46,6 +46,8 @@ public class SparseProgramWorker {
     private double[] MMAp;
 
     private double[][] threadPartialBofZ;
+    private SparseMatrix sparsethreadPartialBofZ;
+
     private double[] threadPartialMM;
 
     private double[] v;
@@ -913,6 +915,7 @@ public class SparseProgramWorker {
             distances, WeightsWrap1D weights,
             double[][] outBofZ) {
 
+
         int threadRowCount = globalThreadRowRange.getLength();
 
         double vBlockValue = -1;
@@ -922,38 +925,26 @@ public class SparseProgramWorker {
             diff = Math.sqrt(2.0 * targetDimension) * tCur;
         }
 
-        double[] outBofZLocalRow;
+        double[] outBofZLocalRow = sparsethreadPartialBofZ.getValues();
+        double[] diagonal = new double[threadRowCount];
         double origD, weight, dist;
 
         final int globalColCount = ParallelOps.globalColCount;
         final int globalRowOffset = globalThreadRowRange.getStartIndex();
         int globalRow;
-        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
-             ++threadLocalRow) {
+        double[] distTemp = distanceMatrix.getValues();
+        int[] rows = distanceMatrix.getRowPointers();
+
+        for (int threadLocalRow = 0; threadLocalRow < rows.length; threadLocalRow++) {
+            int rowPointer = rows[threadLocalRow];
+            int colCount = (threadRowCount == rows.length - 1) ? distTemp.length - rowPointer
+                    : rows[threadLocalRow + 1] - rowPointer;
             globalRow = threadLocalRow + globalRowOffset;
-            outBofZLocalRow = outBofZ[threadLocalRow];
-            outBofZLocalRow[globalRow] = 0;
-            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
-                 globalCol++) {
-                 /* B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
-				 * otherwise v_ij = - w_ij.
-				 *
-				 * Therefore, B_ij = v_ij * delta_ij / d_ij(Z). 0 (if d_ij
-				 * (Z) >=
-				 * small threshold) --> the actual meaning is (if d_ij(Z) == 0)
-				 * BofZ[i][j] = V[i][j] * deltaMat[i][j] / CalculateDistance
-				 * (ref
-				 * preX, i, j);*/
-
-                // this is for the i!=j case. For i==j case will be calculated
-                // separately (see above).
+            for (int i = 0; i < colCount; i++) {
+                int globalCol = distanceMatrix.getColumns()[rowPointer + i];
                 if (globalRow == globalCol) continue;
-
-
-                origD = distances[threadLocalRow * globalColCount +
-                        globalCol] * INV_SHORT_MAX;
-                weight = weights.getWeight(threadLocalRow, globalCol);
-//                weight = 1.0;
+                origD = distTemp[rowPointer + i];
+                weight = weightMatrixWrap.getWeight(rowPointer + i);
 
                 if (origD < 0 || weight == 0) {
                     continue;
@@ -962,14 +953,56 @@ public class SparseProgramWorker {
                 dist = calculateEuclideanDist(preX, globalRow, globalCol,
                         targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZLocalRow[globalCol] = (weight * vBlockValue *
+                    outBofZLocalRow[rowPointer + i] = (weight * vBlockValue *
                             (origD - diff) / dist);
                 } else {
-                    outBofZLocalRow[globalCol] = 0;
+                    outBofZLocalRow[rowPointer + i] = 0;
                 }
-                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
+                diagonal[threadLocalRow] -= outBofZLocalRow[rowPointer + i];
             }
         }
+//        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
+//             ++threadLocalRow) {
+//            globalRow = threadLocalRow + globalRowOffset;
+//            outBofZLocalRow = outBofZ[threadLocalRow];
+//            outBofZLocalRow[globalRow] = 0;
+//            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
+//                 globalCol++) {
+//                 /* B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
+//				 * otherwise v_ij = - w_ij.
+//				 *
+//				 * Therefore, B_ij = v_ij * delta_ij / d_ij(Z). 0 (if d_ij
+//				 * (Z) >=
+//				 * small threshold) --> the actual meaning is (if d_ij(Z) == 0)
+//				 * BofZ[i][j] = V[i][j] * deltaMat[i][j] / CalculateDistance
+//				 * (ref
+//				 * preX, i, j);*/
+//
+//                // this is for the i!=j case. For i==j case will be calculated
+//                // separately (see above).
+//                if (globalRow == globalCol) continue;
+//
+//
+//                origD = distances[threadLocalRow * globalColCount +
+//                        globalCol] * INV_SHORT_MAX;
+//                weight = weights.getWeight(threadLocalRow, globalCol);
+////                weight = 1.0;
+//
+//                if (origD < 0 || weight == 0) {
+//                    continue;
+//                }
+//
+//                dist = calculateEuclideanDist(preX, globalRow, globalCol,
+//                        targetDimension);
+//                if (dist >= 1.0E-10 && diff < origD) {
+//                    outBofZLocalRow[globalCol] = (weight * vBlockValue *
+//                            (origD - diff) / dist);
+//                } else {
+//                    outBofZLocalRow[globalCol] = 0;
+//                }
+//                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
+//            }
+//        }
     }
 
     private static void extractPoints(
