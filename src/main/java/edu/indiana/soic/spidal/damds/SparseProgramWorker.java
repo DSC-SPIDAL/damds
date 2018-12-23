@@ -4,12 +4,12 @@ import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import edu.indiana.soic.spidal.common.*;
+import edu.indiana.soic.spidal.common.sparse.SparseMatrix;
+import edu.indiana.soic.spidal.common.sparse.SparseMatrixFile;
+import edu.indiana.soic.spidal.common.sparse.SparseMatrixWeightWrap;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
 import edu.indiana.soic.spidal.damds.timing.*;
-import edu.indiana.soic.spidal.sparse.SparseMatrix;
-import edu.indiana.soic.spidal.sparse.SparseMatrixFile;
-import edu.indiana.soic.spidal.sparse.SparseMatrixWeightWrap;
 import mpi.MPIException;
 import net.openhft.lang.io.Bytes;
 import org.apache.commons.cli.*;
@@ -168,7 +168,7 @@ public class SparseProgramWorker {
                             "\n  MissingDistPercentage=" +
                             missingDistPercent);
 
-            weights.setAvgDistForSammon(distanceSummary.getAverage());
+            //weights.setAvgDistForSammon(distanceSummary.getAverage());
             changeZeroDistancesToPostiveMin(distances, distanceSummary
                     .getPositiveMin());
 
@@ -1299,8 +1299,15 @@ public class SparseProgramWorker {
 
 
         // load score matrix
-        distanceMatrix = SparseMatrixFile.loadIntoMemory(config.sparseDistanceIndexFile, config.sparseDistanceDataFile, globalThreadRowRange, config.numberDataPoints);
-        weightMatrix = SparseMatrixFile.loadIntoMemory(config.sparseWeightIndexFile, config.sparseWeightDataFile, globalThreadRowRange, config.numberDataPoints);
+        distanceMatrix =
+                SparseMatrixFile.loadIntoMemory(config.sparseDistanceIndexFile,
+                        config.sparseDistanceDataFile, globalThreadRowRange,
+                        config.numberDataPoints, byteOrder);
+        if(!Strings.isNullOrEmpty(config.sparseWeightIndexFile)){
+            weightMatrix = SparseMatrixFile.loadIntoMemory(config.sparseWeightIndexFile,
+                    config.sparseWeightDataFile, globalThreadRowRange,
+                    config.numberDataPoints, byteOrder);
+        }
         weightMatrixWrap = new SparseMatrixWeightWrap(weightMatrix, distanceMatrix, config.isSammon);
     }
 
