@@ -145,7 +145,6 @@ public class SparseProgramWorker {
                 config.targetDimension * Double.BYTES);
 
 
-
         if (lock != null) {
             lock.unlock();
         }
@@ -333,7 +332,7 @@ public class SparseProgramWorker {
                 ++loopNum;
 
                 /* Note - quick way to test programs without running full
-                * number of temperature loops */
+                 * number of temperature loops */
                 if (config.maxtemploops > 0 && loopNum == config.maxtemploops) {
                     break;
                 }
@@ -358,7 +357,7 @@ public class SparseProgramWorker {
                     INV_SUM_OF_SQUARE);
 
             if (threadId == 0) {
-                if (ParallelOps.worldProcRank == 0){
+                if (ParallelOps.worldProcRank == 0) {
                     Utils.writeOutput(preX, Program.config.targetDimension, Program.config.pointsFile);
                 }
                 mainTimer.stop();
@@ -385,7 +384,7 @@ public class SparseProgramWorker {
             utils.printMessage("  Final Stress:\t" + finalStress);
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
-                printTimingDistributions();
+            printTimingDistributions();
             threadComm.barrier();
         } catch (MPIException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
@@ -395,11 +394,11 @@ public class SparseProgramWorker {
     }
 
     private void printTimingDistributions() throws BrokenBarrierException, InterruptedException, MPIException {
-        double [] mmInternalTimings = new double[ParallelOps.threadCount];
+        double[] mmInternalTimings = new double[ParallelOps.threadCount];
         System.arraycopy(threadComm.gatherDoublesOverThreads(threadId, mmTimings.getTotalTime(MMTimings.TimingTask.MM_INTERNAL)), 0, mmInternalTimings, 0, ParallelOps.threadCount);
 
         threadComm.barrier();
-        double [] bcInternalTimings = new double[ParallelOps.threadCount];
+        double[] bcInternalTimings = new double[ParallelOps.threadCount];
         System.arraycopy(threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL)), 0, bcInternalTimings, 0, ParallelOps.threadCount);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
@@ -411,7 +410,7 @@ public class SparseProgramWorker {
             System.arraycopy(tmp, 0, bcInternalTimings, 0, bcInternalTimings.length);
         }
 
-        if (ParallelOps.worldProcRank == 0 && threadId == 0){
+        if (ParallelOps.worldProcRank == 0 && threadId == 0) {
             try (BufferedWriter writer = Files.newBufferedWriter(
                     Paths.get(config.timingFile), StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE)) {
@@ -443,6 +442,11 @@ public class SparseProgramWorker {
 
     private void allocateArrays() {
         // Allocating point arrays once for all
+        this.sparsethreadPartialBofZ =
+                new SparseMatrix(distanceMatrix.getValues().length,
+                        distanceMatrix.getColumns().length,
+                        distanceMatrix.getRowPointers().length,
+                        distanceMatrix.getRowPointers().length);
         final int numberDataPoints = config.numberDataPoints;
         final int targetDimension = config.targetDimension;
 
@@ -537,7 +541,6 @@ public class SparseProgramWorker {
         long days = (elapsed - hours) / 24; // remaining elapsed in days
         return String.format(format, days, hours, minutes, seconds, millis);
     }
-
 
 
     private static void writeOuput(double[] X, int vecLen, String labelFile,
@@ -901,6 +904,11 @@ public class SparseProgramWorker {
                 distances, weights, internalBofZ);
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ);
 
+        for (int i = 0; i < 20; i++) {
+
+            System.out.println(sparsethreadPartialBofZ.getColumns()[i] +
+                    " : " + sparsethreadPartialBofZ.getValues()[i]);
+        }
         // Next we can calculate the BofZ * preX.
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.MM);
         //TODO might be able to make sparse internalBofZ and make this a spase to dense matrix
@@ -926,7 +934,7 @@ public class SparseProgramWorker {
         }
 
         double[] outBofZLocalRow = sparsethreadPartialBofZ.getValues();
-        double[] diagonal = new double[threadRowCount];
+        double[] diagonal = sparsethreadPartialBofZ.getDiagonal();
         double origD, weight, dist;
 
         final int globalColCount = ParallelOps.globalColCount;
@@ -937,7 +945,7 @@ public class SparseProgramWorker {
 
         for (int threadLocalRow = 0; threadLocalRow < rows.length; threadLocalRow++) {
             int rowPointer = rows[threadLocalRow];
-            int colCount = (threadRowCount == rows.length - 1) ? distTemp.length - rowPointer
+            int colCount = (threadLocalRow == rows.length - 1) ? distTemp.length - rowPointer
                     : rows[threadLocalRow + 1] - rowPointer;
             globalRow = threadLocalRow + globalRowOffset;
             for (int i = 0; i < colCount; i++) {
@@ -1336,7 +1344,7 @@ public class SparseProgramWorker {
                 SparseMatrixFile.loadIntoMemory(config.sparseDistanceIndexFile,
                         config.sparseDistanceDataFile, globalThreadRowRange,
                         config.numberDataPoints, byteOrder);
-        if(!Strings.isNullOrEmpty(config.sparseWeightIndexFile)){
+        if (!Strings.isNullOrEmpty(config.sparseWeightIndexFile)) {
             weightMatrix = SparseMatrixFile.loadIntoMemory(config.sparseWeightIndexFile,
                     config.sparseWeightDataFile, globalThreadRowRange,
                     config.numberDataPoints, byteOrder);
@@ -1364,12 +1372,12 @@ public class SparseProgramWorker {
                 ++missingDistCount;
                 continue;
             }
-            if(weight == 0) continue;
+            if (weight == 0) continue;
 
             stat.accept(origD);
         }
         //Adding all the missing values
-        missingDistCount += threadRowCount*config.numberDataPoints - distTemp.length;
+        missingDistCount += threadRowCount * config.numberDataPoints - distTemp.length;
         refMissingDistCount.setValue(missingDistCount);
 
 //        for (int localRow = 0; localRow < threadRowCount; ++localRow) {

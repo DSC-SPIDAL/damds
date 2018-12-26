@@ -134,7 +134,6 @@ public class ProgramWorker {
                 config.targetDimension * Double.BYTES);
 
 
-
         if (lock != null) {
             lock.unlock();
         }
@@ -322,7 +321,7 @@ public class ProgramWorker {
                 ++loopNum;
 
                 /* Note - quick way to test programs without running full
-                * number of temperature loops */
+                 * number of temperature loops */
                 if (config.maxtemploops > 0 && loopNum == config.maxtemploops) {
                     break;
                 }
@@ -347,7 +346,7 @@ public class ProgramWorker {
                     INV_SUM_OF_SQUARE);
 
             if (threadId == 0) {
-                if (ParallelOps.worldProcRank == 0){
+                if (ParallelOps.worldProcRank == 0) {
                     Utils.writeOutput(preX, Program.config.targetDimension, Program.config.pointsFile);
                 }
                 mainTimer.stop();
@@ -374,7 +373,7 @@ public class ProgramWorker {
             utils.printMessage("  Final Stress:\t" + finalStress);
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
-                printTimingDistributions();
+            printTimingDistributions();
             threadComm.barrier();
         } catch (MPIException e) {
             utils.printAndThrowRuntimeException(new RuntimeException(e));
@@ -384,11 +383,11 @@ public class ProgramWorker {
     }
 
     private void printTimingDistributions() throws BrokenBarrierException, InterruptedException, MPIException {
-        double [] mmInternalTimings = new double[ParallelOps.threadCount];
+        double[] mmInternalTimings = new double[ParallelOps.threadCount];
         System.arraycopy(threadComm.gatherDoublesOverThreads(threadId, mmTimings.getTotalTime(MMTimings.TimingTask.MM_INTERNAL)), 0, mmInternalTimings, 0, ParallelOps.threadCount);
 
         threadComm.barrier();
-        double [] bcInternalTimings = new double[ParallelOps.threadCount];
+        double[] bcInternalTimings = new double[ParallelOps.threadCount];
         System.arraycopy(threadComm.gatherDoublesOverThreads(threadId, bcTimings.getTotalTime(BCTimings.TimingTask.BC_INTERNAL)), 0, bcInternalTimings, 0, ParallelOps.threadCount);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
@@ -400,7 +399,7 @@ public class ProgramWorker {
             System.arraycopy(tmp, 0, bcInternalTimings, 0, bcInternalTimings.length);
         }
 
-        if (ParallelOps.worldProcRank == 0 && threadId == 0){
+        if (ParallelOps.worldProcRank == 0 && threadId == 0) {
             try (BufferedWriter writer = Files.newBufferedWriter(
                     Paths.get(config.timingFile), StandardOpenOption.WRITE,
                     StandardOpenOption.CREATE)) {
@@ -526,7 +525,6 @@ public class ProgramWorker {
         long days = (elapsed - hours) / 24; // remaining elapsed in days
         return String.format(format, days, hours, minutes, seconds, millis);
     }
-
 
 
     private static void writeOuput(double[] X, int vecLen, String labelFile,
@@ -866,7 +864,10 @@ public class ProgramWorker {
         calculateBofZ(preX, targetDimension, tCur,
                 distances, weights, internalBofZ);
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ);
-
+        for (int i = 0; i < 20; i++) {
+            System.out.println(internalBofZ[0][i] +
+                    " : " + internalBofZ[0][i]);
+        }
         // Next we can calculate the BofZ * preX.
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.MM);
         //TODO might be able to make sparse internalBofZ and make this a spase to dense matrix
@@ -903,15 +904,15 @@ public class ProgramWorker {
             outBofZLocalRow[globalRow] = 0;
             for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
                  globalCol++) {
-                 /* B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
-				 * otherwise v_ij = - w_ij.
-				 *
-				 * Therefore, B_ij = v_ij * delta_ij / d_ij(Z). 0 (if d_ij
-				 * (Z) >=
-				 * small threshold) --> the actual meaning is (if d_ij(Z) == 0)
-				 * BofZ[i][j] = V[i][j] * deltaMat[i][j] / CalculateDistance
-				 * (ref
-				 * preX, i, j);*/
+                /* B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
+                 * otherwise v_ij = - w_ij.
+                 *
+                 * Therefore, B_ij = v_ij * delta_ij / d_ij(Z). 0 (if d_ij
+                 * (Z) >=
+                 * small threshold) --> the actual meaning is (if d_ij(Z) == 0)
+                 * BofZ[i][j] = V[i][j] * deltaMat[i][j] / CalculateDistance
+                 * (ref
+                 * preX, i, j);*/
 
                 // this is for the i!=j case. For i==j case will be calculated
                 // separately (see above).
