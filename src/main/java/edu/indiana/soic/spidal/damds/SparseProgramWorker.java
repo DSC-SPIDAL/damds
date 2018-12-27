@@ -6,6 +6,7 @@ import com.google.common.base.Strings;
 import edu.indiana.soic.spidal.common.*;
 import edu.indiana.soic.spidal.common.sparse.SparseMatrix;
 import edu.indiana.soic.spidal.common.sparse.SparseMatrixFile;
+import edu.indiana.soic.spidal.common.sparse.SparseMatrixUtils;
 import edu.indiana.soic.spidal.common.sparse.SparseMatrixWeightWrap;
 import edu.indiana.soic.spidal.configuration.section.DAMDSSection;
 import edu.indiana.soic.spidal.damds.threads.ThreadCommunicator;
@@ -912,9 +913,9 @@ public class SparseProgramWorker {
         // Next we can calculate the BofZ * preX.
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.MM);
         //TODO might be able to make sparse internalBofZ and make this a spase to dense matrix
-        MatrixUtils.matrixMultiply(internalBofZ, preX,
-                globalThreadRowRange.getLength(), targetDimension,
-                ParallelOps.globalColCount, blockSize, outMM);
+        SparseMatrixUtils.sparseMatrixMatrixMultiplyWithDiagonal(sparsethreadPartialBofZ,
+                preX, ParallelOps.globalColCount, targetDimension, outMM,
+                globalThreadRowRange.getStartIndex());
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.MM);
     }
 
