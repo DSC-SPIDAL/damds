@@ -811,9 +811,11 @@ public class SparseProgramWorker {
             double[] x, int targetDimension, int numPoints,
             WeightsWrap1D weights, int blockSize, double[] v, double[] outMM) {
 
-        MatrixUtils.matrixMultiplyWithThreadOffset(weights, v, x,
-                globalThreadRowRange.getLength(), targetDimension, numPoints,
-                blockSize, 0, globalThreadRowRange.getStartIndex(), outMM);
+        SparseMatrixUtils.sparseMatrixMatrixMultiplyWithDiagonal(weightMatrixWrap, x, v,
+                ParallelOps.globalColCount, targetDimension, outMM, globalThreadRowRange.getStartIndex());
+//        MatrixUtils.matrixMultiplyWithThreadOffset(weights, v, x,
+//                globalThreadRowRange.getLength(), targetDimension, numPoints,
+//                blockSize, 0, globalThreadRowRange.getStartIndex(), outMM);
     }
 
 
