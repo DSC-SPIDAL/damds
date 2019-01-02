@@ -359,7 +359,7 @@ public class SparseProgramWorker {
 
             if (threadId == 0) {
                 if (ParallelOps.worldProcRank == 0) {
-                    Utils.writeOutput(preX, Program.config.targetDimension, Program.config.pointsFile);
+                    Utils.writeOutput(preX, SparseProgram.config.targetDimension, SparseProgram.config.pointsFile);
                 }
                 mainTimer.stop();
             }
@@ -448,6 +448,11 @@ public class SparseProgramWorker {
                         distanceMatrix.getColumns().length,
                         distanceMatrix.getRowPointers().length,
                         distanceMatrix.getRowPointers().length);
+        // copy the colums and rowpointers to bofZ
+        System.arraycopy(distanceMatrix.getColumns(), 0,
+                sparsethreadPartialBofZ.getColumns(), 0, distanceMatrix.getColumns().length);
+        System.arraycopy(distanceMatrix.getRowPointers(), 0,
+                sparsethreadPartialBofZ.getRowPointers(), 0, distanceMatrix.getRowPointers().length);
         final int numberDataPoints = config.numberDataPoints;
         final int targetDimension = config.targetDimension;
 
@@ -694,7 +699,6 @@ public class SparseProgramWorker {
                     MMAp, threadPartialMM);
             //is MMAp VDi in 22 or 20??????????
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
-
             // TODO - turning off barriers
             /*if (threadId == 0) {
                 ParallelOps.worldProcsComm.barrier();
@@ -810,7 +814,6 @@ public class SparseProgramWorker {
     private void calculateMMInternal(
             double[] x, int targetDimension, int numPoints,
             WeightsWrap1D weights, int blockSize, double[] v, double[] outMM) {
-
         SparseMatrixUtils.sparseMatrixMatrixMultiplyWithDiagonal(weightMatrixWrap, x, v,
                 ParallelOps.globalColCount, targetDimension, outMM, globalThreadRowRange.getStartIndex());
 //        MatrixUtils.matrixMultiplyWithThreadOffset(weights, v, x,
@@ -906,18 +909,13 @@ public class SparseProgramWorker {
         calculateBofZ(preX, targetDimension, tCur,
                 distances, weights, internalBofZ);
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ);
-
-        for (int i = 0; i < 20; i++) {
-
-            System.out.println(sparsethreadPartialBofZ.getColumns()[i] +
-                    " : " + sparsethreadPartialBofZ.getValues()[i]);
-        }
         // Next we can calculate the BofZ * preX.
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.MM);
         //TODO might be able to make sparse internalBofZ and make this a spase to dense matrix
         SparseMatrixUtils.sparseMatrixMatrixMultiplyWithDiagonal(sparsethreadPartialBofZ,
                 preX, ParallelOps.globalColCount, targetDimension, outMM,
                 globalThreadRowRange.getStartIndex());
+//
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.MM);
     }
 
@@ -937,6 +935,7 @@ public class SparseProgramWorker {
         }
 
         double[] outBofZLocalRow = sparsethreadPartialBofZ.getValues();
+
         double[] diagonal = sparsethreadPartialBofZ.getDiagonal();
         double origD, weight, dist;
 
@@ -951,6 +950,7 @@ public class SparseProgramWorker {
             int colCount = (threadLocalRow == rows.length - 1) ? distTemp.length - rowPointer
                     : rows[threadLocalRow + 1] - rowPointer;
             globalRow = threadLocalRow + globalRowOffset;
+            diagonal[threadLocalRow] = 0;
             for (int i = 0; i < colCount; i++) {
                 int globalCol = distanceMatrix.getColumns()[rowPointer + i];
                 if (globalRow == globalCol) continue;
@@ -1121,6 +1121,7 @@ public class SparseProgramWorker {
 
         int threadRowCount = globalThreadRowRange.getLength();
         final int globalRowOffset = globalThreadRowRange.getStartIndex();
+        int count = 0;
 
         double[] distTemp = distanceMatrix.getValues();
         int[] rows = distanceMatrix.getRowPointers();
