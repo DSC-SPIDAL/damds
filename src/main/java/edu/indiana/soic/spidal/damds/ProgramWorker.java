@@ -591,6 +591,7 @@ public class ProgramWorker {
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
+                weight = 1.0;
 
                 v[threadLocalRow] += weight;
             }
@@ -864,10 +865,6 @@ public class ProgramWorker {
         calculateBofZ(preX, targetDimension, tCur,
                 distances, weights, internalBofZ);
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ);
-        for (int i = 0; i < 20; i++) {
-            System.out.println(internalBofZ[0][i] +
-                    " : " + internalBofZ[0][i]);
-        }
         // Next we can calculate the BofZ * preX.
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.MM);
         //TODO might be able to make sparse internalBofZ and make this a spase to dense matrix
@@ -927,7 +924,7 @@ public class ProgramWorker {
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
-
+                weight = 1.0;
                 dist = calculateEuclideanDist(preX, globalRow, globalCol,
                         targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
@@ -1043,7 +1040,7 @@ public class ProgramWorker {
         if (tCur > 10E-10) {
             diff = Math.sqrt(2.0 * targetDim) * tCur;
         }
-
+        int count = 0;
         int threadRowCount = globalThreadRowRange.getLength();
         final int globalRowOffset = globalThreadRowRange.getStartIndex();
 
@@ -1069,6 +1066,7 @@ public class ProgramWorker {
 
                 heatD = origD - diff;
                 tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
+                weight = 1.0;
                 sigma += weight * tmpD * tmpD;
             }
         }

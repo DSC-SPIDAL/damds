@@ -196,6 +196,7 @@ public class SparseProgramWorker {
             double preStress = calculateStress(
                     preX, config.targetDimension, tCur, distances, weights,
                     INV_SUM_OF_SQUARE);
+
             utils.printMessage("\nInitial stress=" + preStress);
 
             tCur = config.alpha * tMax;
@@ -504,7 +505,7 @@ public class SparseProgramWorker {
     private void readInitMapping(
             String initialPointsFile, double[] preX, int dimension)
             throws BrokenBarrierException, InterruptedException {
-        if (threadId == 0) {
+            if (threadId == 0) {
             try (BufferedReader br = Files
                     .newBufferedReader(Paths.get(initialPointsFile),
                             Charset.defaultCharset())) {
