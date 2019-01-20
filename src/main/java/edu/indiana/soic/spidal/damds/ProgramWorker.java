@@ -24,6 +24,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.regex.Pattern;
+import java.util.stream.DoubleStream;
 
 public class ProgramWorker {
     // Constants
@@ -143,10 +144,6 @@ public class ProgramWorker {
         try {
             setup();
             readDistancesAndWeights(config.isSammon);
-            /*System.out.println("Rank " + ParallelOps.worldProcRank + " " +
-                    "TID " + threadId + "Came " +
-                    "here ");*/
-
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(
                     distances, weights, missingDistCount);
@@ -813,7 +810,6 @@ public class ProgramWorker {
                 BCTimings.TimingTask.BC_INTERNAL);
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
-        //System.out.println(threadId);
         threadComm.collect2(0,
                 threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE);

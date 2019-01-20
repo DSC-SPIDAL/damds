@@ -31,6 +31,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.regex.Pattern;
+import java.util.stream.DoubleStream;
 
 public class SparseProgramWorker {
     // Constants
@@ -155,10 +156,6 @@ public class SparseProgramWorker {
         try {
             setup();
             readScoreMatrixAndWeight(config.isSammon);
-            /*System.out.println("Rank " + ParallelOps.worldProcRank + " " +
-                    "TID " + threadId + "Came " +
-                    "here ");*/
-
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(
                     distances, weights, missingDistCount);
@@ -505,7 +502,7 @@ public class SparseProgramWorker {
     private void readInitMapping(
             String initialPointsFile, double[] preX, int dimension)
             throws BrokenBarrierException, InterruptedException {
-            if (threadId == 0) {
+        if (threadId == 0) {
             try (BufferedReader br = Files
                     .newBufferedReader(Paths.get(initialPointsFile),
                             Charset.defaultCharset())) {
@@ -858,7 +855,6 @@ public class SparseProgramWorker {
                 BCTimings.TimingTask.BC_INTERNAL);
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
-        //System.out.println(threadId);
         threadComm.collect2(0,
                 threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE);
@@ -907,8 +903,7 @@ public class SparseProgramWorker {
             double[] outMM) {
 
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ);
-        calculateBofZ(preX, targetDimension, tCur,
-                distances, weights, internalBofZ);
+        calculateBofZ(preX, targetDimension, tCur);
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.BOFZ);
         // Next we can calculate the BofZ * preX.
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.MM);
@@ -921,9 +916,7 @@ public class SparseProgramWorker {
     }
 
     private void calculateBofZ(
-            double[] preX, int targetDimension, double tCur, short[]
-            distances, WeightsWrap1D weights,
-            double[][] outBofZ) {
+            double[] preX, int targetDimension, double tCur) {
 
 
         int threadRowCount = globalThreadRowRange.getLength();
