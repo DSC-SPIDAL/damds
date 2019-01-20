@@ -31,7 +31,6 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.regex.Pattern;
-import java.util.stream.DoubleStream;
 
 public class SparseProgramWorker {
     // Constants
@@ -47,7 +46,6 @@ public class SparseProgramWorker {
     private double[] MMr;
     private double[] MMAp;
 
-    private double[][] threadPartialBofZ;
     private SparseMatrix sparsethreadPartialBofZ;
 
     private double[] threadPartialMM;
@@ -57,8 +55,6 @@ public class SparseProgramWorker {
     //Config Settings
     private DAMDSSection config;
     private ByteOrder byteOrder;
-    private short[] distances;
-    private WeightsWrap1D weights;
     private SparseMatrix distanceMatrix;
     private SparseMatrix weightMatrix;
     private SparseMatrixWeightWrap weightMatrixWrap;
@@ -157,8 +153,7 @@ public class SparseProgramWorker {
             setup();
             readScoreMatrixAndWeight(config.isSammon);
             RefObj<Integer> missingDistCount = new RefObj<>();
-            DoubleStatistics distanceSummary = calculateStatistics(
-                    distances, weights, missingDistCount);
+            DoubleStatistics distanceSummary = calculateStatistics(missingDistCount);
             double missingDistPercent = missingDistCount.getValue() /
                     (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0 / distanceSummary.getSumOfSquare();
@@ -168,7 +163,7 @@ public class SparseProgramWorker {
                             missingDistPercent);
 
             //weights.setAvgDistForSammon(distanceSummary.getAverage());
-            changeZeroDistancesToPostiveMin(distances, distanceSummary
+            changeZeroDistancesToPostiveMin(distanceSummary
                     .getPositiveMin());
 
             // Allocating point arrays once for all
@@ -189,9 +184,9 @@ public class SparseProgramWorker {
             double tMin = config.tMinFactor * distanceSummary.getPositiveMin
                     () / Math.sqrt(2.0 * config.targetDimension);
 
-            generateV(distances, weights, v);
+            generateV(v);
             double preStress = calculateStress(
-                    preX, config.targetDimension, tCur, distances, weights,
+                    preX, config.targetDimension, tCur,
                     INV_SUM_OF_SQUARE);
 
             utils.printMessage("\nInitial stress=" + preStress);
@@ -223,7 +218,7 @@ public class SparseProgramWorker {
                 temperatureLoopTimings.startTiming(
                         TemperatureLoopTimings.TimingTask.PRE_STRESS);
                 preStress = calculateStress(
-                        preX, config.targetDimension, tCur, distances, weights,
+                        preX, config.targetDimension, tCur,
                         INV_SUM_OF_SQUARE);
                 temperatureLoopTimings.endTiming(
                         TemperatureLoopTimings.TimingTask.PRE_STRESS);
@@ -245,8 +240,7 @@ public class SparseProgramWorker {
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.BC);
                     calculateBC(
-                            preX, config.targetDimension, tCur, distances,
-                            weights, BlockSize, BC, threadPartialBofZ,
+                            preX, config.targetDimension, tCur, BC,
                             threadPartialMM);
                     stressLoopTimings.endTiming(
                             StressLoopTimings.TimingTask.BC);
@@ -266,8 +260,7 @@ public class SparseProgramWorker {
                             BC,
                             config.cgIter,
                             config.cgErrorThreshold, cgCount,
-                            outRealCGIterations, weights,
-                            BlockSize, v, MMr, MMAp, threadPartialMM);
+                            outRealCGIterations, v, MMr, MMAp, threadPartialMM);
                     stressLoopTimings.endTiming(
                             StressLoopTimings.TimingTask.CG);
 
@@ -275,9 +268,7 @@ public class SparseProgramWorker {
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.STRESS);
                     stress = calculateStress(
-                            preX, config.targetDimension, tCur, distances,
-                            weights,
-                            INV_SUM_OF_SQUARE);
+                            preX, config.targetDimension, tCur, INV_SUM_OF_SQUARE);
                     stressLoopTimings.endTiming(
                             StressLoopTimings.TimingTask.STRESS);
 
@@ -352,8 +343,7 @@ public class SparseProgramWorker {
                             distanceSummary.getAverage()));
 
             Double finalStress = calculateStress(
-                    preX, config.targetDimension, tCur, distances, weights,
-                    INV_SUM_OF_SQUARE);
+                    preX, config.targetDimension, tCur, INV_SUM_OF_SQUARE);
 
             if (threadId == 0) {
                 if (ParallelOps.worldProcRank == 0) {
@@ -459,8 +449,6 @@ public class SparseProgramWorker {
         MMr = new double[numberDataPoints * targetDimension];
         MMAp = new double[numberDataPoints * targetDimension];
         final int threadRowCount = ParallelOps.threadRowCounts[threadId];
-        threadPartialBofZ = new double[threadRowCount][ParallelOps
-                .globalColCount];
         threadPartialMM = new double[threadRowCount
                 * config.targetDimension];
         v = new double[threadRowCount];
@@ -476,8 +464,7 @@ public class SparseProgramWorker {
         }
     }
 
-    private void changeZeroDistancesToPostiveMin(
-            short[] distances, double positiveMin) {
+    private void changeZeroDistancesToPostiveMin(double positiveMin) {
         double tmpD;
         for (int i = 0; i < distanceMatrix.getValues().length; ++i) {
             tmpD = distanceMatrix.getValues()[i];
@@ -589,10 +576,8 @@ public class SparseProgramWorker {
         writer.close();
     }
 
-    private void generateV(
-            short[] distances, WeightsWrap1D weights, double[] v) {
+    private void generateV(double[] v) {
         zeroOutArray(v);
-        int threadRowCount = ParallelOps.threadRowCounts[threadId];
         double[] distTemp = distanceMatrix.getValues();
         int[] rows = distanceMatrix.getRowPointers();
         int rowOffset = ParallelOps.threadRowStartOffsets[threadId] +
@@ -618,36 +603,13 @@ public class SparseProgramWorker {
             }
             v[threadLocalRow] += 1;
         }
-
-//        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
-//             ++threadLocalRow) {
-//            int globalRow = threadLocalRow + rowOffset;
-//            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
-//                 ++globalCol) {
-//                if (globalRow == globalCol) continue;
-//
-//                double origD = distances[threadLocalRow * ParallelOps
-//                        .globalColCount + globalCol] * INV_SHORT_MAX;
-//                double weight = weights.getWeight(threadLocalRow, globalCol);
-////                double weight = 1.0;
-//
-//                if (origD < 0 || weight == 0) {
-//                    continue;
-//                }
-//
-//                v[threadLocalRow] += weight;
-//            }
-//            v[threadLocalRow] += 1;
-//        }
-
     }
 
 
     private void calculateConjugateGradient(
             double[] preX, int targetDimension, int numPoints, double[] BC,
             int cgIter, double cgThreshold, RefObj<Integer> outCgCount,
-            RefObj<Integer> outRealCGIterations, WeightsWrap1D weights,
-            int blockSize, double[] v, double[] MMr, double[] MMAp,
+            RefObj<Integer> outRealCGIterations, double[] v, double[] MMr, double[] MMAp,
             double[] threadPartialMM)
 
             throws MPIException, BrokenBarrierException, InterruptedException {
@@ -655,7 +617,7 @@ public class SparseProgramWorker {
 
         zeroOutArray(threadPartialMM);
         cgTimings.startTiming(CGTimings.TimingTask.MM);
-        calculateMM(preX, targetDimension, numPoints, weights, blockSize, v,
+        calculateMM(preX, targetDimension, v,
                 MMr, threadPartialMM);
         cgTimings.endTiming(CGTimings.TimingTask.MM);
 
@@ -693,7 +655,7 @@ public class SparseProgramWorker {
             //calculate alpha
             zeroOutArray(threadPartialMM);
             cgLoopTimings.startTiming(CGLoopTimings.TimingTask.MM);
-            calculateMM(BC, targetDimension, numPoints, weights, blockSize, v,
+            calculateMM(BC, targetDimension, v,
                     MMAp, threadPartialMM);
             //is MMAp VDi in 22 or 20??????????
             cgLoopTimings.endTiming(CGLoopTimings.TimingTask.MM);
@@ -753,15 +715,12 @@ public class SparseProgramWorker {
     }
 
     private void calculateMM(
-            double[] x, int targetDimension, int numPoints, WeightsWrap1D
-            weights,
-            int blockSize, double[] v, double[] outMM,
+            double[] x, int targetDimension, double[] v, double[] outMM,
             double[] internalPartialMM)
             throws MPIException, BrokenBarrierException, InterruptedException {
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_INTERNAL);
-        calculateMMInternal(x, targetDimension, numPoints, weights,
-                blockSize, v, internalPartialMM);
+        calculateMMInternal(x, targetDimension, v, internalPartialMM);
         mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL);
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE);
@@ -810,8 +769,7 @@ public class SparseProgramWorker {
     }
 
     private void calculateMMInternal(
-            double[] x, int targetDimension, int numPoints,
-            WeightsWrap1D weights, int blockSize, double[] v, double[] outMM) {
+            double[] x, int targetDimension, double[] v, double[] outMM) {
         SparseMatrixUtils.sparseMatrixMatrixMultiplyWithDiagonal(weightMatrixWrap, x, v,
                 ParallelOps.globalColCount, targetDimension, outMM, globalThreadRowRange.getStartIndex());
 //        MatrixUtils.matrixMultiplyWithThreadOffset(weights, v, x,
@@ -841,16 +799,12 @@ public class SparseProgramWorker {
     }
 
     private void calculateBC(
-            double[] preX, int targetDimension, double tCur, short[] distances,
-            WeightsWrap1D weights, int blockSize, double[] BC,
-            double[][] threadPartialBCInternalBofZ,
+            double[] preX, int targetDimension, double tCur, double[] BC,
             double[] threadPartialBCInternalMM)
             throws MPIException, InterruptedException, BrokenBarrierException {
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_INTERNAL);
-        calculateBCInternal(
-                preX, targetDimension, tCur, distances, weights, blockSize,
-                threadPartialBCInternalBofZ, threadPartialBCInternalMM);
+        calculateBCInternal(preX, targetDimension, tCur, threadPartialBCInternalMM);
         bcTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL);
 
@@ -898,9 +852,7 @@ public class SparseProgramWorker {
     }
 
     private void calculateBCInternal(
-            double[] preX, int targetDimension, double tCur, short[] distances,
-            WeightsWrap1D weights, int blockSize, double[][] internalBofZ,
-            double[] outMM) {
+            double[] preX, int targetDimension, double tCur, double[] outMM) {
 
         bcInternalTimings.startTiming(BCInternalTimings.TimingTask.BOFZ);
         calculateBofZ(preX, targetDimension, tCur);
@@ -918,9 +870,6 @@ public class SparseProgramWorker {
     private void calculateBofZ(
             double[] preX, int targetDimension, double tCur) {
 
-
-        int threadRowCount = globalThreadRowRange.getLength();
-
         double vBlockValue = -1;
 
         double diff = 0.0;
@@ -933,7 +882,6 @@ public class SparseProgramWorker {
         double[] diagonal = sparsethreadPartialBofZ.getDiagonal();
         double origD, weight, dist;
 
-        final int globalColCount = ParallelOps.globalColCount;
         final int globalRowOffset = globalThreadRowRange.getStartIndex();
         int globalRow;
         double[] distTemp = distanceMatrix.getValues();
@@ -966,48 +914,6 @@ public class SparseProgramWorker {
                 diagonal[threadLocalRow] -= outBofZLocalRow[rowPointer + i];
             }
         }
-//        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
-//             ++threadLocalRow) {
-//            globalRow = threadLocalRow + globalRowOffset;
-//            outBofZLocalRow = outBofZ[threadLocalRow];
-//            outBofZLocalRow[globalRow] = 0;
-//            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
-//                 globalCol++) {
-//                 /* B_ij = - w_ij * delta_ij / d_ij(Z), if (d_ij(Z) != 0) 0,
-//				 * otherwise v_ij = - w_ij.
-//				 *
-//				 * Therefore, B_ij = v_ij * delta_ij / d_ij(Z). 0 (if d_ij
-//				 * (Z) >=
-//				 * small threshold) --> the actual meaning is (if d_ij(Z) == 0)
-//				 * BofZ[i][j] = V[i][j] * deltaMat[i][j] / CalculateDistance
-//				 * (ref
-//				 * preX, i, j);*/
-//
-//                // this is for the i!=j case. For i==j case will be calculated
-//                // separately (see above).
-//                if (globalRow == globalCol) continue;
-//
-//
-//                origD = distances[threadLocalRow * globalColCount +
-//                        globalCol] * INV_SHORT_MAX;
-//                weight = weights.getWeight(threadLocalRow, globalCol);
-////                weight = 1.0;
-//
-//                if (origD < 0 || weight == 0) {
-//                    continue;
-//                }
-//
-//                dist = calculateEuclideanDist(preX, globalRow, globalCol,
-//                        targetDimension);
-//                if (dist >= 1.0E-10 && diff < origD) {
-//                    outBofZLocalRow[globalCol] = (weight * vBlockValue *
-//                            (origD - diff) / dist);
-//                } else {
-//                    outBofZLocalRow[globalCol] = 0;
-//                }
-//                outBofZLocalRow[globalRow] -= outBofZLocalRow[globalCol];
-//            }
-//        }
     }
 
     private static void extractPoints(
@@ -1043,13 +949,11 @@ public class SparseProgramWorker {
     }
 
     private double calculateStress(
-            double[] preX, int targetDimension, double tCur, short[] distances,
-            WeightsWrap1D weights, double invSumOfSquareDist)
+            double[] preX, int targetDimension, double tCur, double invSumOfSquareDist)
             throws MPIException, BrokenBarrierException, InterruptedException {
 
         refDouble.setValue(calculateStressInternal(threadId, preX,
-                targetDimension, tCur,
-                distances, weights));
+                targetDimension, tCur));
         threadComm.sumDoublesOverThreads(threadId, refDouble);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
@@ -1102,8 +1006,7 @@ public class SparseProgramWorker {
     }
 
     private double calculateStressInternal(
-            int threadIdx, double[] preX, int targetDim, double tCur, short[]
-            distances, WeightsWrap1D weights) {
+            int threadIdx, double[] preX, int targetDim, double tCur) {
 
         stressInternalTimings.startTiming(StressInternalTimings.TimingTask
                 .COMP, threadIdx);
@@ -1112,10 +1015,6 @@ public class SparseProgramWorker {
         if (tCur > 10E-10) {
             diff = Math.sqrt(2.0 * targetDim) * tCur;
         }
-
-        int threadRowCount = globalThreadRowRange.getLength();
-        final int globalRowOffset = globalThreadRowRange.getStartIndex();
-        int count = 0;
 
         double[] distTemp = distanceMatrix.getValues();
         int[] rows = distanceMatrix.getRowPointers();
@@ -1148,54 +1047,10 @@ public class SparseProgramWorker {
 
             }
         }
-
-//        int globalColCount = ParallelOps.globalColCount;
-//        int globalRow;
-//        for (int threadLocalRow = 0; threadLocalRow < threadRowCount;
-//             ++threadLocalRow) {
-//            globalRow = threadLocalRow + globalRowOffset;
-//            for (int globalCol = 0; globalCol < globalColCount; globalCol++) {
-//                origD = distances[threadLocalRow * globalColCount + globalCol]
-//                        * INV_SHORT_MAX;
-//                weight = weights.getWeight(threadLocalRow, globalCol);
-////                weight = 1.0;
-//
-//                if (origD < 0 || weight == 0) {
-//                    continue;
-//                }
-//
-//                euclideanD = globalRow != globalCol ? calculateEuclideanDist(
-//                        preX, globalRow, globalCol, targetDim) : 0.0;
-//
-//                heatD = origD - diff;
-//                tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
-//                sigma += weight * tmpD * tmpD;
-//            }
-//        }
         stressInternalTimings.endTiming(StressInternalTimings.TimingTask
                 .COMP, threadIdx);
         return sigma;
     }
-
-    /*private static double calculateEuclideanDist(
-        double[] v, double[] w, int targetDim) {
-        double dist = 0.0;
-        for (int k = 0; k < targetDim; k++) {
-            try {
-                double diff = v[k] - w[k];
-                dist += diff * diff;
-            } catch (IndexOutOfBoundsException e){
-                // Usually this should not happen, also this is not
-                // necessary to catch, but it was found that some parent block
-                // in HJ hides this error if/when it happens, so explicitly
-                // printing it here.
-                e.printStackTrace();
-            }
-        }
-
-        dist = Math.sqrt(dist);
-        return dist;
-    }*/
 
     public double calculateEuclideanDist(double[] v, int i, int j, int d) {
         double t = 0.0;
@@ -1242,13 +1097,12 @@ public class SparseProgramWorker {
         extractPoints(threadLocalFullXBytes, numPoints, targetDim, preX);
     }
 
-    private DoubleStatistics calculateStatistics(
-            short[] distances, WeightsWrap1D weights, RefObj<Integer>
-            missingDistCount)
+    private DoubleStatistics calculateStatistics(RefObj<Integer>
+                                                         missingDistCount)
             throws MPIException, BrokenBarrierException, InterruptedException {
 
         DoubleStatistics distanceSummary =
-                calculateStatisticsInternal(distances, weights, refInt);
+                calculateStatisticsInternal(refInt);
         threadComm.sumDoubleStatisticsOverThreads(threadId, distanceSummary);
         threadComm.sumIntOverThreads(threadId, refInt);
 
@@ -1275,68 +1129,9 @@ public class SparseProgramWorker {
         }
     }
 
-    private void readDistancesAndWeights(boolean isSammon) {
-        TransformationFunction function;
-        if (!Strings.isNullOrEmpty(config.transformationFunction)) {
-            function = loadFunction(config.transformationFunction);
-        } else {
-            function = (config.distanceTransform != 1.0
-                    ? (d -> Math.pow(d, config.distanceTransform))
-                    : null);
-        }
-
-
-        int elementCount = globalThreadRowRange.getLength() * ParallelOps
-                .globalColCount;
-        distances = new short[elementCount];
-        if (config.repetitions == 1) {
-            BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                    globalThreadRowRange, ParallelOps.globalColCount, byteOrder,
-                    true, function, distances);
-        } else {
-            BinaryReader1D.readRowRange(config.distanceMatrixFile,
-                    globalThreadRowRange, ParallelOps.globalColCount, byteOrder,
-                    true, function, config.repetitions, distances);
-        }
-
-        if (!Strings.isNullOrEmpty(config.weightMatrixFile)) {
-            short[] w = null;
-            function = !Strings.isNullOrEmpty(config
-                    .weightTransformationFunction)
-                    ? loadFunction(config.weightTransformationFunction)
-                    : null;
-            if (!config.isSimpleWeights) {
-                w = new short[elementCount];
-                if (config.repetitions == 1) {
-                    BinaryReader1D.readRowRange(config.weightMatrixFile,
-                            globalThreadRowRange, ParallelOps.globalColCount,
-                            byteOrder, true, function, w);
-                } else {
-                    BinaryReader1D.readRowRange(config.weightMatrixFile,
-                            globalThreadRowRange, ParallelOps.globalColCount,
-                            byteOrder, true, function, config.repetitions, w);
-                }
-                weights = new WeightsWrap1D(
-                        w, distances, isSammon, ParallelOps.globalColCount);
-            } else {
-                double[] sw = null;
-                sw = BinaryReader2D.readSimpleFile(config.weightMatrixFile,
-                        config.numberDataPoints);
-                weights = new WeightsWrap1D(sw, globalThreadRowRange,
-                        distances, isSammon, ParallelOps.globalColCount,
-                        function);
-            }
-        } else {
-            weights = new WeightsWrap1D(
-                    null, distances, isSammon, ParallelOps.globalColCount);
-        }
-
-    }
-
     private void readScoreMatrixAndWeight(boolean isSammon) throws MPIException {
-//        Utils.allPrintln(String.format("startIdx=%d, endIdx=%d, length=%d", startIdx, endIdx, length));
-
-
+        //TODO : isSammon is not supported yet
+        if (isSammon == true) throw new UnsupportedOperationException();
         // load score matrix
         distanceMatrix =
                 SparseMatrixFile.loadIntoMemory(config.sparseDistanceIndexFile,
@@ -1350,9 +1145,8 @@ public class SparseProgramWorker {
         weightMatrixWrap = new SparseMatrixWeightWrap(weightMatrix, distanceMatrix, config.isSammon);
     }
 
-    private DoubleStatistics calculateStatisticsInternal(
-            short[] distances, WeightsWrap1D weights, RefObj<Integer>
-            refMissingDistCount) {
+    private DoubleStatistics calculateStatisticsInternal(RefObj<Integer>
+                                                                 refMissingDistCount) {
 
         int missingDistCount = 0;
         DoubleStatistics stat = new DoubleStatistics();
@@ -1378,26 +1172,6 @@ public class SparseProgramWorker {
         missingDistCount += threadRowCount * config.numberDataPoints - distTemp.length;
         refMissingDistCount.setValue(missingDistCount);
 
-//        for (int localRow = 0; localRow < threadRowCount; ++localRow) {
-//            rowPointer = distanceMatrix.getRowPointers()[localRow];
-//
-//
-//            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
-//                 globalCol++) {
-//                origD = distances[localRow * ParallelOps.globalColCount +
-//                        globalCol] * INV_SHORT_MAX;
-//                weight = weights.getWeight(localRow, globalCol);
-////                weight = 1.0;
-//                if (origD < 0) {
-//                    // Missing distance
-//                    ++missingDistCount;
-//                    continue;
-//                }
-//                if (weight == 0) continue; // Ignore zero weights
-//
-//                stat.accept(origD);
-//            }
-//        }
         refMissingDistCount.setValue(missingDistCount);
         return stat;
     }
