@@ -78,6 +78,7 @@ public class SparseProgramWorker {
     private CGTimings cgTimings;
     private MMTimings mmTimings;
     private StressInternalTimings stressInternalTimings;
+    private TotalCommsTimings totalCommsTimings;
     private StressLoopTimings stressLoopTimings;
     private StressTimings stressTimings;
     private TemperatureLoopTimings temperatureLoopTimings;
@@ -105,6 +106,7 @@ public class SparseProgramWorker {
         cgTimings = new CGTimings();
         mmTimings = new MMTimings();
         stressInternalTimings = new StressInternalTimings();
+        totalCommsTimings = new TotalCommsTimings();
         stressLoopTimings = new StressLoopTimings();
         stressTimings = new StressTimings();
         temperatureLoopTimings = new TemperatureLoopTimings();
@@ -193,11 +195,6 @@ public class SparseProgramWorker {
 
             tCur = config.alpha * tMax;
 
-            // TODO - turning off barriers
-            /*if (threadId == 0) {
-                ParallelOps.worldProcsComm.barrier();
-            }
-            threadComm.barrier();*/
             if (threadId == 0) {
                 mainTimer.stop();
                 utils.printMessage("\nUp to the loop took " + mainTimer.elapsed(
@@ -244,14 +241,6 @@ public class SparseProgramWorker {
                             threadPartialMM);
                     stressLoopTimings.endTiming(
                             StressLoopTimings.TimingTask.BC);
-
-                    // TODO - turning off barriers
-                    /*if (threadId == 0) {
-                        // This barrier was necessary for correctness when using
-                        // a single mmap file
-                        ParallelOps.worldProcsComm.barrier();
-                    }
-                    threadComm.barrier();*/
 
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.CG);
@@ -371,6 +360,8 @@ public class SparseProgramWorker {
                             (outRealCGIterations.getValue() * 1.0) /
                                     smacofRealIterations));
             utils.printMessage("  Final Stress:\t" + finalStress);
+            utils.printMessage(" Comms Times All " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL));
+            utils.printMessage(" Comms Times Comms " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM));
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
             printTimingDistributions();
@@ -724,11 +715,13 @@ public class SparseProgramWorker {
         mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL);
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
         threadComm
                 .collect2(0, internalPartialMM,
                         threadLocalMmapXWriteBytes, threadId);
         //threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
@@ -759,12 +752,14 @@ public class SparseProgramWorker {
             }
             threadComm.barrier();
         }
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
         mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? threadLocalFullXBytes
                         : threadLocalMmapXWriteBytes, outMM,
                 ParallelOps.globalColCount * targetDimension, threadId);
         //threadComm.barrier();
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT);
     }
 
@@ -807,11 +802,12 @@ public class SparseProgramWorker {
         calculateBCInternal(preX, targetDimension, tCur, threadPartialBCInternalMM);
         bcTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL);
-
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
         threadComm.collect2(0,
                 threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
@@ -842,12 +838,14 @@ public class SparseProgramWorker {
             }
             threadComm.barrier();
         }
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? threadLocalFullXBytes
                         : threadLocalMmapXWriteBytes, BC,
                 ParallelOps.globalColCount * targetDimension, threadId);
         //threadComm.barrier();
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
         bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT);
     }
 
@@ -956,6 +954,8 @@ public class SparseProgramWorker {
                 targetDimension, tCur));
         threadComm.sumDoublesOverThreads(threadId, refDouble);
 
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double stress = refDouble.getValue();
             // reverting to default MPI call of allreduce<double>
@@ -999,9 +999,10 @@ public class SparseProgramWorker {
 
             refDouble.setValue(stress);
         }
-
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
         // threadComm.barrier();
         threadComm.bcastDoubleOverThreads(threadId, refDouble, 0);
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
         return refDouble.getValue() * invSumOfSquareDist;
     }
 
@@ -1106,15 +1107,21 @@ public class SparseProgramWorker {
         threadComm.sumDoubleStatisticsOverThreads(threadId, distanceSummary);
         threadComm.sumIntOverThreads(threadId, refInt);
 
+
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             distanceSummary = ParallelOps.allReduce(distanceSummary);
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
         }
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
 //        threadComm.barrier();
         threadComm.bcastDoubleStatisticsOverThreads(threadId,
                 distanceSummary, 0);
         threadComm.bcastIntOverThreads(threadId, refInt, 0);
         missingDistCount.setValue(refInt.getValue());
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
+
         return distanceSummary;
     }
 
