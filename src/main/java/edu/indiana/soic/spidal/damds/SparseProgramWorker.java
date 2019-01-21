@@ -721,7 +721,6 @@ public class SparseProgramWorker {
                         threadLocalMmapXWriteBytes, threadId);
         //threadComm.barrier();
         mmTimings.endTiming(MMTimings.TimingTask.MM_MERGE);
-        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
@@ -736,12 +735,15 @@ public class SparseProgramWorker {
                 // it's cleaner for timings
                 // if we wait on the whole world
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
                 if (ParallelOps.isMmapLead) {
                     //mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                     ParallelOps.partialXAllGather();
                     //mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
                 }
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+
                 // Each process in a memory group waits here.
                 // It's not necessary to wait for a process
                 // in another memory map group, hence the use of mmapProcComm.
@@ -752,7 +754,6 @@ public class SparseProgramWorker {
             }
             threadComm.barrier();
         }
-        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
         mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? threadLocalFullXBytes
@@ -807,7 +808,6 @@ public class SparseProgramWorker {
         threadComm.collect2(0,
                 threadPartialBCInternalMM, threadLocalMmapXWriteBytes, threadId);
         bcTimings.endTiming(BCTimings.TimingTask.BC_MERGE);
-        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
         if (ParallelOps.worldProcsCount > 1) {
             if (threadId == 0) {
@@ -822,12 +822,15 @@ public class SparseProgramWorker {
                 // it's cleaner for timings
                 // if we wait on the whole world
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
                 if (ParallelOps.isMmapLead) {
                     // bcTimings.startTiming(BCTimings.TimingTask.COMM);
                     ParallelOps.partialXAllGather();
                     // bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
                 }
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+
                 // Each process in a memory group waits here.
                 // It's not necessary to wait for a process
                 // in another memory map group, hence the use of
@@ -838,7 +841,6 @@ public class SparseProgramWorker {
             }
             threadComm.barrier();
         }
-        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
                         ? threadLocalFullXBytes
