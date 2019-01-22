@@ -187,7 +187,7 @@ public class SparseProgram {
                 Boolean.parseBoolean(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_BIND_THREADS));
         cps = (cmd.hasOption(Constants.CMD_OPTION_SHORT_CPS)) ? Integer.parseInt(cmd.getOptionValue(Constants.CMD_OPTION_SHORT_CPS)) : -1;
         if (cps == -1){
-            utils.printMessage("Disabling thread binding as cps is not specified");
+          //  utils.printMessage("Disabling thread binding as cps is not specified");
             bind = false;
         }
     }

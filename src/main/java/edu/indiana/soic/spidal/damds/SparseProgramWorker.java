@@ -366,11 +366,15 @@ public class SparseProgramWorker {
 //            + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS));
 //            utils.printMessage(" Comms Stats Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS)
 //                    + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS));
-            utils.printMessage(String.format("%d,%d,%d,%d,%d,%d \n", totalTime, temperatureLoopTime,
-                    totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL),
-                    totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM),
-                    totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS),
-                    totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)));
+            utils.printMessage(String.format(" Times %d,%d,%d,%d,%d,%d \n", totalTime, temperatureLoopTime,
+                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL),
+                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM),
+                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS),
+                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)));
+            utils.printMessage(String.format(" Averages stats : %f : stress : %f",
+                    totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS),
+                    totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS)));
+
 //            // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
             printTimingDistributions();

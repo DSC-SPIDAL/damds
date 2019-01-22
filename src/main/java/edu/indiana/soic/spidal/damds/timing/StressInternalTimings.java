@@ -54,22 +54,4 @@ public class StressInternalTimings {
         return  0.0;
     }
 
-    /*public long[] getTotalTimeDistribution(TimingTask task)
-        throws MPIException {
-        LongBuffer threadsAndMPITimingBuffer =
-            ParallelOps.threadsAndMPIBuffer;
-        threadsAndMPITimingBuffer.position(0);
-        long [] array = new long[numThreads * ParallelOps.worldProcsCount];
-        switch (task){
-            case COMP:
-                threadsAndMPITimingBuffer.put(tComp);
-                break;
-        }
-        ParallelOps.gather(threadsAndMPITimingBuffer, numThreads, 0);
-        threadsAndMPITimingBuffer.position(0);
-        threadsAndMPITimingBuffer.get(array);
-        return array;
-    }*/
-
-
 }
