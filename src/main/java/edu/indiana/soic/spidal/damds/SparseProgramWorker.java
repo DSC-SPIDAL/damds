@@ -1089,13 +1089,17 @@ public class SparseProgramWorker {
                 }
 
             }
-
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
             if (ParallelOps.worldProcsCount > 1) {
                 // Broadcast initial mapping to others
                 ParallelOps.broadcast(ParallelOps.fullXByteBuffer,
                         numPoints * targetDim * Double.BYTES, 0);
             }
         }
+
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
         threadComm.barrier();
         extractPoints(threadLocalFullXBytes, numPoints, targetDim, preX);
     }
