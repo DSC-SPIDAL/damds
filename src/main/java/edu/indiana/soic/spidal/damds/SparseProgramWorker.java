@@ -159,10 +159,10 @@ public class SparseProgramWorker {
             double missingDistPercent = missingDistCount.getValue() /
                     (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0 / distanceSummary.getSumOfSquare();
-            utils.printMessage(
-                    "\nDistance summary... \n" + distanceSummary.toString() +
-                            "\n  MissingDistPercentage=" +
-                            missingDistPercent);
+//            utils.printMessage(
+//                    "\nDistance summary... \n" + distanceSummary.toString() +
+//                            "\n  MissingDistPercentage=" +
+//                            missingDistPercent);
 
             //weights.setAvgDistForSammon(distanceSummary.getAverage());
             changeZeroDistancesToPostiveMin(distanceSummary
@@ -191,14 +191,14 @@ public class SparseProgramWorker {
                     preX, config.targetDimension, tCur,
                     INV_SUM_OF_SQUARE);
 
-            utils.printMessage("\nInitial stress=" + preStress);
+//            utils.printMessage("\nInitial stress=" + preStress);
 
             tCur = config.alpha * tMax;
 
             if (threadId == 0) {
                 mainTimer.stop();
-                utils.printMessage("\nUp to the loop took " + mainTimer.elapsed(
-                        TimeUnit.SECONDS) + " seconds");
+//                utils.printMessage("\nUp to the loop took " + mainTimer.elapsed(
+//                        TimeUnit.SECONDS) + " seconds");
                 mainTimer.start();
             }
 
@@ -222,10 +222,10 @@ public class SparseProgramWorker {
 
                 diffStress = config.threshold + 1.0;
 
-                utils.printMessage(
-                        String.format(
-                                "\nStart of loop %d Temperature (T_Cur) %.5g",
-                                loopNum, tCur));
+//                utils.printMessage(
+//                        String.format(
+//                                "\nStart of loop %d Temperature (T_Cur) %.5g",
+//                                loopNum, tCur));
 
                 int itrNum = 0;
                 cgCount.setValue(0);
@@ -265,15 +265,15 @@ public class SparseProgramWorker {
                     preStress = stress;
 
                     if ((itrNum % 10 == 0) || (itrNum >= config.stressIter)) {
-                        utils.printMessage(
-                                String.format(
-                                        "  Loop %d Iteration %d Avg CG count " +
-                                                "%.5g " +
-                                                "Stress " +
-                                                "%.5g", loopNum, itrNum,
-                                        (cgCount.getValue() * 1.0 / (itrNum +
-                                                1)),
-                                        stress));
+//                        utils.printMessage(
+//                                String.format(
+//                                        "  Loop %d Iteration %d Avg CG count " +
+//                                                "%.5g " +
+//                                                "Stress " +
+//                                                "%.5g", loopNum, itrNum,
+//                                        (cgCount.getValue() * 1.0 / (itrNum +
+//                                                1)),
+//                                        stress));
                     }
                     ++itrNum;
                     ++smacofRealIterations;
@@ -284,24 +284,24 @@ public class SparseProgramWorker {
                 --itrNum;
                 if (itrNum >= 0 && !(itrNum % 10 == 0) && !(itrNum >=
                         config.stressIter)) {
-                    utils.printMessage(
-                            String.format(
-                                    "  Loop %d Iteration %d Avg CG count %.5g" +
-                                            " " +
-                                            "Stress %.5g",
-                                    loopNum, itrNum,
-                                    (cgCount.getValue() * 1.0 / (itrNum + 1))
-                                    , stress));
+//                    utils.printMessage(
+//                            String.format(
+//                                    "  Loop %d Iteration %d Avg CG count %.5g" +
+//                                            " " +
+//                                            "Stress %.5g",
+//                                    loopNum, itrNum,
+//                                    (cgCount.getValue() * 1.0 / (itrNum + 1))
+//                                    , stress));
                 }
 
-                utils.printMessage(
-                        String.format(
-                                "End of loop %d Total Iterations %d Avg CG " +
-                                        "count %.5g" +
-                                        " Stress %.5g",
-                                loopNum, (itrNum + 1),
-                                (cgCount.getValue() * 1.0 / (itrNum + 1)),
-                                stress));
+//                utils.printMessage(
+//                        String.format(
+//                                "End of loop %d Total Iterations %d Avg CG " +
+//                                        "count %.5g" +
+//                                        " Stress %.5g",
+//                                loopNum, (itrNum + 1),
+//                                (cgCount.getValue() * 1.0 / (itrNum + 1)),
+//                                stress));
 
                 if (tCur == 0)
                     break;
@@ -323,13 +323,13 @@ public class SparseProgramWorker {
             double QoR2 = QoR1 / (distanceSummary.getAverage() *
                     distanceSummary.getAverage());
 
-            utils.printMessage(
-                    String.format(
-                            "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
-            utils.printMessage(
-                    String.format(
-                            "Average of Delta(original distance) = %.5g",
-                            distanceSummary.getAverage()));
+//            utils.printMessage(
+//                    String.format(
+//                            "Normalize1 = %.5g Normalize2 = %.5g", QoR1, QoR2));
+//            utils.printMessage(
+//                    String.format(
+//                            "Average of Delta(original distance) = %.5g",
+//                            distanceSummary.getAverage()));
 
             Double finalStress = calculateStress(
                     preX, config.targetDimension, tCur, INV_SUM_OF_SQUARE);
@@ -341,32 +341,37 @@ public class SparseProgramWorker {
                 mainTimer.stop();
             }
 
-            utils.printMessage("Finishing DAMDS run ...");
+//            utils.printMessage("Finishing DAMDS run ...");
             long totalTime = mainTimer.elapsed(TimeUnit.MILLISECONDS);
             long temperatureLoopTime = loopTimer.elapsed(TimeUnit.MILLISECONDS);
-            utils.printMessage(
-                    String.format(
-                            "  Total Time: %s (%d ms) Loop Time: %s (%d ms)",
-                            formatElapsedMillis(totalTime), totalTime,
-                            formatElapsedMillis(temperatureLoopTime),
-                            temperatureLoopTime));
-            utils.printMessage("  Total Loops: " + loopNum);
-            utils.printMessage("  Total Iterations: " + smacofRealIterations);
-            utils.printMessage(
-                    String.format(
-                            "  Total CG Iterations: %d Avg. CG Iterations: %" +
-                                    ".5g",
-                            outRealCGIterations.getValue(),
-                            (outRealCGIterations.getValue() * 1.0) /
-                                    smacofRealIterations));
-            utils.printMessage("  Final Stress:\t" + finalStress);
-            utils.printMessage(" Comms Times All " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL));
-            utils.printMessage(" Comms Times Comms " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM));
-            utils.printMessage(" Comms Stress Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)
-            + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS));
-            utils.printMessage(" Comms Stats Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS)
-                    + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS));
-            // TODO - fix print timings
+//            utils.printMessage(
+//                    String.format(
+//                            "  Total Time: %s (%d ms) Loop Time: %s (%d ms)",
+//                            formatElapsedMillis(totalTime), totalTime,
+//                            formatElapsedMillis(temperatureLoopTime),
+//                            temperatureLoopTime));
+//            utils.printMessage("  Total Loops: " + loopNum);
+//            utils.printMessage("  Total Iterations: " + smacofRealIterations);
+//            utils.printMessage(
+//                    String.format(
+//                            "  Total CG Iterations: %d Avg. CG Iterations: %" +
+//                                    ".5g",
+//                            outRealCGIterations.getValue(),
+//                            (outRealCGIterations.getValue() * 1.0) /
+//                                    smacofRealIterations));
+//            utils.printMessage("  Final Stress:\t" + finalStress);
+//            utils.printMessage(" Comms Times All " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL));
+//            utils.printMessage(" Comms Times Comms " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM));
+//            utils.printMessage(" Comms Stress Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)
+//            + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS));
+//            utils.printMessage(" Comms Stats Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS)
+//                    + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS));
+            utils.printMessage(String.format("%d,%d,%d,%d,%d,%d \n", totalTime, temperatureLoopTime,
+                    totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL),
+                    totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM),
+                    totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS),
+                    totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)));
+//            // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
             printTimingDistributions();
             threadComm.barrier();

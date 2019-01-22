@@ -114,7 +114,7 @@ public class SparseProgram {
             Stopwatch mainTimer = Stopwatch.createStarted();
 
             utils.printMessage("\n== DAMDS run started on " + new Date() + " ==\n");
-            utils.printMessage(config.toString(false));
+//            utils.printMessage(config.toString(false));
 
             /* TODO - Fork - join starts here */
             if (ParallelOps.threadCount > 1) {
