@@ -70,6 +70,8 @@ public class ProgramWorker {
     private CGTimings cgTimings;
     private MMTimings mmTimings;
     private StressInternalTimings stressInternalTimings;
+    private TotalCommsTimings totalCommsTimings;
+
     private StressLoopTimings stressLoopTimings;
     private StressTimings stressTimings;
     private TemperatureLoopTimings temperatureLoopTimings;
@@ -97,6 +99,7 @@ public class ProgramWorker {
         cgTimings = new CGTimings();
         mmTimings = new MMTimings();
         stressInternalTimings = new StressInternalTimings();
+        totalCommsTimings = new TotalCommsTimings();
         stressLoopTimings = new StressLoopTimings();
         stressTimings = new StressTimings();
         temperatureLoopTimings = new TemperatureLoopTimings();
@@ -368,6 +371,12 @@ public class ProgramWorker {
                             (outRealCGIterations.getValue() * 1.0) /
                                     smacofRealIterations));
             utils.printMessage("  Final Stress:\t" + finalStress);
+            utils.printMessage(" Comms Times All " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL));
+            utils.printMessage(" Comms Times Comms " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM));
+            utils.printMessage(" Comms Stress Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)
+                    + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS));
+            utils.printMessage(" Comms Stats Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS)
+                    + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS));
             // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
             printTimingDistributions();
@@ -721,6 +730,8 @@ public class ProgramWorker {
         mmTimings.endTiming(MMTimings.TimingTask.MM_INTERNAL);
 
         mmTimings.startTiming(MMTimings.TimingTask.MM_MERGE);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
+
         threadComm
                 .collect2(0, internalPartialMM,
                         threadLocalMmapXWriteBytes, threadId);
@@ -740,12 +751,15 @@ public class ProgramWorker {
                 // it's cleaner for timings
                 // if we wait on the whole world
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
                 if (ParallelOps.isMmapLead) {
                     //mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                     ParallelOps.partialXAllGather();
                     //mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
                 }
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+
                 // Each process in a memory group waits here.
                 // It's not necessary to wait for a process
                 // in another memory map group, hence the use of mmapProcComm.
@@ -762,6 +776,7 @@ public class ProgramWorker {
                         : threadLocalMmapXWriteBytes, outMM,
                 ParallelOps.globalColCount * targetDimension, threadId);
         //threadComm.barrier();
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
         mmTimings.endTiming(MMTimings.TimingTask.MM_EXTRACT);
     }
 
@@ -808,6 +823,7 @@ public class ProgramWorker {
                 threadPartialBCInternalBofZ, threadPartialBCInternalMM);
         bcTimings.endTiming(
                 BCTimings.TimingTask.BC_INTERNAL);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
 
         bcTimings.startTiming(BCTimings.TimingTask.BC_MERGE);
         threadComm.collect2(0,
@@ -827,12 +843,16 @@ public class ProgramWorker {
                 // it's cleaner for timings
                 // if we wait on the whole world
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
                 if (ParallelOps.isMmapLead) {
                     // bcTimings.startTiming(BCTimings.TimingTask.COMM);
                     ParallelOps.partialXAllGather();
                     // bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
                 }
+
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+
                 // Each process in a memory group waits here.
                 // It's not necessary to wait for a process
                 // in another memory map group, hence the use of
@@ -849,6 +869,8 @@ public class ProgramWorker {
                         : threadLocalMmapXWriteBytes, BC,
                 ParallelOps.globalColCount * targetDimension, threadId);
         //threadComm.barrier();
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
+
         bcTimings.endTiming(BCTimings.TimingTask.BC_EXTRACT);
     }
 
@@ -975,6 +997,9 @@ public class ProgramWorker {
                 targetDimension, tCur,
                 distances, weights));
         threadComm.sumDoublesOverThreads(threadId, refDouble);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STRESS);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double stress = refDouble.getValue();
@@ -1019,9 +1044,13 @@ public class ProgramWorker {
 
             refDouble.setValue(stress);
         }
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STRESS);
 
         // threadComm.barrier();
         threadComm.bcastDoubleOverThreads(threadId, refDouble, 0);
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
+
         return refDouble.getValue() * invSumOfSquareDist;
     }
 
@@ -1106,6 +1135,7 @@ public class ProgramWorker {
     private void generateInitMapping(
             int numPoints, int targetDim, double[] preX)
             throws MPIException, BrokenBarrierException, InterruptedException {
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
 
         if (threadId == 0) {
             if (ParallelOps.worldProcRank == 0) {
@@ -1125,14 +1155,19 @@ public class ProgramWorker {
                 }
 
             }
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
 
             if (ParallelOps.worldProcsCount > 1) {
                 // Broadcast initial mapping to others
                 ParallelOps.broadcast(ParallelOps.fullXByteBuffer,
                         numPoints * targetDim * Double.BYTES, 0);
             }
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+
         }
         threadComm.barrier();
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
+
         extractPoints(threadLocalFullXBytes, numPoints, targetDim, preX);
     }
 
@@ -1146,15 +1181,22 @@ public class ProgramWorker {
         threadComm.sumDoubleStatisticsOverThreads(threadId, distanceSummary);
         threadComm.sumIntOverThreads(threadId, refInt);
 
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STATS);
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             distanceSummary = ParallelOps.allReduce(distanceSummary);
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
         }
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STATS);
 //        threadComm.barrier();
         threadComm.bcastDoubleStatisticsOverThreads(threadId,
                 distanceSummary, 0);
         threadComm.bcastIntOverThreads(threadId, refInt, 0);
         missingDistCount.setValue(refInt.getValue());
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
+
         return distanceSummary;
     }
 
