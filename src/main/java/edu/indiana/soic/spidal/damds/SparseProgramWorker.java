@@ -993,6 +993,10 @@ public class SparseProgramWorker {
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double stress = refDouble.getValue();
             // reverting to default MPI call of allreduce<double>
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
+            ParallelOps.worldProcsComm.barrier();
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
+
             totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
             totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STRESS);
 
@@ -1153,6 +1157,10 @@ public class SparseProgramWorker {
 
         totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
+            ParallelOps.worldProcsComm.barrier();
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
+
             totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
             totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STATS);
             distanceSummary = ParallelOps.allReduce(distanceSummary);
