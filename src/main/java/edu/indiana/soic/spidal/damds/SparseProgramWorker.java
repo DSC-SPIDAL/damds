@@ -350,15 +350,15 @@ public class SparseProgramWorker {
 //                            formatElapsedMillis(totalTime), totalTime,
 //                            formatElapsedMillis(temperatureLoopTime),
 //                            temperatureLoopTime));
-//            utils.printMessage("  Total Loops: " + loopNum);
-//            utils.printMessage("  Total Iterations: " + smacofRealIterations);
-//            utils.printMessage(
-//                    String.format(
-//                            "  Total CG Iterations: %d Avg. CG Iterations: %" +
-//                                    ".5g",
-//                            outRealCGIterations.getValue(),
-//                            (outRealCGIterations.getValue() * 1.0) /
-//                                    smacofRealIterations));
+            utils.printMessage("  Total Loops: " + loopNum);
+            utils.printMessage("  Total Iterations: " + smacofRealIterations);
+            utils.printMessage(
+                    String.format(
+                            "  Total CG Iterations: %d Avg. CG Iterations: %" +
+                                    ".5g",
+                            outRealCGIterations.getValue(),
+                            (outRealCGIterations.getValue() * 1.0) /
+                                    smacofRealIterations));
 //            utils.printMessage("  Final Stress:\t" + finalStress);
 //            utils.printMessage(" Comms Times All " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL));
 //            utils.printMessage(" Comms Times Comms " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM));
