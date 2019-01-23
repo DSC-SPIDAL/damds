@@ -366,14 +366,18 @@ public class SparseProgramWorker {
 //            + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS));
 //            utils.printMessage(" Comms Stats Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS)
 //                    + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS));
-            utils.printMessage(String.format(" Times %d,%d,%d,%d,%d,%d \n", totalTime, temperatureLoopTime,
+            utils.printMessage(String.format(" Times %d,%d,%d,%d,%d,%d,%d \n",
+                    totalTime, temperatureLoopTime,
                     (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL),
                     (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM),
                     (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS),
-                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)));
-            utils.printMessage(String.format(" Averages stats : %f : stress : %f",
+                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS),
+                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.BARRIER)));
+            utils.printMessage(String.format(" Averages stats : %f : stress :" +
+                            " %f : barrier: %f",
                     totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS),
-                    totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS)));
+                    totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS),
+                    totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.BARRIER)));
 
 //            // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
