@@ -751,7 +751,9 @@ public class SparseProgramWorker {
                 // it's sufficient to wait on ParallelOps.mmapProcComm, but
                 // it's cleaner for timings
                 // if we wait on the whole world
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
 
                 if (ParallelOps.isMmapLead) {
                     totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
@@ -769,11 +771,12 @@ public class SparseProgramWorker {
                 // However it's cleaner for any timings to have everyone sync
                 // here,
                 // so will use worldProcsComm instead.
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
+
             }
-            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
             threadComm.barrier();
-            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
 
         }
         mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT);
@@ -843,7 +846,9 @@ public class SparseProgramWorker {
                 // it's sufficient to wait on ParallelOps.mmapProcComm, but
                 // it's cleaner for timings
                 // if we wait on the whole world
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
 
                 if (ParallelOps.isMmapLead) {
                     totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
@@ -861,11 +866,11 @@ public class SparseProgramWorker {
                 // mmapProcComm.
                 // However it's cleaner for any timings to have everyone sync
                 // here, so will use worldProcsComm instead.
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
             }
-            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
             threadComm.barrier();
-            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
 
         }
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
@@ -1130,9 +1135,7 @@ public class SparseProgramWorker {
 
             }
         }
-        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
         threadComm.barrier();
-        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
         totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
 
         extractPoints(threadLocalFullXBytes, numPoints, targetDim, preX);
