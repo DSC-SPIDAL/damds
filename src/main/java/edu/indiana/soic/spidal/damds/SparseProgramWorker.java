@@ -156,7 +156,7 @@ public class SparseProgramWorker {
             readScoreMatrixAndWeight(config.isSammon);
             RefObj<Integer> missingDistCount = new RefObj<>();
             DoubleStatistics distanceSummary = calculateStatistics(missingDistCount);
-            double missingDistPercent = missingDistCount.getValue() /
+            double missingDistPercent = ((double) missingDistCount.getValue()) /
                     (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0 / distanceSummary.getSumOfSquare();
 //            utils.printMessage(
@@ -169,6 +169,7 @@ public class SparseProgramWorker {
                     .getPositiveMin());
 
             // Allocating point arrays once for all
+            utils.printMessage("Done reading before allocation");
             allocateArrays();
 
             if (Strings.isNullOrEmpty(config.initialPointsFile)) {
@@ -367,10 +368,10 @@ public class SparseProgramWorker {
 //            utils.printMessage(" Comms Stats Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS)
 //                    + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS));
             utils.printMessage(String.format(" Times %d,%d,%d,%d,%d,%d \n", totalTime, temperatureLoopTime,
-                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL),
-                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM),
-                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS),
-                    (long)totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)));
+                    (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL),
+                    (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM),
+                    (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS),
+                    (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)));
             utils.printMessage(String.format(" Averages stats : %f : stress : %f",
                     totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS),
                     totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS)));
@@ -471,9 +472,9 @@ public class SparseProgramWorker {
     private void changeZeroDistancesToPostiveMin(double positiveMin) {
         double tmpD;
         for (int i = 0; i < distanceMatrix.getValues().length; ++i) {
-            tmpD = distanceMatrix.getValues()[i];
+            tmpD = distanceMatrix.getValues()[i] * INV_SHORT_MAX;
             if (tmpD < positiveMin && tmpD >= 0.0) {
-                distanceMatrix.getValues()[i] = positiveMin;
+                distanceMatrix.getValues()[i] = (short)(positiveMin * SHORT_MAX);
             }
         }
     }
@@ -582,7 +583,7 @@ public class SparseProgramWorker {
 
     private void generateV(double[] v) {
         zeroOutArray(v);
-        double[] distTemp = distanceMatrix.getValues();
+        short[] distTemp = distanceMatrix.getValues();
         int[] rows = distanceMatrix.getRowPointers();
         int rowOffset = ParallelOps.threadRowStartOffsets[threadId] +
                 ParallelOps.procRowStartOffset;
@@ -596,7 +597,7 @@ public class SparseProgramWorker {
             for (int i = 0; i < colCount; i++) {
                 int globalCol = distanceMatrix.getColumns()[rowPointer + i];
                 if (globalRow == globalCol) continue;
-                origD = distTemp[rowPointer + i];
+                origD = distTemp[rowPointer + i] * INV_SHORT_MAX;
                 weight = weightMatrixWrap.getWeight(rowPointer + i);
 
                 if (origD < 0 || weight == 0) {
@@ -890,14 +891,14 @@ public class SparseProgramWorker {
             diff = Math.sqrt(2.0 * targetDimension) * tCur;
         }
 
-        double[] outBofZLocalRow = sparsethreadPartialBofZ.getValues();
+        short[] outBofZLocalRow = sparsethreadPartialBofZ.getValues();
 
         double[] diagonal = sparsethreadPartialBofZ.getDiagonal();
         double origD, weight, dist;
 
         final int globalRowOffset = globalThreadRowRange.getStartIndex();
         int globalRow;
-        double[] distTemp = distanceMatrix.getValues();
+        short[] distTemp = distanceMatrix.getValues();
         int[] rows = distanceMatrix.getRowPointers();
 
         for (int threadLocalRow = 0; threadLocalRow < rows.length; threadLocalRow++) {
@@ -909,7 +910,7 @@ public class SparseProgramWorker {
             for (int i = 0; i < colCount; i++) {
                 int globalCol = distanceMatrix.getColumns()[rowPointer + i];
                 if (globalRow == globalCol) continue;
-                origD = distTemp[rowPointer + i];
+                origD = distTemp[rowPointer + i] * INV_SHORT_MAX;
                 weight = weightMatrixWrap.getWeight(rowPointer + i);
 
                 if (origD < 0 || weight == 0) {
@@ -919,8 +920,8 @@ public class SparseProgramWorker {
                 dist = calculateEuclideanDist(preX, globalRow, globalCol,
                         targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZLocalRow[rowPointer + i] = (weight * vBlockValue *
-                            (origD - diff) / dist);
+                    outBofZLocalRow[rowPointer + i] = (short)((weight * vBlockValue *
+                            (origD - diff) / dist) * SHORT_MAX);
                 } else {
                     outBofZLocalRow[rowPointer + i] = 0;
                 }
@@ -1035,7 +1036,7 @@ public class SparseProgramWorker {
             diff = Math.sqrt(2.0 * targetDim) * tCur;
         }
 
-        double[] distTemp = distanceMatrix.getValues();
+        short[] distTemp = distanceMatrix.getValues();
         int[] rows = distanceMatrix.getRowPointers();
         int rowOffset = ParallelOps.threadRowStartOffsets[threadId] +
                 ParallelOps.procRowStartOffset;
@@ -1050,7 +1051,7 @@ public class SparseProgramWorker {
 
             for (int i = 0; i < colCount; i++) {
                 int globalCol = distanceMatrix.getColumns()[rowPointer + i];
-                origD = distTemp[rowPointer + i];
+                origD = distTemp[rowPointer + i] * INV_SHORT_MAX;
                 weight = weightMatrixWrap.getWeight(rowPointer + i);
 
                 if (origD < 0 || weight == 0) {
@@ -1167,11 +1168,11 @@ public class SparseProgramWorker {
         distanceMatrix =
                 SparseMatrixFile.loadIntoMemory(config.sparseDistanceIndexFile,
                         config.sparseDistanceDataFile, globalThreadRowRange,
-                        config.numberDataPoints, byteOrder);
+                        config.numberDataPoints, byteOrder, ParallelOps.worldProcRank);
         if (!Strings.isNullOrEmpty(config.sparseWeightIndexFile)) {
             weightMatrix = SparseMatrixFile.loadIntoMemory(config.sparseWeightIndexFile,
                     config.sparseWeightDataFile, globalThreadRowRange,
-                    config.numberDataPoints, byteOrder);
+                    config.numberDataPoints, byteOrder, ParallelOps.worldProcRank);
         }
         weightMatrixWrap = new SparseMatrixWeightWrap(weightMatrix, distanceMatrix, config.isSammon);
     }
@@ -1185,10 +1186,10 @@ public class SparseProgramWorker {
         int threadRowCount = ParallelOps.threadRowCounts[threadId];
 
         double origD, weight, rowPointer;
-        double[] distTemp = distanceMatrix.getValues();
+        short[] distTemp = distanceMatrix.getValues();
 
         for (int i = 0; i < distTemp.length; i++) {
-            origD = distTemp[i];
+            origD = distTemp[i] * INV_SHORT_MAX;
             weight = weightMatrixWrap.getWeight(i);
             if (origD < 0) {
                 // Missing distance
