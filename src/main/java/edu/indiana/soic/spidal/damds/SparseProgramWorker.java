@@ -351,15 +351,15 @@ public class SparseProgramWorker {
 //                            formatElapsedMillis(totalTime), totalTime,
 //                            formatElapsedMillis(temperatureLoopTime),
 //                            temperatureLoopTime));
-//            utils.printMessage("  Total Loops: " + loopNum);
-//            utils.printMessage("  Total Iterations: " + smacofRealIterations);
-//            utils.printMessage(
-//                    String.format(
-//                            "  Total CG Iterations: %d Avg. CG Iterations: %" +
-//                                    ".5g",
-//                            outRealCGIterations.getValue(),
-//                            (outRealCGIterations.getValue() * 1.0) /
-//                                    smacofRealIterations));
+            utils.printMessage("  Total Loops: " + loopNum);
+            utils.printMessage("  Total Iterations: " + smacofRealIterations);
+            utils.printMessage(
+                    String.format(
+                            "  Total CG Iterations: %d Avg. CG Iterations: %" +
+                                    ".5g",
+                            outRealCGIterations.getValue(),
+                            (outRealCGIterations.getValue() * 1.0) /
+                                    smacofRealIterations));
 //            utils.printMessage("  Final Stress:\t" + finalStress);
 //            utils.printMessage(" Comms Times All " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL));
 //            utils.printMessage(" Comms Times Comms " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM));
@@ -367,14 +367,18 @@ public class SparseProgramWorker {
 //            + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS));
 //            utils.printMessage(" Comms Stats Times " + totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS)
 //                    + "Average " + totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS));
-            utils.printMessage(String.format(" Times %d,%d,%d,%d,%d,%d \n", totalTime, temperatureLoopTime,
+            utils.printMessage(String.format(" Times %d,%d,%d,%d,%d,%d,%d \n",
+                    totalTime, temperatureLoopTime,
                     (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.ALL),
                     (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.COMM),
                     (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STATS),
-                    (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS)));
-            utils.printMessage(String.format(" Averages stats : %f : stress : %f",
+                    (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.STRESS),
+                    (long) totalCommsTimings.getTotalTime(TotalCommsTimings.TimingTask.BARRIER)));
+            utils.printMessage(String.format(" Averages stats : %f : stress :" +
+                            " %f : barrier: %f",
                     totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STATS),
-                    totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS)));
+                    totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.STRESS),
+                    totalCommsTimings.getAverageTime(TotalCommsTimings.TimingTask.BARRIER)));
 
 //            // TODO - fix print timings
             /*printTimings(totalTime, temperatureLoopTime);*/
@@ -474,7 +478,7 @@ public class SparseProgramWorker {
         for (int i = 0; i < distanceMatrix.getValues().length; ++i) {
             tmpD = distanceMatrix.getValues()[i] * INV_SHORT_MAX;
             if (tmpD < positiveMin && tmpD >= 0.0) {
-                distanceMatrix.getValues()[i] = (short)(positiveMin * SHORT_MAX);
+                distanceMatrix.getValues()[i] = (short) (positiveMin * SHORT_MAX);
             }
         }
     }
@@ -748,15 +752,19 @@ public class SparseProgramWorker {
                 // it's sufficient to wait on ParallelOps.mmapProcComm, but
                 // it's cleaner for timings
                 // if we wait on the whole world
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
                 ParallelOps.worldProcsComm.barrier();
-                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
 
                 if (ParallelOps.isMmapLead) {
+                    totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+
                     //mmTimings.startTiming(MMTimings.TimingTask.COMM, 0);
                     ParallelOps.partialXAllGather();
                     //mmTimings.endTiming(MMTimings.TimingTask.COMM, 0);
+                    totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+
                 }
-                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
 
                 // Each process in a memory group waits here.
                 // It's not necessary to wait for a process
@@ -764,9 +772,13 @@ public class SparseProgramWorker {
                 // However it's cleaner for any timings to have everyone sync
                 // here,
                 // so will use worldProcsComm instead.
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
+
             }
             threadComm.barrier();
+
         }
         mmTimings.startTiming(MMTimings.TimingTask.MM_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
@@ -835,15 +847,19 @@ public class SparseProgramWorker {
                 // it's sufficient to wait on ParallelOps.mmapProcComm, but
                 // it's cleaner for timings
                 // if we wait on the whole world
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
                 ParallelOps.worldProcsComm.barrier();
-                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
 
                 if (ParallelOps.isMmapLead) {
+                    totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+
                     // bcTimings.startTiming(BCTimings.TimingTask.COMM);
                     ParallelOps.partialXAllGather();
                     // bcTimings.endTiming(BCTimings.TimingTask.COMM, 0);
+                    totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+
                 }
-                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
 
                 // Each process in a memory group waits here.
                 // It's not necessary to wait for a process
@@ -851,9 +867,12 @@ public class SparseProgramWorker {
                 // mmapProcComm.
                 // However it's cleaner for any timings to have everyone sync
                 // here, so will use worldProcsComm instead.
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
                 ParallelOps.worldProcsComm.barrier();
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
             }
             threadComm.barrier();
+
         }
         bcTimings.startTiming(BCTimings.TimingTask.BC_EXTRACT);
         threadComm.copy2(ParallelOps.worldProcsCount > 1
@@ -920,7 +939,7 @@ public class SparseProgramWorker {
                 dist = calculateEuclideanDist(preX, globalRow, globalCol,
                         targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZLocalRow[rowPointer + i] = (short)((weight * vBlockValue *
+                    outBofZLocalRow[rowPointer + i] = (short) ((weight * vBlockValue *
                             (origD - diff) / dist) * SHORT_MAX);
                 } else {
                     outBofZLocalRow[rowPointer + i] = 0;
@@ -971,12 +990,17 @@ public class SparseProgramWorker {
         threadComm.sumDoublesOverThreads(threadId, refDouble);
 
         totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
-        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
-        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STRESS);
 
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
             double stress = refDouble.getValue();
             // reverting to default MPI call of allreduce<double>
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
+            ParallelOps.worldProcsComm.barrier();
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
+
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STRESS);
+
             stress = ParallelOps.allReduce(stress);
 
             /*
@@ -1016,9 +1040,10 @@ public class SparseProgramWorker {
 
 
             refDouble.setValue(stress);
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STRESS);
         }
-        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
-        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STRESS);
+
         // threadComm.barrier();
         threadComm.bcastDoubleOverThreads(threadId, refDouble, 0);
         totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
@@ -1106,15 +1131,15 @@ public class SparseProgramWorker {
                 }
 
             }
-            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
             if (ParallelOps.worldProcsCount > 1) {
                 // Broadcast initial mapping to others
+                totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
                 ParallelOps.broadcast(ParallelOps.fullXByteBuffer,
                         numPoints * targetDim * Double.BYTES, 0);
-            }
-            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
-        }
+                totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
 
+            }
+        }
         threadComm.barrier();
         totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
 
@@ -1132,14 +1157,19 @@ public class SparseProgramWorker {
 
 
         totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
-        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
-        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STATS);
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
+            ParallelOps.worldProcsComm.barrier();
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
+
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STATS);
             distanceSummary = ParallelOps.allReduce(distanceSummary);
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STATS);
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+
         }
-        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
-        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STATS);
 //        threadComm.barrier();
         threadComm.bcastDoubleStatisticsOverThreads(threadId,
                 distanceSummary, 0);

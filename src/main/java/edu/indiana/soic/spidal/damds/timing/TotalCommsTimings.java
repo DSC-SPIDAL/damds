@@ -6,20 +6,23 @@ import java.util.concurrent.TimeUnit;
 
 public class TotalCommsTimings {
     public static enum TimingTask {
-        COMM, ALL, STATS, STRESS
+        COMM, ALL, STATS, STRESS, BARRIER
     }
 
     private Stopwatch timerComm = Stopwatch.createUnstarted();
     private Stopwatch timerStress = Stopwatch.createUnstarted();
     private Stopwatch timerStats = Stopwatch.createUnstarted();
+    private Stopwatch timerBar = Stopwatch.createUnstarted();
     private Stopwatch timerAll = Stopwatch.createUnstarted();
     private long tComp;
     private long tStress;
     private long tStats;
+    private long tBar;
     private long tAll;
     private long countComp;
     private long countStress;
     private long countStats;
+    private long countBar;
     private long countAll;
 
     public void startTiming(TimingTask task) {
@@ -39,6 +42,10 @@ public class TotalCommsTimings {
             case STRESS:
                 timerStress.start();
                 ++countStress;
+                break;
+            case BARRIER:
+                timerBar.start();
+                ++countBar;
                 break;
         }
     }
@@ -65,6 +72,11 @@ public class TotalCommsTimings {
                 tStats += timerStats.elapsed(TimeUnit.MILLISECONDS);
                 timerStats.reset();
                 break;
+            case BARRIER:
+                timerBar.stop();
+                tBar += timerBar.elapsed(TimeUnit.MILLISECONDS);
+                timerBar.reset();
+                break;
         }
     }
 
@@ -78,6 +90,8 @@ public class TotalCommsTimings {
                 return tStats;
             case STRESS:
                 return tStress;
+            case BARRIER:
+                return tBar;
         }
         return 0.0;
     }
@@ -92,6 +106,8 @@ public class TotalCommsTimings {
                 return tStress * 1.0 / countStress;
             case STATS:
                 return tStats * 1.0 / countStats;
+            case BARRIER:
+                return tBar * 1.0 / countBar;
         }
         return 0.0;
     }
