@@ -192,7 +192,7 @@ public class SparseProgramWorker {
                     preX, config.targetDimension, tCur,
                     INV_SUM_OF_SQUARE);
 
-//            utils.printMessage("\nInitial stress=" + preStress);
+            utils.printMessage("\nInitial stress=" + preStress);
 
             tCur = config.alpha * tMax;
 
@@ -222,18 +222,21 @@ public class SparseProgramWorker {
                         TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
                 diffStress = config.threshold + 1.0;
-
-//                utils.printMessage(
-//                        String.format(
-//                                "\nStart of loop %d Temperature (T_Cur) %.5g",
-//                                loopNum, tCur));
+                utils.printMessage("\nPre stress=" + preStress);
+                utils.printMessage(String.format("PreX values %.5g, %.5g, %.5g, %.5g, %.5g, %.5g \n\n"
+                        , preX[0], preX[1], preX[2], preX[3], preX[4], preX[5]));
+                utils.printMessage(
+                        String.format(
+                                "\nStart of loop %d Temperature (T_Cur) %.5g",
+                                loopNum, tCur));
 
                 int itrNum = 0;
                 cgCount.setValue(0);
                 temperatureLoopTimings.startTiming(
                         TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
-
+                    utils.printMessage(String.format("PreX values %.5g, %.5g, %.5g, %.5g, %.5g, %.5g \n\n"
+                            , preX[0], preX[1], preX[2], preX[3], preX[4], preX[5]));
                     zeroOutArray(threadPartialMM);
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.BC);
@@ -265,16 +268,16 @@ public class SparseProgramWorker {
                     diffStress = preStress - stress;
                     preStress = stress;
 
-                    if ((itrNum % 10 == 0) || (itrNum >= config.stressIter)) {
-//                        utils.printMessage(
-//                                String.format(
-//                                        "  Loop %d Iteration %d Avg CG count " +
-//                                                "%.5g " +
-//                                                "Stress " +
-//                                                "%.5g", loopNum, itrNum,
-//                                        (cgCount.getValue() * 1.0 / (itrNum +
-//                                                1)),
-//                                        stress));
+                    if ((itrNum % 1 == 0) || (itrNum >= config.stressIter)) {
+                        utils.printMessage(
+                                String.format(
+                                        "  Loop %d Iteration %d Avg CG count " +
+                                                "%.5g " +
+                                                "Stress " +
+                                                "%.5g", loopNum, itrNum,
+                                        (cgCount.getValue() * 1.0 / (itrNum +
+                                                1)),
+                                        stress));
                     }
                     ++itrNum;
                     ++smacofRealIterations;
@@ -597,11 +600,19 @@ public class SparseProgramWorker {
             int colCount = (threadLocalRow == rows.length - 1) ? distTemp.length - rowPointer
                     : rows[threadLocalRow + 1] - rowPointer;
             int globalRow = threadLocalRow + rowOffset;
-
             for (int i = 0; i < colCount; i++) {
                 int globalCol = distanceMatrix.getColumns()[rowPointer + i];
                 if (globalRow == globalCol) continue;
                 origD = distTemp[rowPointer + i] * INV_SHORT_MAX;
+                if (globalRow == 3658465 && globalCol == 11178132) {
+                    utils.printMessage(globalRow + " : " + globalCol + " : " + origD);
+                }
+                if (globalRow == 11351875 && globalCol == 4163936) {
+                    utils.printMessage(globalRow + " : " + globalCol + " : " + origD);
+                }
+                if (globalRow == 14745400 && globalCol == 8664869) {
+                    utils.printMessage(globalRow + " : " + globalCol + " : " + origD);
+                }
                 weight = weightMatrixWrap.getWeight(rowPointer + i);
 
                 if (origD < 0 || weight == 0) {
