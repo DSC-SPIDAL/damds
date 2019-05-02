@@ -605,13 +605,13 @@ public class SparseProgramWorker {
                 if (globalRow == globalCol) continue;
                 origD = distTemp[rowPointer + i] * INV_SHORT_MAX;
                 if (globalRow == 3658465 && globalCol == 11178132) {
-                    utils.printMessage(globalRow + " : " + globalCol + " : " + origD);
+                    System.out.println(globalRow + " : " + globalCol + " : " + origD);
                 }
                 if (globalRow == 11351875 && globalCol == 4163936) {
-                    utils.printMessage(globalRow + " : " + globalCol + " : " + origD);
+                    System.out.println(globalRow + " : " + globalCol + " : " + origD);
                 }
                 if (globalRow == 14745400 && globalCol == 8664869) {
-                    utils.printMessage(globalRow + " : " + globalCol + " : " + origD);
+                    System.out.println(globalRow + " : " + globalCol + " : " + origD);
                 }
                 weight = weightMatrixWrap.getWeight(rowPointer + i);
 
