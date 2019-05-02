@@ -447,7 +447,7 @@ public class SparseProgramWorker {
                 new SparseMatrix(distanceMatrix.getValues().length,
                         distanceMatrix.getColumns().length,
                         distanceMatrix.getRowPointers().length,
-                        distanceMatrix.getRowPointers().length);
+                        distanceMatrix.getRowPointers().length, true);
         // copy the colums and rowpointers to bofZ
         System.arraycopy(distanceMatrix.getColumns(), 0,
                 sparsethreadPartialBofZ.getColumns(), 0, distanceMatrix.getColumns().length);
@@ -906,7 +906,7 @@ public class SparseProgramWorker {
         //TODO might be able to make sparse internalBofZ and make this a spase to dense matrix
         SparseMatrixUtils.sparseMatrixMatrixMultiplyWithDiagonal(sparsethreadPartialBofZ,
                 preX, ParallelOps.globalColCount, targetDimension, outMM,
-                globalThreadRowRange.getStartIndex());
+                globalThreadRowRange.getStartIndex(), true);
 //
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.MM);
     }
@@ -921,7 +921,7 @@ public class SparseProgramWorker {
             diff = Math.sqrt(2.0 * targetDimension) * tCur;
         }
 
-        short[] outBofZLocalRow = sparsethreadPartialBofZ.getValues();
+        double[] outBofZLocalRow = sparsethreadPartialBofZ.getValuesDouble();
 
         double[] diagonal = sparsethreadPartialBofZ.getDiagonal();
         double origD, weight, dist;
@@ -950,8 +950,8 @@ public class SparseProgramWorker {
                 dist = calculateEuclideanDist(preX, globalRow, globalCol,
                         targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZLocalRow[rowPointer + i] = (short) ((weight * vBlockValue *
-                            (origD - diff) / dist) * SHORT_MAX);
+                    outBofZLocalRow[rowPointer + i] = (weight * vBlockValue *
+                            (origD - diff) / dist);
                 } else {
                     outBofZLocalRow[rowPointer + i] = 0;
                 }
