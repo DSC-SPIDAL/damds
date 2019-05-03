@@ -159,17 +159,17 @@ public class SparseProgramWorker {
             double missingDistPercent = ((double) missingDistCount.getValue()) /
                     (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0 / distanceSummary.getSumOfSquare();
-//            utils.printMessage(
-//                    "\nDistance summary... \n" + distanceSummary.toString() +
-//                            "\n  MissingDistPercentage=" +
-//                            missingDistPercent);
+            utils.printMessage(
+                    "\nDistance summary... \n" + distanceSummary.toString() +
+                            "\n  MissingDistPercentage=" +
+                            missingDistPercent);
 
             //weights.setAvgDistForSammon(distanceSummary.getAverage());
             changeZeroDistancesToPostiveMin(distanceSummary
                     .getPositiveMin());
 
             // Allocating point arrays once for all
-            utils.printMessage("Done reading before allocation");
+            utils.printMessage("Done reading before allocation ");
             allocateArrays();
 
             if (Strings.isNullOrEmpty(config.initialPointsFile)) {
@@ -192,7 +192,7 @@ public class SparseProgramWorker {
                     preX, config.targetDimension, tCur,
                     INV_SUM_OF_SQUARE);
 
-            utils.printMessage("\nInitial stress=" + preStress);
+            utils.printMessage("\nInitial stress=" + preStress + " :Tmin " + tMin + " MaxTempLoops " + config.maxtemploops);
 
             tCur = config.alpha * tMax;
 
