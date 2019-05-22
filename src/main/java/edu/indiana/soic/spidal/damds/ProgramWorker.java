@@ -285,7 +285,7 @@ public class ProgramWorker {
                                                 "Stress " +
                                                 "%.5g " +
                                                 "Stress Original" +
-                                                "%.5g", loopNum, itrNum,
+                                                "%.5g ", loopNum, itrNum,
                                         (cgCount.getValue() * 1.0 / (itrNum +
                                                 1)),
                                         stress, oriStress));
@@ -615,7 +615,7 @@ public class ProgramWorker {
                 if (origD < 0 || weight == 0) {
                     continue;
                 }
-                weight = 1.0;
+              //  weight = 1.0;
 
                 v[threadLocalRow] += weight;
             }
@@ -1216,7 +1216,7 @@ public class ProgramWorker {
 
                 heatD = origD - diff;
                 tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
-                weight = 1.0;
+              //  weight = 1.0;
                 sigma += weight * tmpD * tmpD;
             }
         }
@@ -1257,7 +1257,7 @@ public class ProgramWorker {
                         preX, globalRow, globalCol, targetDim) : 0.0;
 
                 tmpD =  origD - euclideanD;
-                weight = 1.0;
+             //   weight = 1.0;
                 sigma += weight * tmpD * tmpD;
             }
         }
