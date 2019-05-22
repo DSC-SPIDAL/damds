@@ -284,7 +284,7 @@ public class ProgramWorker {
                                                 "%.5g " +
                                                 "Stress " +
                                                 "%.5g " +
-                                                "Stress Original" +
+                                                "Stress Original " +
                                                 "%.5g ", loopNum, itrNum,
                                         (cgCount.getValue() * 1.0 / (itrNum +
                                                 1)),
