@@ -222,9 +222,9 @@ public class SparseProgramWorker {
                         TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
                 diffStress = config.threshold + 1.0;
-                utils.printMessage("\nPre stress=" + preStress);
-                utils.printMessage(String.format("PreX values %.5g, %.5g, %.5g, %.5g, %.5g, %.5g \n\n"
-                        , preX[0], preX[1], preX[2], preX[3], preX[4], preX[5]));
+                //utils.printMessage("\nPre stress=" + preStress);
+//                utils.printMessage(String.format("PreX values %.5g, %.5g, %.5g, %.5g, %.5g, %.5g \n\n"
+//                        , preX[0], preX[1], preX[2], preX[3], preX[4], preX[5]));
                 utils.printMessage(
                         String.format(
                                 "\nStart of loop %d Temperature (T_Cur) %.5g",
@@ -235,7 +235,7 @@ public class SparseProgramWorker {
                 temperatureLoopTimings.startTiming(
                         TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
-                    utils.printMessage(String.format("PreX values %.5g, %.5g, %.5g, %.5g, %.5g, %.5g \n\n"
+//                    utils.printMessage(String.format("PreX values %.5g, %.5g, %.5g, %.5g, %.5g, %.5g \n\n"
                             , preX[0], preX[1], preX[2], preX[3], preX[4], preX[5]));
                     zeroOutArray(threadPartialMM);
                     stressLoopTimings.startTiming(
