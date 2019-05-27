@@ -211,7 +211,9 @@ public class SparseProgramWorker {
             RefObj<Integer> outRealCGIterations = new RefObj<>(0);
             RefObj<Integer> cgCount = new RefObj<>(0);
             int smacofRealIterations = 0;
+            long tempLoopStart = 0;
             while (true) {
+                tempLoopStart = System.currentTimeMillis();
 
                 temperatureLoopTimings.startTiming(
                         TemperatureLoopTimings.TimingTask.PRE_STRESS);
@@ -286,6 +288,11 @@ public class SparseProgramWorker {
                     ++itrNum;
                     ++smacofRealIterations;
                 }
+                long loopTime = System.currentTimeMillis() - tempLoopStart;
+                utils.printMessage(
+                        String.format(
+                                "\nEnd of loop %d time taken in ms %d",
+                                loopNum, loopTime));
                 temperatureLoopTimings.endTiming(
                         TemperatureLoopTimings.TimingTask.STRESS_LOOP);
 

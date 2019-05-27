@@ -208,7 +208,10 @@ public class ProgramWorker {
             RefObj<Integer> outRealCGIterations = new RefObj<>(0);
             RefObj<Integer> cgCount = new RefObj<>(0);
             int smacofRealIterations = 0;
+            long tempLoopStart = 0;
+
             while (true) {
+                tempLoopStart = System.currentTimeMillis();
 
                 temperatureLoopTimings.startTiming(
                         TemperatureLoopTimings.TimingTask.PRE_STRESS);
@@ -229,8 +232,8 @@ public class ProgramWorker {
                 cgCount.setValue(0);
                 temperatureLoopTimings.startTiming(
                         TemperatureLoopTimings.TimingTask.STRESS_LOOP);
-                while (diffStress >= config.threshold) {
 
+                while (diffStress >= config.threshold) {
                     zeroOutArray(threadPartialMM);
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.BC);
@@ -251,7 +254,7 @@ public class ProgramWorker {
 
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.CG);
-                    calculateConjugateGradient(preX, config.targetDimension,
+                     calculateConjugateGradient(preX, config.targetDimension,
                             config.numberDataPoints,
                             BC,
                             config.cgIter,
@@ -293,6 +296,11 @@ public class ProgramWorker {
                     ++itrNum;
                     ++smacofRealIterations;
                 }
+                long loopTime = System.currentTimeMillis() - tempLoopStart;
+                utils.printMessage(
+                        String.format(
+                                "\nEnd of loop %d time taken in ms %d",
+                                loopNum, loopTime));
                 temperatureLoopTimings.endTiming(
                         TemperatureLoopTimings.TimingTask.STRESS_LOOP);
 
