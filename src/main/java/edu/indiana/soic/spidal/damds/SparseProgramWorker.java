@@ -159,17 +159,17 @@ public class SparseProgramWorker {
             double missingDistPercent = ((double) missingDistCount.getValue()) /
                     (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0 / distanceSummary.getSumOfSquare();
-//            utils.printMessage(
-//                    "\nDistance summary... \n" + distanceSummary.toString() +
-//                            "\n  MissingDistPercentage=" +
-//                            missingDistPercent);
+            utils.printMessage(
+                    "\nDistance summary... \n" + distanceSummary.toString() +
+                            "\n  MissingDistPercentage=" +
+                            missingDistPercent);
 
             //weights.setAvgDistForSammon(distanceSummary.getAverage());
             changeZeroDistancesToPostiveMin(distanceSummary
                     .getPositiveMin());
 
             // Allocating point arrays once for all
-            utils.printMessage("Done reading before allocation");
+            utils.printMessage("Done reading before allocation ");
             allocateArrays();
 
             if (Strings.isNullOrEmpty(config.initialPointsFile)) {
@@ -192,7 +192,7 @@ public class SparseProgramWorker {
                     preX, config.targetDimension, tCur,
                     INV_SUM_OF_SQUARE);
 
-//            utils.printMessage("\nInitial stress=" + preStress);
+            utils.printMessage("\nInitial stress=" + preStress + " :Tmin " + tMin + " MaxTempLoops " + config.maxtemploops);
 
             tCur = config.alpha * tMax;
 
@@ -211,7 +211,9 @@ public class SparseProgramWorker {
             RefObj<Integer> outRealCGIterations = new RefObj<>(0);
             RefObj<Integer> cgCount = new RefObj<>(0);
             int smacofRealIterations = 0;
+            long tempLoopStart = 0;
             while (true) {
+                tempLoopStart = System.currentTimeMillis();
 
                 temperatureLoopTimings.startTiming(
                         TemperatureLoopTimings.TimingTask.PRE_STRESS);
@@ -222,18 +224,21 @@ public class SparseProgramWorker {
                         TemperatureLoopTimings.TimingTask.PRE_STRESS);
 
                 diffStress = config.threshold + 1.0;
-
-//                utils.printMessage(
-//                        String.format(
-//                                "\nStart of loop %d Temperature (T_Cur) %.5g",
-//                                loopNum, tCur));
+                //utils.printMessage("\nPre stress=" + preStress);
+//                utils.printMessage(String.format("PreX values %.5g, %.5g, %.5g, %.5g, %.5g, %.5g \n\n"
+//                        , preX[0], preX[1], preX[2], preX[3], preX[4], preX[5]));
+                utils.printMessage(
+                        String.format(
+                                "\nStart of loop %d Temperature (T_Cur) %.5g",
+                                loopNum, tCur));
 
                 int itrNum = 0;
                 cgCount.setValue(0);
                 temperatureLoopTimings.startTiming(
                         TemperatureLoopTimings.TimingTask.STRESS_LOOP);
                 while (diffStress >= config.threshold) {
-
+//                    utils.printMessage(String.format("PreX values %.5g, %.5g, %.5g, %.5g, %.5g, %.5g \n\n"
+                   //         , preX[0], preX[1], preX[2], preX[3], preX[4], preX[5]));
                     zeroOutArray(threadPartialMM);
                     stressLoopTimings.startTiming(
                             StressLoopTimings.TimingTask.BC);
@@ -261,24 +266,33 @@ public class SparseProgramWorker {
                             preX, config.targetDimension, tCur, INV_SUM_OF_SQUARE);
                     stressLoopTimings.endTiming(
                             StressLoopTimings.TimingTask.STRESS);
+                    double oriStress = calculateStressOriginal(
+                            preX, config.targetDimension, tCur, INV_SUM_OF_SQUARE);
 
                     diffStress = preStress - stress;
                     preStress = stress;
 
-                    if ((itrNum % 10 == 0) || (itrNum >= config.stressIter)) {
-//                        utils.printMessage(
-//                                String.format(
-//                                        "  Loop %d Iteration %d Avg CG count " +
-//                                                "%.5g " +
-//                                                "Stress " +
-//                                                "%.5g", loopNum, itrNum,
-//                                        (cgCount.getValue() * 1.0 / (itrNum +
-//                                                1)),
-//                                        stress));
+                    if ((itrNum % 1 == 0) || (itrNum >= config.stressIter)) {
+                        utils.printMessage(
+                                String.format(
+                                        "  Loop %d Iteration %d Avg CG count " +
+                                                "%.5g " +
+                                                "Stress " +
+                                                "%.5g " +
+                                                "Stress Original " +
+                                                "%.5g", loopNum, itrNum,
+                                        (cgCount.getValue() * 1.0 / (itrNum +
+                                                1)),
+                                        stress, oriStress));
                     }
                     ++itrNum;
                     ++smacofRealIterations;
                 }
+                long loopTime = System.currentTimeMillis() - tempLoopStart;
+                utils.printMessage(
+                        String.format(
+                                "\nEnd of loop %d time taken in ms %d",
+                                loopNum, loopTime));
                 temperatureLoopTimings.endTiming(
                         TemperatureLoopTimings.TimingTask.STRESS_LOOP);
 
@@ -444,7 +458,7 @@ public class SparseProgramWorker {
                 new SparseMatrix(distanceMatrix.getValues().length,
                         distanceMatrix.getColumns().length,
                         distanceMatrix.getRowPointers().length,
-                        distanceMatrix.getRowPointers().length);
+                        distanceMatrix.getRowPointers().length, true);
         // copy the colums and rowpointers to bofZ
         System.arraycopy(distanceMatrix.getColumns(), 0,
                 sparsethreadPartialBofZ.getColumns(), 0, distanceMatrix.getColumns().length);
@@ -597,11 +611,19 @@ public class SparseProgramWorker {
             int colCount = (threadLocalRow == rows.length - 1) ? distTemp.length - rowPointer
                     : rows[threadLocalRow + 1] - rowPointer;
             int globalRow = threadLocalRow + rowOffset;
-
             for (int i = 0; i < colCount; i++) {
                 int globalCol = distanceMatrix.getColumns()[rowPointer + i];
                 if (globalRow == globalCol) continue;
                 origD = distTemp[rowPointer + i] * INV_SHORT_MAX;
+                if (globalRow == 3658465 && globalCol == 11178132) {
+                    System.out.println(globalRow + " : " + globalCol + " : " + origD);
+                }
+                if (globalRow == 11351875 && globalCol == 4163936) {
+                    System.out.println(globalRow + " : " + globalCol + " : " + origD);
+                }
+                if (globalRow == 14745400 && globalCol == 8664869) {
+                    System.out.println(globalRow + " : " + globalCol + " : " + origD);
+                }
                 weight = weightMatrixWrap.getWeight(rowPointer + i);
 
                 if (origD < 0 || weight == 0) {
@@ -895,7 +917,7 @@ public class SparseProgramWorker {
         //TODO might be able to make sparse internalBofZ and make this a spase to dense matrix
         SparseMatrixUtils.sparseMatrixMatrixMultiplyWithDiagonal(sparsethreadPartialBofZ,
                 preX, ParallelOps.globalColCount, targetDimension, outMM,
-                globalThreadRowRange.getStartIndex());
+                globalThreadRowRange.getStartIndex(), true);
 //
         bcInternalTimings.endTiming(BCInternalTimings.TimingTask.MM);
     }
@@ -910,7 +932,7 @@ public class SparseProgramWorker {
             diff = Math.sqrt(2.0 * targetDimension) * tCur;
         }
 
-        short[] outBofZLocalRow = sparsethreadPartialBofZ.getValues();
+        double[] outBofZLocalRow = sparsethreadPartialBofZ.getValuesDouble();
 
         double[] diagonal = sparsethreadPartialBofZ.getDiagonal();
         double origD, weight, dist;
@@ -939,8 +961,8 @@ public class SparseProgramWorker {
                 dist = calculateEuclideanDist(preX, globalRow, globalCol,
                         targetDimension);
                 if (dist >= 1.0E-10 && diff < origD) {
-                    outBofZLocalRow[rowPointer + i] = (short) ((weight * vBlockValue *
-                            (origD - diff) / dist) * SHORT_MAX);
+                    outBofZLocalRow[rowPointer + i] = (weight * vBlockValue *
+                            (origD - diff) / dist);
                 } else {
                     outBofZLocalRow[rowPointer + i] = 0;
                 }
@@ -1050,6 +1072,80 @@ public class SparseProgramWorker {
         return refDouble.getValue() * invSumOfSquareDist;
     }
 
+    /**
+     * calculates the stress value as given in equation (1) in
+     *      * http://dsc.soic.indiana.edu/publications/da_smacof.pdf rather than using
+     *      * eq (18) as done in the normal stress calc
+     */
+    private double calculateStressOriginal(
+            double[] preX, int targetDimension, double tCur, double invSumOfSquareDist)
+            throws MPIException, BrokenBarrierException, InterruptedException {
+
+        refDouble.setValue(calculateStressInternalOriginal(threadId, preX,
+                targetDimension, tCur));
+        threadComm.sumDoublesOverThreads(threadId, refDouble);
+
+        totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
+
+        if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+            double stress = refDouble.getValue();
+            // reverting to default MPI call of allreduce<double>
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.BARRIER);
+            ParallelOps.worldProcsComm.barrier();
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.BARRIER);
+
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
+            totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STRESS);
+
+            stress = ParallelOps.allReduce(stress);
+
+            /*
+            // Write thread local reduction to shared memory map
+            ParallelOps.mmapSWriteBytes.position(0);
+            ParallelOps.mmapSWriteBytes.writeDouble(stress);
+
+            // Important barrier here - as we need to make sure writes are done
+            // to the mmap file.
+            // It's sufficient to wait on ParallelOps.mmapProcComm,
+            // but it's cleaner for timings if we wait on the whole world
+            ParallelOps.worldProcsComm.barrier();
+            if (ParallelOps.isMmapLead) {
+                // Node local reduction using shared memory maps
+                ParallelOps.mmapSReadBytes.position(0);
+                stress = 0.0;
+                for (int i = 0; i < ParallelOps.mmapProcsCount; ++i) {
+                    stress += ParallelOps.mmapSReadBytes.readDouble();
+                }
+                ParallelOps.mmapSWriteBytes.position(0);
+                ParallelOps.mmapSWriteBytes.writeDouble(stress);
+
+                // Leaders participate in MPI AllReduce
+                stressTimings.startTiming(StressTimings.TimingTask.COMM, 0);
+                ParallelOps.partialSAllReduce(MPI.SUM);
+                stressTimings.endTiming(StressTimings.TimingTask.COMM, 0);
+            }
+
+            // Each process in a memory group waits here.
+            // It's not necessary to wait for a process
+            // in another memory map group, hence the use of mmapProcComm.
+            // However it's cleaner for any timings to have everyone sync here,
+            // so will use worldProcsComm instead.
+            ParallelOps.worldProcsComm.barrier();
+            ParallelOps.mmapSReadBytes.position(0);
+            stress = ParallelOps.mmapSReadBytes.readDouble();*/
+
+
+            refDouble.setValue(stress);
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
+            totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STRESS);
+        }
+
+        // threadComm.barrier();
+        threadComm.bcastDoubleOverThreads(threadId, refDouble, 0);
+        totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
+        return refDouble.getValue() * invSumOfSquareDist;
+    }
+
     private double calculateStressInternal(
             int threadIdx, double[] preX, int targetDim, double tCur) {
 
@@ -1088,6 +1184,48 @@ public class SparseProgramWorker {
 
                 heatD = origD - diff;
                 tmpD = origD >= diff ? heatD - euclideanD : -euclideanD;
+                sigma += weight * tmpD * tmpD;
+
+            }
+        }
+        stressInternalTimings.endTiming(StressInternalTimings.TimingTask
+                .COMP, threadIdx);
+        return sigma;
+    }
+
+    private double calculateStressInternalOriginal(
+            int threadIdx, double[] preX, int targetDim, double tCur) {
+
+        stressInternalTimings.startTiming(StressInternalTimings.TimingTask
+                .COMP, threadIdx);
+        double sigma = 0.0;
+
+        short[] distTemp = distanceMatrix.getValues();
+        int[] rows = distanceMatrix.getRowPointers();
+        int rowOffset = ParallelOps.threadRowStartOffsets[threadId] +
+                ParallelOps.procRowStartOffset;
+        double origD, weight, euclideanD;
+        double  tmpD;
+
+        for (int threadLocalRow = 0; threadLocalRow < rows.length; threadLocalRow++) {
+            int rowPointer = rows[threadLocalRow];
+            int colCount = (threadLocalRow == rows.length - 1) ? distTemp.length - rowPointer
+                    : rows[threadLocalRow + 1] - rowPointer;
+            int globalRow = threadLocalRow + rowOffset;
+
+            for (int i = 0; i < colCount; i++) {
+                int globalCol = distanceMatrix.getColumns()[rowPointer + i];
+                origD = distTemp[rowPointer + i] * INV_SHORT_MAX;
+                weight = weightMatrixWrap.getWeight(rowPointer + i);
+
+                if (origD < 0 || weight == 0) {
+                    continue;
+                }
+
+                euclideanD = globalRow != globalCol ? calculateEuclideanDist(
+                        preX, globalRow, globalCol, targetDim) : 0.0;
+
+                tmpD =  origD - euclideanD;
                 sigma += weight * tmpD * tmpD;
 
             }
