@@ -38,6 +38,7 @@ public class DAMDSSection {
             blockSize = Integer.parseInt(getProperty(p, "BlockSize", "64"));
 
             isBigEndian = Boolean.parseBoolean(getProperty(p, "IsBigEndian", "false"));
+            is4DTransformed = Boolean.parseBoolean(getProperty(p, "is4DTransformed", "false"));
             isMemoryMapped = Boolean.parseBoolean(getProperty(p, "IsMemoryMapped", "true"));
             transformationFunction = getProperty(p, "TransformationFunction", null);
             weightTransformationFunction = getProperty(p, "WeightTransformationFunction", null);
@@ -92,6 +93,7 @@ public class DAMDSSection {
     public int blockSize;
 
     public boolean isBigEndian;
+    public boolean is4DTransformed;
     public boolean isMemoryMapped;
     public String transformationFunction;
     public String weightTransformationFunction;

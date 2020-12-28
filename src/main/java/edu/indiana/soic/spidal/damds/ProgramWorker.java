@@ -59,6 +59,9 @@ public class ProgramWorker {
 
     final private RefObj<Integer> refInt = new RefObj<>();
     final private RefObj<Double> refDouble = new RefObj<>();
+    final private RefObj<Double> refavg1 = new RefObj<>();
+    final private RefObj<Double> refavg2 = new RefObj<>();
+    final private RefObj<Double> refavg3 = new RefObj<>();
 
     private ThreadCommunicator threadComm;
     private Utils utils;
@@ -148,6 +151,8 @@ public class ProgramWorker {
             setup();
             readDistancesAndWeights(config.isSammon);
             RefObj<Integer> missingDistCount = new RefObj<>();
+
+            //If is4DTransformed is set to true calculate stats will alter the distance
             DoubleStatistics distanceSummary = calculateStatistics(
                     distances, weights, missingDistCount);
             double missingDistPercent = missingDistCount.getValue() /
@@ -1212,8 +1217,14 @@ public class ProgramWorker {
 
         DoubleStatistics distanceSummary =
                 calculateStatisticsInternal(distances, weights, refInt);
+        calculate4DstatsInternal(distances, weights, refavg1, refavg2, refavg3);
+
         threadComm.sumDoubleStatisticsOverThreads(threadId, distanceSummary);
         threadComm.sumIntOverThreads(threadId, refInt);
+        threadComm.sumDoublesOverThreads(threadId, refavg1);
+        threadComm.sumDoublesOverThreads(threadId, refavg2);
+        threadComm.sumDoublesOverThreads(threadId, refavg3);
+        double[] avg_global = new double[3];
 
         totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
@@ -1224,10 +1235,12 @@ public class ProgramWorker {
             totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
             totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STATS);
             distanceSummary = ParallelOps.allReduce(distanceSummary);
+            avg_global[0] = ParallelOps.allReduce(refavg1.getValue());
+            avg_global[1] = ParallelOps.allReduce(refavg2.getValue());
+            avg_global[2] = ParallelOps.allReduce(refavg3.getValue());
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
             totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
             totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STATS);
-
         }
 //        threadComm.barrier();
         threadComm.bcastDoubleStatisticsOverThreads(threadId,
@@ -1235,6 +1248,17 @@ public class ProgramWorker {
         threadComm.bcastIntOverThreads(threadId, refInt, 0);
         missingDistCount.setValue(refInt.getValue());
         totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
+
+        double DistceMean = avg_global[0] / avg_global[1];
+        double DistceSTD = Math.sqrt((avg_global[2] / avg_global[1]) - DistceMean * DistceMean);
+        double EstimatedDimension = 2.0 * DistceMean * DistceMean / (DistceSTD * DistceSTD);
+        double IndividualSigma = Math.sqrt(DistceMean / EstimatedDimension);
+
+        //if 4Dtransformed replace distances values with the newly calculated values.
+        if(config.is4DTransformed){
+            double scalefactor = 2.0 * IndividualSigma * IndividualSigma;
+            updateDistncewith4D(distances, EstimatedDimension, scalefactor);
+        }
 
         return distanceSummary;
     }
@@ -1308,6 +1332,66 @@ public class ProgramWorker {
 
     }
 
+    private double[] calculate4DstatsInternal(short[] distances, WeightsWrap1D weights, RefObj<Double> refavg1, RefObj<Double> refavg2, RefObj<Double> refavg3){
+        double findAverage[] = new double[3];
+
+        int threadRowCount = ParallelOps.threadRowCounts[threadId];
+
+        //Only needed if is4DTransformed is set to true
+        double DistanceSum = 0.0;
+        double NumberSum = 0.0;
+        double STDSum = 0.0;
+        final int globalRowOffset = globalThreadRowRange.getStartIndex();
+        int globalRow;
+        for (int localRow = 0; localRow < threadRowCount; ++localRow) {
+            globalRow = localRow + globalRowOffset;
+            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
+                 globalCol++) {
+                if (globalRow == globalCol)
+                {
+                    continue;
+                }
+                double placevalue = distances[localRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
+                DistanceSum += placevalue;
+                STDSum += placevalue * placevalue;
+                NumberSum += 1.0;
+            }
+        }
+        refavg1.setValue(DistanceSum);
+        refavg2.setValue(NumberSum);
+        refavg3.setValue(STDSum);
+
+        return findAverage;
+    }
+
+    private double[] updateDistncewith4D(short[] distances, double estimatedDimension, double scaleFactor){
+        double findAverage[] = new double[3];
+
+        int threadRowCount = ParallelOps.threadRowCounts[threadId];
+
+        //Only needed if is4DTransformed is set to true
+        final int globalRowOffset = globalThreadRowRange.getStartIndex();
+        int globalRow;
+        for (int localRow = 0; localRow < threadRowCount; ++localRow) {
+            globalRow = localRow + globalRowOffset;
+            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
+                 globalCol++) {
+                if (globalRow == globalCol)
+                {
+                    continue;
+                }
+                double placevalue = distances[localRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
+
+                if(placevalue < 0) {
+                    continue;
+                }
+                double temp = scaleFactor * Transform4D(SpecialFunction.igamc(estimatedDimension * 0.5, placevalue / scaleFactor));
+                distances[localRow*ParallelOps.globalColCount + globalCol] = (short) (temp * SHORT_MAX);
+            }
+        }
+        return findAverage;
+    }
+
     private DoubleStatistics calculateStatisticsInternal(
             short[] distances, WeightsWrap1D weights, RefObj<Integer>
             refMissingDistCount) {
@@ -1361,4 +1445,30 @@ public class ProgramWorker {
         return Optional.fromNullable(null);
     }
 
+    private static double Transform4D(double higherDimensionInput) {
+        /* Saliya - copying code directly from Adam Hughes project.
+         * The comments except this one are from his code as well.*/
+
+        double Einit = -Math.log(higherDimensionInput);
+        //         double Einit = HigherDimInput;
+        double E = Einit;
+        double Eold = E;
+        // double diff;
+
+        for (int recurse = 0; recurse < 50; recurse++) {
+            E = Einit + Math.log(1.0 + E);
+            //      E = 1.0 + E - E / 2;
+			/*      diff = E - Eold;
+			      if (diff < 0)
+			      {
+			          diff = Eold - E;
+			      }*/
+            //                if (diff < 0.00001)
+            if (Math.abs(E - Eold) < 0.00001) {
+                return E;
+            }
+            Eold = E;
+        }
+        return E;
+    }
 }
