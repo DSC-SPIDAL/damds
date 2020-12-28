@@ -1395,7 +1395,8 @@ public class ProgramWorker {
         double DistceSTD = Math.sqrt((avg_global[2] / avg_global[1]) - DistceMean * DistceMean);
         double EstimatedDimension = 2.0 * DistceMean * DistceMean / (DistceSTD * DistceSTD);
         double IndividualSigma = Math.sqrt(DistceMean / EstimatedDimension);
-
+        utils.printMessage("############## avg_global[1] : " + avg_global[1]);
+        utils.printMessage("############## EstimatedDimension: " + EstimatedDimension);
         //if 4Dtransformed replace distances values with the newly calculated values.
         if(config.is4DTransformed){
             double scalefactor = 2.0 * IndividualSigma * IndividualSigma;
