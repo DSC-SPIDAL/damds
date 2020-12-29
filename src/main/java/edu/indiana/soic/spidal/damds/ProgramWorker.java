@@ -179,7 +179,7 @@ public class ProgramWorker {
                         "\n  MissingDistPercentage=" +
                         missingDistPercent);
             }
-            
+
             // Allocating point arrays once for all
             allocateArrays();
 
@@ -1386,9 +1386,27 @@ public class ProgramWorker {
         double EstimatedDimension = 2.0 * DistceMean * DistceMean / (DistceSTD * DistceSTD);
         double IndividualSigma = Math.sqrt(DistceMean / EstimatedDimension);
 
+        calculateNewEstimatedDimension(distances, EstimatedDimension, IndividualSigma, refavg1, refavg2, refavg3);
+        threadComm.sumDoublesOverThreads(threadId, refavg1);
+        threadComm.sumDoublesOverThreads(threadId, refavg2);
+        threadComm.sumDoublesOverThreads(threadId, refavg3);
+
+        double[] avg_global_new = new double[3];
+        if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+            avg_global_new[0] = ParallelOps.allReduce(refavg1.getValue());
+            avg_global_new[1] = ParallelOps.allReduce(refavg2.getValue());
+            avg_global_new[2] = ParallelOps.allReduce(refavg3.getValue());
+        }
+
+        double DistceMean_new = avg_global_new[0] / avg_global_new[1];
+        double DistceSTD_new = Math.sqrt((avg_global_new[2] / avg_global_new[1]) - DistceMean_new * DistceMean_new);
+        double EstimatedDimension_new = 2.0 * DistceMean_new * DistceMean_new / (DistceSTD_new * DistceSTD_new);
+        double IndividualSigma_new = Math.sqrt(DistceMean_new / EstimatedDimension);
+
         if(config.is4DTransformed){
         utils.printMessage("############## avg_global[1] : " + avg_global[1]);
         utils.printMessage("############## EstimatedDimension: " + EstimatedDimension);
+        utils.printMessage("############## EstimatedDimension_new: " + EstimatedDimension_new);
         //if 4Dtransformed replace distances values with the newly calculated values.
 
             double scalefactor = 2.0 * IndividualSigma * IndividualSigma;
@@ -1501,6 +1519,37 @@ public class ProgramWorker {
                     null, distances, isSammon, ParallelOps.globalColCount);
         }
 
+    }
+
+    private void calculateNewEstimatedDimension(short[] distances, double estimatedDimension, double individualSigma,
+                                                RefObj<Double> refavg1, RefObj<Double> refavg2, RefObj<Double> refavg3){
+        int threadRowCount = ParallelOps.threadRowCounts[threadId];
+        double scaleFactor = 2.0 * individualSigma * individualSigma;
+        //Only needed if is4DTransformed is set to true
+        double DistanceSum = 0.0;
+        double NumberSum = 0.0;
+        double STDSum = 0.0;
+        final int globalRowOffset = globalThreadRowRange.getStartIndex();
+        int globalRow;
+        for (int localRow = 0; localRow < threadRowCount; ++localRow) {
+            globalRow = localRow + globalRowOffset;
+            for (int globalCol = 0; globalCol < ParallelOps.globalColCount;
+                 globalCol++) {
+                if (globalRow == globalCol)
+                {
+                    continue;
+                }
+                double placevalue = distances[localRow*ParallelOps.globalColCount + globalCol] * INV_SHORT_MAX;
+                double temp = scaleFactor * Transform4D(SpecialFunction.igamc(estimatedDimension * 0.5, placevalue / scaleFactor));
+
+                DistanceSum += temp;
+                STDSum += temp * temp;
+                NumberSum += 1.0;
+            }
+        }
+        refavg1.setValue(DistanceSum);
+        refavg2.setValue(NumberSum);
+        refavg3.setValue(STDSum);
     }
 
     private double[] calculate4DstatsInternal(short[] distances, WeightsWrap1D weights, RefObj<Double> refavg1, RefObj<Double> refavg2, RefObj<Double> refavg3){
