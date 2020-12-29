@@ -1408,9 +1408,10 @@ public class ProgramWorker {
         utils.printMessage("############## EstimatedDimension: " + EstimatedDimension);
         utils.printMessage("############## EstimatedDimension_new: " + EstimatedDimension_new);
         //if 4Dtransformed replace distances values with the newly calculated values.
+        double scalefactor = 2.0 * IndividualSigma * IndividualSigma;
+        utils.printMessage("############## scalefactor: " + scalefactor);
 
-            double scalefactor = 2.0 * IndividualSigma * IndividualSigma;
-            updateDistncewith4D(distances, EstimatedDimension, scalefactor);
+        updateDistncewith4D(distances, EstimatedDimension, scalefactor);
         }
 
     }
