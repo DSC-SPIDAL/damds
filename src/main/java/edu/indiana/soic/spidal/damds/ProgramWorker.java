@@ -158,15 +158,28 @@ public class ProgramWorker {
             double missingDistPercent = missingDistCount.getValue() /
                     (Math.pow(config.numberDataPoints, 2));
             INV_SUM_OF_SQUARE = 1.0 / distanceSummary.getSumOfSquare();
-//            utils.printMessage(
-//                    "\nDistance summary... \n" + distanceSummary.toString() +
-//                            "\n  MissingDistPercentage=" +
-//                            missingDistPercent);
+            utils.printMessage(
+                    "\nDistance summary... \n" + distanceSummary.toString() +
+                            "\n  MissingDistPercentage=" +
+                            missingDistPercent);
 
             weights.setAvgDistForSammon(distanceSummary.getAverage());
             changeZeroDistancesToPostiveMin(distances, distanceSummary
                     .getPositiveMin());
 
+            if(config.is4DTransformed){
+                tranformTo4D(distances);
+
+                distanceSummary = calculateStatistics(
+                    distances, weights, missingDistCount);
+                missingDistPercent = missingDistCount.getValue() /
+                    (Math.pow(config.numberDataPoints, 2));
+                utils.printMessage(
+                    "\nDistance summary... after 4D \n" + distanceSummary.toString() +
+                        "\n  MissingDistPercentage=" +
+                        missingDistPercent);
+            }
+            
             // Allocating point arrays once for all
             allocateArrays();
 
@@ -1352,6 +1365,38 @@ public class ProgramWorker {
         extractPoints(threadLocalFullXBytes, numPoints, targetDim, preX);
     }
 
+    private void tranformTo4D(short[] distances)
+        throws MPIException, BrokenBarrierException, InterruptedException {
+
+        calculate4DstatsInternal(distances, weights, refavg1, refavg2, refavg3);
+
+        threadComm.sumDoublesOverThreads(threadId, refavg1);
+        threadComm.sumDoublesOverThreads(threadId, refavg2);
+        threadComm.sumDoublesOverThreads(threadId, refavg3);
+
+        double[] avg_global = new double[3];
+        if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
+            avg_global[0] = ParallelOps.allReduce(refavg1.getValue());
+            avg_global[1] = ParallelOps.allReduce(refavg2.getValue());
+            avg_global[2] = ParallelOps.allReduce(refavg3.getValue());
+        }
+
+        double DistceMean = avg_global[0] / avg_global[1];
+        double DistceSTD = Math.sqrt((avg_global[2] / avg_global[1]) - DistceMean * DistceMean);
+        double EstimatedDimension = 2.0 * DistceMean * DistceMean / (DistceSTD * DistceSTD);
+        double IndividualSigma = Math.sqrt(DistceMean / EstimatedDimension);
+
+        if(config.is4DTransformed){
+        utils.printMessage("############## avg_global[1] : " + avg_global[1]);
+        utils.printMessage("############## EstimatedDimension: " + EstimatedDimension);
+        //if 4Dtransformed replace distances values with the newly calculated values.
+
+            double scalefactor = 2.0 * IndividualSigma * IndividualSigma;
+            updateDistncewith4D(distances, EstimatedDimension, scalefactor);
+        }
+
+    }
+
     private DoubleStatistics calculateStatistics(
             short[] distances, WeightsWrap1D weights, RefObj<Integer>
             missingDistCount)
@@ -1359,14 +1404,11 @@ public class ProgramWorker {
 
         DoubleStatistics distanceSummary =
                 calculateStatisticsInternal(distances, weights, refInt);
-        calculate4DstatsInternal(distances, weights, refavg1, refavg2, refavg3);
+
 
         threadComm.sumDoubleStatisticsOverThreads(threadId, distanceSummary);
         threadComm.sumIntOverThreads(threadId, refInt);
-        threadComm.sumDoublesOverThreads(threadId, refavg1);
-        threadComm.sumDoublesOverThreads(threadId, refavg2);
-        threadComm.sumDoublesOverThreads(threadId, refavg3);
-        double[] avg_global = new double[3];
+
 
         totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.ALL);
         if (ParallelOps.worldProcsCount > 1 && threadId == 0) {
@@ -1377,31 +1419,17 @@ public class ProgramWorker {
             totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.COMM);
             totalCommsTimings.startTiming(TotalCommsTimings.TimingTask.STATS);
             distanceSummary = ParallelOps.allReduce(distanceSummary);
-            avg_global[0] = ParallelOps.allReduce(refavg1.getValue());
-            avg_global[1] = ParallelOps.allReduce(refavg2.getValue());
-            avg_global[2] = ParallelOps.allReduce(refavg3.getValue());
             refInt.setValue(ParallelOps.allReduce(refInt.getValue()));
             totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.COMM);
             totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.STATS);
         }
+
 //        threadComm.barrier();Iteration
         threadComm.bcastDoubleStatisticsOverThreads(threadId,
                 distanceSummary, 0);
         threadComm.bcastIntOverThreads(threadId, refInt, 0);
         missingDistCount.setValue(refInt.getValue());
         totalCommsTimings.endTiming(TotalCommsTimings.TimingTask.ALL);
-
-        double DistceMean = avg_global[0] / avg_global[1];
-        double DistceSTD = Math.sqrt((avg_global[2] / avg_global[1]) - DistceMean * DistceMean);
-        double EstimatedDimension = 2.0 * DistceMean * DistceMean / (DistceSTD * DistceSTD);
-        double IndividualSigma = Math.sqrt(DistceMean / EstimatedDimension);
-        utils.printMessage("############## avg_global[1] : " + avg_global[1]);
-        utils.printMessage("############## EstimatedDimension: " + EstimatedDimension);
-        //if 4Dtransformed replace distances values with the newly calculated values.
-        if(config.is4DTransformed){
-            double scalefactor = 2.0 * IndividualSigma * IndividualSigma;
-            updateDistncewith4D(distances, EstimatedDimension, scalefactor);
-        }
 
         return distanceSummary;
     }
